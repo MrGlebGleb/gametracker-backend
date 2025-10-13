@@ -1,18 +1,15 @@
-// server.js - Backend с загрузкой аватаров
+// server.js - ИСПРАВЛЕННЫЙ Backend
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
-const multer = require('multer');
-const sharp = require('sharp');
 const { Pool } = require('pg');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static('public'));
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
@@ -60,6 +57,7 @@ async function initDatabase() {
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         friend_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         status VARCHAR(20) DEFAULT 'accepted',
+        nickname VARCHAR(100),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id, friend_id)
       );
@@ -103,7 +101,7 @@ async function getTwitchToken() {
     tokenExpiry = Date.now() + (response.data.expires_in * 1000);
     return twitchAccessToken;
   } catch (error) {
-    console.error('Ошибка получения Twitch токена:', error.response?.data || error.message);
+    console.error('Ошибка Twitch токена:', error.message);
     throw new Error('Не удалось авторизоваться в Twitch API');
   }
 }
@@ -144,7 +142,7 @@ app.post('/api/auth/register', async (req, res) => {
     res.status(201).json({
       message: 'Регистрация успешна',
       token,
-      user: { id: user.id, username: user.username, email: user.email, avatar: user.avatar, bio: user.bio }
+      user
     });
   } catch (error) {
     if (error.code === '23505') {
@@ -161,10 +159,6 @@ app.post('/api/auth/login', async (req, res) => {
   const client = await pool.connect();
   try {
     const { username, password } = req.body;
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Все поля обязательны' });
-    }
-
     const result = await client.query('SELECT * FROM users WHERE username = $1', [username]);
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Неверные учетные данные' });
@@ -200,12 +194,9 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
       'SELECT id, username, email, avatar, bio, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Пользователь не найден' });
-    }
     res.json({ user: result.rows[0] });
   } catch (error) {
-    console.error('Ошибка получения профиля:', error);
+    console.error('Ошибка профиля:', error);
     res.status(500).json({ error: 'Ошибка сервера' });
   } finally {
     client.release();
@@ -221,23 +212,14 @@ app.post('/api/profile/avatar', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Неверный формат изображения' });
     }
 
-    // Конвертируем base64 в buffer
-    const base64Data = avatar.replace(/^data:image\/\w+;base64,/, '');
-    const imageBuffer = Buffer.from(base64Data, 'base64');
-
-    // Ресайзим до 128x128
-    const resizedImage = await sharp(imageBuffer)
-      .resize(128, 128, { fit: 'cover' })
-      .jpeg({ quality: 80 })
-      .toBuffer();
-
-    // Конвертируем обратно в base64
-    const resizedBase64 = `data:image/jpeg;base64,${resizedImage.toString('base64')}`;
+    console.log('Загрузка аватара для пользователя:', req.user.id);
 
     const result = await client.query(
       'UPDATE users SET avatar = $1 WHERE id = $2 RETURNING id, username, email, avatar, bio',
-      [resizedBase64, req.user.id]
+      [avatar, req.user.id]
     );
+
+    console.log('Аватар обновлен успешно');
 
     res.json({ message: 'Аватар обновлен', user: result.rows[0] });
   } catch (error) {
@@ -251,11 +233,16 @@ app.post('/api/profile/avatar', authenticateToken, async (req, res) => {
 app.put('/api/profile', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
-    const { bio, currentPassword, newPassword } = req.body;
+    const { username, bio, currentPassword, newPassword } = req.body;
     
     let updateFields = [];
     let values = [];
     let paramCount = 1;
+
+    if (username) {
+      updateFields.push(`username = $${paramCount++}`);
+      values.push(username);
+    }
 
     if (bio !== undefined) {
       updateFields.push(`bio = $${paramCount++}`);
@@ -286,8 +273,13 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
       values
     );
 
-    res.json({ message: 'Профиль обновлен', user: result.rows[0] });
+    const newToken = jwt.sign({ id: result.rows[0].id, username: result.rows[0].username }, JWT_SECRET, { expiresIn: '30d' });
+
+    res.json({ message: 'Профиль обновлен', user: result.rows[0], token: newToken });
   } catch (error) {
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'Это имя пользователя уже занято' });
+    }
     console.error('Ошибка обновления профиля:', error);
     res.status(500).json({ error: 'Ошибка сервера' });
   } finally {
@@ -307,7 +299,7 @@ app.get('/api/games/search', authenticateToken, async (req, res) => {
     const token = await getTwitchToken();
     const response = await axios.post(
       'https://api.igdb.com/v4/games',
-      `search "${q}"; fields name, cover.url, summary, rating, genres.name, release_dates.date; limit 20;`,
+      `search "${q}"; fields name, cover.url, summary, rating, genres.name; limit 20;`,
       {
         headers: {
           'Client-ID': TWITCH_CLIENT_ID,
@@ -328,7 +320,7 @@ app.get('/api/games/search', authenticateToken, async (req, res) => {
 
     res.json({ games });
   } catch (error) {
-    console.error('Ошибка поиска:', error.response?.data || error.message);
+    console.error('Ошибка поиска:', error.message);
     res.status(500).json({ error: 'Ошибка поиска' });
   }
 });
@@ -384,18 +376,28 @@ app.post('/api/user/boards/:boardId/games', authenticateToken, async (req, res) 
     const { boardId } = req.params;
     const { game } = req.body;
 
-    console.log('Добавление игры:', { userId: req.user.id, gameId: game.id, boardId });
+    console.log('=== ДОБАВЛЕНИЕ ИГРЫ ===');
+    console.log('User ID:', req.user.id);
+    console.log('Board ID:', boardId);
+    console.log('Game:', game);
+
+    if (!game || !game.id || !game.name) {
+      console.log('Ошибка: неполные данные игры');
+      return res.status(400).json({ error: 'Неполные данные игры' });
+    }
 
     const result = await client.query(
       'INSERT INTO games (user_id, game_id, name, cover, board) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [req.user.id, game.id, game.name, game.cover, boardId]
+      [req.user.id, game.id, game.name, game.cover || null, boardId]
     );
 
-    console.log('Игра добавлена:', result.rows[0]);
+    console.log('Игра успешно добавлена:', result.rows[0]);
 
-    res.json({ message: 'Игра добавлена', game: result.rows[0] });
+    res.status(201).json({ message: 'Игра добавлена', game: result.rows[0] });
   } catch (error) {
-    console.error('Ошибка добавления игры:', error);
+    console.error('=== ОШИБКА ДОБАВЛЕНИЯ ИГРЫ ===');
+    console.error('Error:', error.message);
+    console.error('Stack:', error.stack);
     res.status(500).json({ error: 'Ошибка сервера', details: error.message });
   } finally {
     client.release();
@@ -406,6 +408,7 @@ app.delete('/api/user/games/:gameId', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const { gameId } = req.params;
+    console.log('Удаление игры:', gameId, 'пользователя:', req.user.id);
     await client.query('DELETE FROM games WHERE id = $1 AND user_id = $2', [gameId, req.user.id]);
     res.json({ message: 'Игра удалена' });
   } catch (error) {
@@ -513,7 +516,6 @@ app.post('/api/friends/add', authenticateToken, async (req, res) => {
   try {
     const { friendId } = req.body;
     
-    // Добавляем дружбу в обе стороны
     await client.query(
       'INSERT INTO friendships (user_id, friend_id, status) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
       [req.user.id, friendId, 'accepted']
@@ -526,6 +528,26 @@ app.post('/api/friends/add', authenticateToken, async (req, res) => {
     res.json({ message: 'Друг добавлен' });
   } catch (error) {
     console.error('Ошибка добавления друга:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+app.put('/api/friends/:friendId/nickname', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { friendId } = req.params;
+    const { nickname } = req.body;
+    
+    await client.query(
+      'UPDATE friendships SET nickname = $1 WHERE user_id = $2 AND friend_id = $3',
+      [nickname, req.user.id, friendId]
+    );
+    
+    res.json({ message: 'Метка обновлена' });
+  } catch (error) {
+    console.error('Ошибка обновления метки:', error);
     res.status(500).json({ error: 'Ошибка сервера' });
   } finally {
     client.release();
@@ -550,7 +572,7 @@ app.get('/api/friends', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `SELECT DISTINCT u.id, u.username, u.avatar, u.bio
+      `SELECT DISTINCT u.id, u.username, u.avatar, u.bio, f.nickname
        FROM friendships f
        JOIN users u ON f.friend_id = u.id
        WHERE f.user_id = $1 AND f.status = 'accepted'`,
@@ -603,14 +625,14 @@ app.get('/api/user/:userId/boards', authenticateToken, async (req, res) => {
 
     const userInfo = await client.query('SELECT id, username, avatar, bio FROM users WHERE id = $1', [userId]);
     
-    // Проверяем дружбу
     const friendCheck = await client.query(
-      'SELECT * FROM friendships WHERE user_id = $1 AND friend_id = $2',
+      'SELECT *, (SELECT nickname FROM friendships WHERE user_id = $1 AND friend_id = $2) as nickname FROM friendships WHERE user_id = $1 AND friend_id = $2',
       [req.user.id, userId]
     );
     const isFriend = friendCheck.rows.length > 0;
+    const nickname = friendCheck.rows[0]?.nickname || null;
     
-    res.json({ boards, user: userInfo.rows[0], isFriend });
+    res.json({ boards, user: userInfo.rows[0], isFriend, nickname });
   } catch (error) {
     console.error('Ошибка загрузки досок пользователя:', error);
     res.status(500).json({ error: 'Ошибка сервера' });
