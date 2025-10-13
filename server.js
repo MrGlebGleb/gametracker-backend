@@ -1,4 +1,4 @@
-// server.js - УЛУЧШЕННЫЙ Backend
+// server.js - УЛУЧШЕННЫЙ Backend v2
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -77,7 +77,6 @@ async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_reactions_game_id ON reactions(game_id);
 
       ALTER TABLE games ALTER COLUMN game_id TYPE BIGINT;
-      -- Добавим колонку темы, если ее нет
       ALTER TABLE users ADD COLUMN IF NOT EXISTS theme VARCHAR(20) DEFAULT 'default';
     `);
     console.log('✅ База данных инициализирована');
@@ -218,14 +217,11 @@ app.post('/api/profile/avatar', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Неверный формат изображения' });
     }
 
-    console.log('Загрузка аватара для пользователя:', req.user.id);
-
     const result = await client.query(
       'UPDATE users SET avatar = $1 WHERE id = $2 RETURNING *',
       [avatar, req.user.id]
     );
 
-    console.log('Аватар обновлен успешно');
     const user = result.rows[0];
 
     res.json({ message: 'Аватар обновлен', user: { id: user.id, username: user.username, email: user.email, avatar: user.avatar, bio: user.bio, theme: user.theme } });
@@ -250,17 +246,14 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
       updateFields.push(`username = $${paramCount++}`);
       values.push(username);
     }
-
     if (bio !== undefined) {
       updateFields.push(`bio = $${paramCount++}`);
       values.push(bio);
     }
-    
     if (theme) {
         updateFields.push(`theme = $${paramCount++}`);
         values.push(theme);
     }
-
     if (newPassword) {
       if (!currentPassword) {
         return res.status(400).json({ error: 'Требуется текущий пароль' });
@@ -394,13 +387,7 @@ app.post('/api/user/boards/:boardId/games', authenticateToken, async (req, res) 
     const { boardId } = req.params;
     const { game } = req.body;
 
-    console.log('=== ДОБАВЛЕНИЕ ИГРЫ ===');
-    console.log('User ID:', req.user.id);
-    console.log('Board ID:', boardId);
-    console.log('Game:', game);
-
     if (!game || !game.id || !game.name) {
-      console.log('Ошибка: неполные данные игры');
       return res.status(400).json({ error: 'Неполные данные игры' });
     }
 
@@ -409,13 +396,9 @@ app.post('/api/user/boards/:boardId/games', authenticateToken, async (req, res) 
       [req.user.id, game.id, game.name, game.cover || null, boardId]
     );
 
-    console.log('Игра успешно добавлена:', result.rows[0]);
-
     res.status(201).json({ message: 'Игра добавлена', game: result.rows[0] });
   } catch (error) {
-    console.error('=== ОШИБКА ДОБАВЛЕНИЯ ИГРЫ ===');
-    console.error('Error:', error.message);
-    console.error('Stack:', error.stack);
+    console.error('Ошибка добавления игры:', error);
     res.status(500).json({ error: 'Ошибка сервера', details: error.message });
   } finally {
     client.release();
@@ -426,7 +409,6 @@ app.delete('/api/user/games/:gameId', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const { gameId } = req.params;
-    console.log('Удаление игры:', gameId, 'пользователя:', req.user.id);
     await client.query('DELETE FROM games WHERE id = $1 AND user_id = $2', [gameId, req.user.id]);
     res.json({ message: 'Игра удалена' });
   } catch (error) {
@@ -447,23 +429,10 @@ app.put('/api/user/games/:gameId', authenticateToken, async (req, res) => {
     let values = [];
     let paramCount = 1;
 
-    if (board) {
-      updateFields.push(`board = $${paramCount++}`);
-      values.push(board);
-    }
-    if (rating !== undefined) {
-      updateFields.push(`rating = $${paramCount++}`);
-      values.push(rating);
-    }
-    if (notes !== undefined) {
-      updateFields.push(`notes = $${paramCount++}`);
-      values.push(notes);
-    }
-    if (hoursPlayed !== undefined) {
-      updateFields.push(`hours_played = $${paramCount++}`);
-      values.push(hoursPlayed);
-    }
-
+    if (board) { updateFields.push(`board = $${paramCount++}`); values.push(board); }
+    if (rating !== undefined) { updateFields.push(`rating = $${paramCount++}`); values.push(rating); }
+    if (notes !== undefined) { updateFields.push(`notes = $${paramCount++}`); values.push(notes); }
+    if (hoursPlayed !== undefined) { updateFields.push(`hours_played = $${paramCount++}`); values.push(hoursPlayed); }
     updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
     values.push(gameId, req.user.id);
 
@@ -529,7 +498,6 @@ app.get('/api/users', authenticateToken, async (req, res) => {
   }
 });
 
-// Новый эндпоинт для отправки запроса в друзья
 app.post('/api/friends/request', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
@@ -537,7 +505,6 @@ app.post('/api/friends/request', authenticateToken, async (req, res) => {
         if (req.user.id === friendId) {
             return res.status(400).json({ error: 'Нельзя добавить себя в друзья' });
         }
-        // Вставляем запрос от текущего пользователя к другу
         await client.query(
             "INSERT INTO friendships (user_id, friend_id, status) VALUES ($1, $2, 'pending') ON CONFLICT (user_id, friend_id) DO NOTHING",
             [req.user.id, friendId]
@@ -551,18 +518,14 @@ app.post('/api/friends/request', authenticateToken, async (req, res) => {
     }
 });
 
-// Новый эндпоинт для принятия запроса
 app.post('/api/friends/accept', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
         const { friendId } = req.body;
-        // Текущий пользователь (req.user.id) принимает запрос от friendId
-        // 1. Обновляем статус запроса от friendId к нам
         await client.query(
             "UPDATE friendships SET status = 'accepted' WHERE user_id = $1 AND friend_id = $2 AND status = 'pending'",
             [friendId, req.user.id]
         );
-        // 2. Создаем обратную связь дружбы от нас к friendId
         await client.query(
             "INSERT INTO friendships (user_id, friend_id, status) VALUES ($1, $2, 'accepted') ON CONFLICT (user_id, friend_id) DO UPDATE SET status = 'accepted'",
             [req.user.id, friendId]
@@ -576,12 +539,10 @@ app.post('/api/friends/accept', authenticateToken, async (req, res) => {
     }
 });
 
-// Новый эндпоинт для отклонения/отмены запроса
 app.post('/api/friends/reject', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
         const { friendId } = req.body;
-        // Удаляем запись о дружбе/запросе в обе стороны
         await client.query(
             'DELETE FROM friendships WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)',
             [req.user.id, friendId]
@@ -594,7 +555,6 @@ app.post('/api/friends/reject', authenticateToken, async (req, res) => {
         client.release();
     }
 });
-
 
 app.put('/api/friends/:friendId/nickname', authenticateToken, async (req, res) => {
   const client = await pool.connect();
@@ -630,31 +590,29 @@ app.delete('/api/friends/:friendId', authenticateToken, async (req, res) => {
   }
 });
 
-// Обновленный эндпоинт получения друзей и запросов
 app.get('/api/friends', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
-        // Получаем друзей
         const friendsResult = await client.query(
             `SELECT u.id, u.username, u.avatar, u.bio, f.nickname
-             FROM friendships f
-             JOIN users u ON f.friend_id = u.id
-             WHERE f.user_id = $1 AND f.status = 'accepted'`,
-            [req.user.id]
+             FROM friendships f JOIN users u ON f.friend_id = u.id
+             WHERE f.user_id = $1 AND f.status = 'accepted'`, [req.user.id]
         );
-
-        // Получаем входящие запросы в друзья
         const requestsResult = await client.query(
             `SELECT u.id, u.username, u.avatar, u.bio
-             FROM friendships f
-             JOIN users u ON f.user_id = u.id
-             WHERE f.friend_id = $1 AND f.status = 'pending'`,
-            [req.user.id]
+             FROM friendships f JOIN users u ON f.user_id = u.id
+             WHERE f.friend_id = $1 AND f.status = 'pending'`, [req.user.id]
+        );
+        const sentRequestsResult = await client.query(
+            `SELECT u.id
+             FROM friendships f JOIN users u ON f.friend_id = u.id
+             WHERE f.user_id = $1 AND f.status = 'pending'`, [req.user.id]
         );
 
         res.json({
             friends: friendsResult.rows,
-            requests: requestsResult.rows
+            requests: requestsResult.rows,
+            sentRequests: sentRequestsResult.rows
         });
     } catch (error) {
         console.error('Ошибка получения друзей и запросов:', error);
@@ -703,9 +661,8 @@ app.get('/api/user/:userId/boards', authenticateToken, async (req, res) => {
 
     const userInfo = await client.query('SELECT id, username, avatar, bio, theme FROM users WHERE id = $1', [userId]);
     
-    // Проверяем статус дружбы
     const friendshipStatus = await client.query(
-      `SELECT status, (SELECT nickname FROM friendships WHERE user_id = $1 AND friend_id = $2) as nickname 
+      `SELECT status, user_id, (SELECT nickname FROM friendships WHERE user_id = $1 AND friend_id = $2) as nickname 
        FROM friendships 
        WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)`,
       [req.user.id, userId]
@@ -715,19 +672,12 @@ app.get('/api/user/:userId/boards', authenticateToken, async (req, res) => {
     let nickname = null;
     
     if (friendshipStatus.rows.length > 0) {
-        // Если есть запись, определяем статус
-        const f_status = friendshipStatus.rows[0].status;
-        nickname = friendshipStatus.rows[0].nickname;
-        if (f_status === 'accepted') {
+        const f_status = friendshipStatus.rows[0];
+        nickname = f_status.nickname;
+        if (f_status.status === 'accepted') {
             friendship = 'friends';
-        } else if (f_status === 'pending') {
-            // Проверяем, кто отправил запрос
-            const pendingCheck = await client.query('SELECT user_id FROM friendships WHERE user_id = $1 AND friend_id = $2', [req.user.id, userId]);
-            if(pendingCheck.rows.length > 0) {
-                friendship = 'request_sent'; // Мы отправили запрос
-            } else {
-                friendship = 'request_received'; // Нам отправили запрос
-            }
+        } else if (f_status.status === 'pending') {
+            friendship = (f_status.user_id === req.user.id) ? 'request_sent' : 'request_received';
         }
     }
 
@@ -741,13 +691,7 @@ app.get('/api/user/:userId/boards', authenticateToken, async (req, res) => {
   }
 });
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
-});
-
 app.listen(PORT, () => {
   console.log(`🚀 Сервер на порту ${PORT}`);
-  console.log(`🔑 Twitch Client ID: ${TWITCH_CLIENT_ID ? '✅' : '❌'}`);
-  console.log(`🔒 Twitch Secret: ${TWITCH_CLIENT_SECRET ? '✅' : '❌'}`);
-  console.log(`💾 Database: ${process.env.DATABASE_URL ? '✅' : '❌'}`);
 });
+
