@@ -74,8 +74,6 @@ async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_games_user_id ON games(user_id);
       CREATE INDEX IF NOT EXISTS idx_friendships_user_id ON friendships(user_id);
       CREATE INDEX IF NOT EXISTS idx_reactions_game_id ON reactions(game_id);
-
-      ALTER TABLE games ALTER COLUMN game_id TYPE BIGINT;
     `);
     console.log('✅ База данных инициализирована');
   } catch (error) {
