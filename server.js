@@ -1,22 +1,24 @@
-// server.js - Backend с PostgreSQL
+// server.js - Backend с загрузкой аватаров
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
+const multer = require('multer');
+const sharp = require('sharp');
 const { Pool } = require('pg');
 
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.static('public'));
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID;
 const TWITCH_CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
 
-// PostgreSQL подключение
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
@@ -25,7 +27,6 @@ const pool = new Pool({
 let twitchAccessToken = null;
 let tokenExpiry = null;
 
-// Инициализация БД
 async function initDatabase() {
   const client = await pool.connect();
   try {
@@ -58,7 +59,7 @@ async function initDatabase() {
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         friend_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        status VARCHAR(20) DEFAULT 'pending',
+        status VARCHAR(20) DEFAULT 'accepted',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id, friend_id)
       );
@@ -118,12 +119,12 @@ function authenticateToken(req, res, next) {
   });
 }
 
-// === AUTH ENDPOINTS ===
+// === AUTH ===
 
 app.post('/api/auth/register', async (req, res) => {
   const client = await pool.connect();
   try {
-    const { username, email, password, avatar } = req.body;
+    const { username, email, password } = req.body;
     if (!username || !email || !password) {
       return res.status(400).json({ error: 'Все поля обязательны' });
     }
@@ -133,8 +134,8 @@ app.post('/api/auth/register', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await client.query(
-      'INSERT INTO users (username, email, password, avatar) VALUES ($1, $2, $3, $4) RETURNING id, username, email, avatar, bio',
-      [username, email, hashedPassword, avatar || '🎮']
+      'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, username, email, avatar, bio',
+      [username, email, hashedPassword]
     );
 
     const user = result.rows[0];
@@ -190,7 +191,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// === PROFILE ENDPOINTS ===
+// === PROFILE ===
 
 app.get('/api/profile', authenticateToken, async (req, res) => {
   const client = await pool.connect();
@@ -211,19 +212,51 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
   }
 });
 
+app.post('/api/profile/avatar', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { avatar } = req.body;
+    
+    if (!avatar || !avatar.startsWith('data:image/')) {
+      return res.status(400).json({ error: 'Неверный формат изображения' });
+    }
+
+    // Конвертируем base64 в buffer
+    const base64Data = avatar.replace(/^data:image\/\w+;base64,/, '');
+    const imageBuffer = Buffer.from(base64Data, 'base64');
+
+    // Ресайзим до 128x128
+    const resizedImage = await sharp(imageBuffer)
+      .resize(128, 128, { fit: 'cover' })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    // Конвертируем обратно в base64
+    const resizedBase64 = `data:image/jpeg;base64,${resizedImage.toString('base64')}`;
+
+    const result = await client.query(
+      'UPDATE users SET avatar = $1 WHERE id = $2 RETURNING id, username, email, avatar, bio',
+      [resizedBase64, req.user.id]
+    );
+
+    res.json({ message: 'Аватар обновлен', user: result.rows[0] });
+  } catch (error) {
+    console.error('Ошибка загрузки аватара:', error);
+    res.status(500).json({ error: 'Ошибка загрузки аватара' });
+  } finally {
+    client.release();
+  }
+});
+
 app.put('/api/profile', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
-    const { avatar, bio, currentPassword, newPassword } = req.body;
+    const { bio, currentPassword, newPassword } = req.body;
     
     let updateFields = [];
     let values = [];
     let paramCount = 1;
 
-    if (avatar !== undefined) {
-      updateFields.push(`avatar = $${paramCount++}`);
-      values.push(avatar);
-    }
     if (bio !== undefined) {
       updateFields.push(`bio = $${paramCount++}`);
       values.push(bio);
@@ -262,7 +295,7 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
   }
 });
 
-// === GAME SEARCH ===
+// === GAMES ===
 
 app.get('/api/games/search', authenticateToken, async (req, res) => {
   try {
@@ -300,8 +333,6 @@ app.get('/api/games/search', authenticateToken, async (req, res) => {
   }
 });
 
-// === USER BOARDS ===
-
 app.get('/api/user/boards', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -319,12 +350,7 @@ app.get('/api/user/boards', authenticateToken, async (req, res) => {
       [req.user.id]
     );
 
-    const boards = {
-      backlog: [],
-      playing: [],
-      completed: [],
-      dropped: []
-    };
+    const boards = { backlog: [], playing: [], completed: [], dropped: [] };
 
     result.rows.forEach(game => {
       const card = {
@@ -358,15 +384,19 @@ app.post('/api/user/boards/:boardId/games', authenticateToken, async (req, res) 
     const { boardId } = req.params;
     const { game } = req.body;
 
+    console.log('Добавление игры:', { userId: req.user.id, gameId: game.id, boardId });
+
     const result = await client.query(
       'INSERT INTO games (user_id, game_id, name, cover, board) VALUES ($1, $2, $3, $4, $5) RETURNING *',
       [req.user.id, game.id, game.name, game.cover, boardId]
     );
 
+    console.log('Игра добавлена:', result.rows[0]);
+
     res.json({ message: 'Игра добавлена', game: result.rows[0] });
   } catch (error) {
     console.error('Ошибка добавления игры:', error);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    res.status(500).json({ error: 'Ошибка сервера', details: error.message });
   } finally {
     client.release();
   }
@@ -445,46 +475,71 @@ app.post('/api/games/:gameId/reactions', authenticateToken, async (req, res) => 
 
     res.json({ message: 'Реакция добавлена' });
   } catch (error) {
-    console.error('Ошибка добавления реакции:', error);
+    console.error('Ошибка реакции:', error);
     res.status(500).json({ error: 'Ошибка сервера' });
   } finally {
     client.release();
   }
 });
 
-// === FRIENDS ===
+// === USERS & FRIENDS ===
 
-app.get('/api/users/search', authenticateToken, async (req, res) => {
+app.get('/api/users', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const { q } = req.query;
-    const result = await client.query(
-      'SELECT id, username, avatar, bio FROM users WHERE username ILIKE $1 AND id != $2 LIMIT 20',
-      [`%${q}%`, req.user.id]
-    );
+    let query, params;
+    
+    if (q) {
+      query = 'SELECT id, username, avatar, bio FROM users WHERE username ILIKE $1 AND id != $2 LIMIT 50';
+      params = [`%${q}%`, req.user.id];
+    } else {
+      query = 'SELECT id, username, avatar, bio FROM users WHERE id != $1 ORDER BY created_at DESC LIMIT 100';
+      params = [req.user.id];
+    }
+    
+    const result = await client.query(query, params);
     res.json({ users: result.rows });
   } catch (error) {
-    console.error('Ошибка поиска пользователей:', error);
+    console.error('Ошибка получения пользователей:', error);
     res.status(500).json({ error: 'Ошибка сервера' });
   } finally {
     client.release();
   }
 });
 
-app.post('/api/friends/request', authenticateToken, async (req, res) => {
+app.post('/api/friends/add', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const { friendId } = req.body;
+    
+    // Добавляем дружбу в обе стороны
     await client.query(
-      'INSERT INTO friendships (user_id, friend_id, status) VALUES ($1, $2, $3)',
-      [req.user.id, friendId, 'pending']
+      'INSERT INTO friendships (user_id, friend_id, status) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+      [req.user.id, friendId, 'accepted']
     );
-    res.json({ message: 'Запрос отправлен' });
+    await client.query(
+      'INSERT INTO friendships (user_id, friend_id, status) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+      [friendId, req.user.id, 'accepted']
+    );
+    
+    res.json({ message: 'Друг добавлен' });
   } catch (error) {
-    if (error.code === '23505') {
-      return res.status(400).json({ error: 'Запрос уже существует' });
-    }
-    console.error('Ошибка запроса дружбы:', error);
+    console.error('Ошибка добавления друга:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+app.delete('/api/friends/:friendId', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { friendId } = req.params;
+    await client.query('DELETE FROM friendships WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)', [req.user.id, friendId]);
+    res.json({ message: 'Друг удален' });
+  } catch (error) {
+    console.error('Ошибка удаления друга:', error);
     res.status(500).json({ error: 'Ошибка сервера' });
   } finally {
     client.release();
@@ -495,10 +550,10 @@ app.get('/api/friends', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `SELECT u.id, u.username, u.avatar, u.bio, f.status
+      `SELECT DISTINCT u.id, u.username, u.avatar, u.bio
        FROM friendships f
-       JOIN users u ON (f.friend_id = u.id OR f.user_id = u.id) AND u.id != $1
-       WHERE (f.user_id = $1 OR f.friend_id = $1) AND f.status = 'accepted'`,
+       JOIN users u ON f.friend_id = u.id
+       WHERE f.user_id = $1 AND f.status = 'accepted'`,
       [req.user.id]
     );
     res.json({ friends: result.rows });
@@ -547,7 +602,15 @@ app.get('/api/user/:userId/boards', authenticateToken, async (req, res) => {
     });
 
     const userInfo = await client.query('SELECT id, username, avatar, bio FROM users WHERE id = $1', [userId]);
-    res.json({ boards, user: userInfo.rows[0] });
+    
+    // Проверяем дружбу
+    const friendCheck = await client.query(
+      'SELECT * FROM friendships WHERE user_id = $1 AND friend_id = $2',
+      [req.user.id, userId]
+    );
+    const isFriend = friendCheck.rows.length > 0;
+    
+    res.json({ boards, user: userInfo.rows[0], isFriend });
   } catch (error) {
     console.error('Ошибка загрузки досок пользователя:', error);
     res.status(500).json({ error: 'Ошибка сервера' });
