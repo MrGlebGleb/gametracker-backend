@@ -27,6 +27,15 @@ let tokenExpiry = null;
 async function initDatabase() {
   const client = await pool.connect();
   try {
+    // Сначала пытаемся обновить существующие таблицы
+    await client.query(`
+      -- Изменяем тип user_id на BIGINT во всех таблицах
+      ALTER TABLE games ALTER COLUMN user_id TYPE BIGINT;
+      ALTER TABLE friendships ALTER COLUMN user_id TYPE BIGINT;
+      ALTER TABLE friendships ALTER COLUMN friend_id TYPE BIGINT;
+      ALTER TABLE reactions ALTER COLUMN user_id TYPE BIGINT;
+    `).catch(err => console.log('Таблицы уже обновлены или не существуют'));
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -40,7 +49,7 @@ async function initDatabase() {
 
       CREATE TABLE IF NOT EXISTS games (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        user_id BIGINT NOT NULL,
         game_id BIGINT NOT NULL,
         name VARCHAR(255) NOT NULL,
         cover TEXT,
@@ -54,8 +63,8 @@ async function initDatabase() {
 
       CREATE TABLE IF NOT EXISTS friendships (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        friend_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        user_id BIGINT NOT NULL,
+        friend_id BIGINT NOT NULL,
         status VARCHAR(20) DEFAULT 'accepted',
         nickname VARCHAR(100),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -65,7 +74,7 @@ async function initDatabase() {
       CREATE TABLE IF NOT EXISTS reactions (
         id SERIAL PRIMARY KEY,
         game_id INTEGER REFERENCES games(id) ON DELETE CASCADE,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        user_id BIGINT NOT NULL,
         emoji VARCHAR(10) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(game_id, user_id)
@@ -408,7 +417,7 @@ app.delete('/api/user/games/:gameId', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const { gameId } = req.params;
-    console.log('Удаление игры:', gameId, 'пользователя:', req.user.id);
+    console.log('Удаление игры:', gameId, 'пользователь:', req.user.id);
     await client.query('DELETE FROM games WHERE id = $1 AND user_id = $2', [gameId, req.user.id]);
     res.json({ message: 'Игра удалена' });
   } catch (error) {
