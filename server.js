@@ -41,7 +41,7 @@ async function initDatabase() {
       CREATE TABLE IF NOT EXISTS games (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        game_id INTEGER NOT NULL,
+        game_id BIGINT NOT NULL,
         name VARCHAR(255) NOT NULL,
         cover TEXT,
         board VARCHAR(20) NOT NULL,
@@ -74,6 +74,8 @@ async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_games_user_id ON games(user_id);
       CREATE INDEX IF NOT EXISTS idx_friendships_user_id ON friendships(user_id);
       CREATE INDEX IF NOT EXISTS idx_reactions_game_id ON reactions(game_id);
+
+      ALTER TABLE games ALTER COLUMN game_id TYPE BIGINT;
     `);
     console.log('✅ База данных инициализирована');
   } catch (error) {
