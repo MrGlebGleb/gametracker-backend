@@ -1,4 +1,4 @@
-// server.js - УЛУЧШЕННЫЙ Backend v4 (Исправленный)
+// server.js - ИСПРАВЛЕННЫЙ Backend v5
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -27,6 +27,7 @@ let tokenExpiry = null;
 async function initDatabase() {
   const client = await pool.connect();
   try {
+    // Создаем таблицы
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -75,10 +76,30 @@ async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_games_user_id ON games(user_id);
       CREATE INDEX IF NOT EXISTS idx_friendships_user_id ON friendships(user_id);
       CREATE INDEX IF NOT EXISTS idx_reactions_game_id ON reactions(game_id);
-
-      ALTER TABLE games ALTER COLUMN game_id TYPE BIGINT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS theme VARCHAR(20) DEFAULT 'default';
     `);
+    
+    // Добавляем недостающие колонки если их нет
+    await client.query(`
+      DO $$ 
+      BEGIN 
+        -- Добавляем nickname если его нет
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name = 'friendships' AND column_name = 'nickname') 
+        THEN 
+          ALTER TABLE friendships ADD COLUMN nickname VARCHAR(100);
+        END IF;
+        
+        -- Добавляем theme если его нет
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name = 'users' AND column_name = 'theme') 
+        THEN 
+          ALTER TABLE users ADD COLUMN theme VARCHAR(20) DEFAULT 'default';
+        END IF;
+      EXCEPTION 
+        WHEN others THEN NULL;
+      END $$;
+    `);
+    
     console.log('✅ База данных инициализирована');
   } catch (error) {
     console.error('❌ Ошибка инициализации БД:', error);
@@ -88,7 +109,6 @@ async function initDatabase() {
 }
 
 initDatabase();
-
 
 async function getTwitchToken() {
   if (twitchAccessToken && tokenExpiry && Date.now() < tokenExpiry) {
@@ -297,7 +317,6 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
   }
 });
 
-
 // === GAMES ===
 
 app.get('/api/games/search', authenticateToken, async (req, res) => {
@@ -480,7 +499,8 @@ app.get('/api/users', authenticateToken, async (req, res) => {
     const { q } = req.query;
     let query, params;
     
-    if (q) {
+    // ВАЖНО: исправлена логика - если нет запроса, показываем всех пользователей
+    if (q && q.trim() !== '') {
       query = 'SELECT id, username, avatar, bio FROM users WHERE username ILIKE $1 AND id != $2 LIMIT 50';
       params = [`%${q}%`, req.user.id];
     } else {
@@ -593,19 +613,24 @@ app.delete('/api/friends/:friendId', authenticateToken, async (req, res) => {
 app.get('/api/friends', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
+        // ИСПРАВЛЕНО: добавлена проверка на существование колонки nickname
         const friendsResult = await client.query(
-            `SELECT u.id, u.username, u.avatar, u.bio, f.nickname
-             FROM friendships f JOIN users u ON f.friend_id = u.id
+            `SELECT u.id, u.username, u.avatar, u.bio, 
+             COALESCE(f.nickname, '') as nickname
+             FROM friendships f 
+             JOIN users u ON f.friend_id = u.id
              WHERE f.user_id = $1 AND f.status = 'accepted'`, [req.user.id]
         );
         const requestsResult = await client.query(
             `SELECT u.id, u.username, u.avatar, u.bio
-             FROM friendships f JOIN users u ON f.user_id = u.id
+             FROM friendships f 
+             JOIN users u ON f.user_id = u.id
              WHERE f.friend_id = $1 AND f.status = 'pending'`, [req.user.id]
         );
         const sentRequestsResult = await client.query(
-            `SELECT f.friend_id as id
-             FROM friendships f
+            `SELECT u.id, u.username, u.avatar, u.bio
+             FROM friendships f 
+             JOIN users u ON f.friend_id = u.id
              WHERE f.user_id = $1 AND f.status = 'pending'`, [req.user.id]
         );
 
@@ -615,13 +640,12 @@ app.get('/api/friends', authenticateToken, async (req, res) => {
             sentRequests: sentRequestsResult.rows
         });
     } catch (error) {
-        console.error('Ошибка получения друзей и запросов:', error);
+        console.error('Ошибка получения друзей:', error);
         res.status(500).json({ error: 'Ошибка сервера' });
     } finally {
         client.release();
     }
 });
-
 
 app.get('/api/user/:userId/boards', authenticateToken, async (req, res) => {
   const client = await pool.connect();
@@ -666,7 +690,8 @@ app.get('/api/user/:userId/boards', authenticateToken, async (req, res) => {
 
     if (req.user.id != userId) {
         const friendshipStatusQuery = await client.query(
-          `SELECT status, user_id, (SELECT nickname FROM friendships WHERE user_id = $1 AND friend_id = $2) as nickname 
+          `SELECT status, user_id, 
+           COALESCE((SELECT nickname FROM friendships WHERE user_id = $1 AND friend_id = $2), '') as nickname 
            FROM friendships 
            WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)`,
           [req.user.id, userId]
@@ -696,4 +721,3 @@ app.get('/api/user/:userId/boards', authenticateToken, async (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Сервер на порту ${PORT}`);
 });
-
