@@ -1,4 +1,4 @@
-// server.js - УЛУЧШЕННЫЙ Backend v3 (Исправленный)
+// server.js - УЛУЧШЕННЫЙ Backend v4 (Исправленный)
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -502,7 +502,7 @@ app.post('/api/friends/request', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
         const { friendId } = req.body;
-        if (req.user.id == friendId) { // Use == for type coercion just in case
+        if (req.user.id == friendId) {
             return res.status(400).json({ error: 'Нельзя добавить себя в друзья' });
         }
         await client.query(
@@ -661,23 +661,25 @@ app.get('/api/user/:userId/boards', authenticateToken, async (req, res) => {
 
     const userInfo = await client.query('SELECT id, username, avatar, bio, theme FROM users WHERE id = $1', [userId]);
     
-    const friendshipStatusQuery = await client.query(
-      `SELECT status, user_id, (SELECT nickname FROM friendships WHERE user_id = $1 AND friend_id = $2) as nickname 
-       FROM friendships 
-       WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)`,
-      [req.user.id, userId]
-    );
-
     let friendship = 'none';
     let nickname = null;
-    
-    if (friendshipStatusQuery.rows.length > 0) {
-        const f_status = friendshipStatusQuery.rows[0];
-        nickname = f_status.nickname;
-        if (f_status.status === 'accepted') {
-            friendship = 'friends';
-        } else if (f_status.status === 'pending') {
-            friendship = (f_status.user_id == req.user.id) ? 'request_sent' : 'request_received';
+
+    if (req.user.id != userId) {
+        const friendshipStatusQuery = await client.query(
+          `SELECT status, user_id, (SELECT nickname FROM friendships WHERE user_id = $1 AND friend_id = $2) as nickname 
+           FROM friendships 
+           WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)`,
+          [req.user.id, userId]
+        );
+        
+        if (friendshipStatusQuery.rows.length > 0) {
+            const f_status = friendshipStatusQuery.rows[0];
+            nickname = f_status.nickname;
+            if (f_status.status === 'accepted') {
+                friendship = 'friends';
+            } else if (f_status.status === 'pending') {
+                friendship = (f_status.user_id == req.user.id) ? 'request_sent' : 'request_received';
+            }
         }
     }
 
