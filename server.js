@@ -496,6 +496,26 @@ app.post('/api/games/:gameId/deep-review', authenticateToken, async (req, res) =
   }
 });
 
+app.delete('/api/games/:gameId/deep-review', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { gameId } = req.params;
+    const result = await client.query(
+      'UPDATE games SET deep_review_answers = NULL WHERE id = $1 AND user_id = $2',
+      [gameId, req.user.id]
+    );
+     if (result.rowCount === 0) {
+        return res.status(404).json({ error: 'Игра не найдена или не принадлежит вам' });
+    }
+    res.json({ message: 'Отзыв удален' });
+  } catch (error) {
+    console.error('Ошибка удаления отзыва:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
 
 // === REACTIONS ===
 
