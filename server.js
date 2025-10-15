@@ -1,4 +1,4 @@
-// server.js - УЛУЧШЕННЫЙ Backend v6 (Сортировка и лог активности)
+// server.js - УЛУЧШЕННЫЙ Backend v6 (с детальными отзывами)
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -46,10 +46,11 @@ async function initDatabase() {
         name VARCHAR(255) NOT NULL,
         cover TEXT,
         board VARCHAR(20) NOT NULL,
-        position INTEGER DEFAULT 0,
         rating INTEGER CHECK (rating >= 1 AND rating <= 5),
         notes TEXT,
         hours_played INTEGER DEFAULT 0,
+        video_id VARCHAR(255),
+        deep_review_answers JSONB,
         added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -73,20 +74,23 @@ async function initDatabase() {
         UNIQUE(game_id, user_id)
       );
       
-      CREATE TABLE IF NOT EXISTS activity_log (
+      CREATE TABLE IF NOT EXISTS activities (
           id SERIAL PRIMARY KEY,
-          user_id INTEGER REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+          user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
           action_type VARCHAR(50) NOT NULL,
           details JSONB,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE INDEX IF NOT EXISTS idx_games_user_id ON games(user_id);
       CREATE INDEX IF NOT EXISTS idx_friendships_user_id ON friendships(user_id);
       CREATE INDEX IF NOT EXISTS idx_reactions_game_id ON reactions(game_id);
-      CREATE INDEX IF NOT EXISTS idx_activity_log_user_id ON activity_log(user_id);
 
-      ALTER TABLE games ADD COLUMN IF NOT EXISTS position INTEGER DEFAULT 0;
+      ALTER TABLE games ALTER COLUMN game_id TYPE BIGINT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS theme VARCHAR(20) DEFAULT 'default';
+      ALTER TABLE friendships ADD COLUMN IF NOT EXISTS nickname VARCHAR(100);
+      ALTER TABLE games ADD COLUMN IF NOT EXISTS video_id VARCHAR(255);
+      ALTER TABLE games ADD COLUMN IF NOT EXISTS deep_review_answers JSONB;
     `);
     console.log('✅ База данных инициализирована');
   } catch (error) {
@@ -97,21 +101,6 @@ async function initDatabase() {
 }
 
 initDatabase();
-
-// Helper to log activities
-const logActivity = async (userId, actionType, details) => {
-    const client = await pool.connect();
-    try {
-        await client.query(
-            'INSERT INTO activity_log (user_id, action_type, details) VALUES ($1, $2, $3)',
-            [userId, actionType, details]
-        );
-    } catch (err) {
-        console.error("Ошибка логирования:", err);
-    } finally {
-        client.release();
-    }
-};
 
 
 async function getTwitchToken() {
@@ -334,7 +323,7 @@ app.get('/api/games/search', authenticateToken, async (req, res) => {
     const token = await getTwitchToken();
     const response = await axios.post(
       'https://api.igdb.com/v4/games',
-      `search "${q}"; fields name, cover.url, summary, rating, genres.name; limit 20;`,
+      `search "${q}"; fields name, cover.url, summary, rating, genres.name, videos.video_id; limit 20;`,
       {
         headers: {
           'Client-ID': TWITCH_CLIENT_ID,
@@ -350,7 +339,8 @@ app.get('/api/games/search', authenticateToken, async (req, res) => {
       cover: game.cover?.url ? `https:${game.cover.url.replace('t_thumb', 't_cover_big')}` : null,
       summary: game.summary || '',
       rating: game.rating ? Math.round(game.rating / 20) : null,
-      genres: game.genres?.map(g => g.name) || []
+      genres: game.genres?.map(g => g.name) || [],
+      videoId: game.videos?.[0]?.video_id || null,
     }));
 
     res.json({ games });
@@ -373,7 +363,7 @@ app.get('/api/user/boards', authenticateToken, async (req, res) => {
        LEFT JOIN users u ON r.user_id = u.id
        WHERE g.user_id = $1
        GROUP BY g.id
-       ORDER BY g.position ASC, g.added_at DESC`,
+       ORDER BY g.added_at DESC`,
       [req.user.id]
     );
 
@@ -389,7 +379,9 @@ app.get('/api/user/boards', authenticateToken, async (req, res) => {
         notes: game.notes,
         hoursPlayed: game.hours_played,
         addedDate: game.added_at,
-        reactions: game.reactions
+        reactions: game.reactions,
+        videoId: game.video_id,
+        deep_review_answers: game.deep_review_answers,
       };
       if (boards[game.board]) {
         boards[game.board].push(card);
@@ -416,11 +408,9 @@ app.post('/api/user/boards/:boardId/games', authenticateToken, async (req, res) 
     }
 
     const result = await client.query(
-      'INSERT INTO games (user_id, game_id, name, cover, board) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [req.user.id, game.id, game.name, game.cover || null, boardId]
+      'INSERT INTO games (user_id, game_id, name, cover, board, video_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [req.user.id, game.id, game.name, game.cover || null, boardId, game.videoId || null]
     );
-    
-    logActivity(req.user.id, 'add_game', { gameName: game.name, board: boardId });
 
     res.status(201).json({ message: 'Игра добавлена', game: result.rows[0] });
   } catch (error) {
@@ -435,10 +425,6 @@ app.delete('/api/user/games/:gameId', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const { gameId } = req.params;
-    const gameResult = await client.query('SELECT name FROM games WHERE id = $1 AND user_id = $2', [gameId, req.user.id]);
-    if (gameResult.rows.length > 0) {
-        logActivity(req.user.id, 'remove_game', { gameName: gameResult.rows[0].name });
-    }
     await client.query('DELETE FROM games WHERE id = $1 AND user_id = $2', [gameId, req.user.id]);
     res.json({ message: 'Игра удалена' });
   } catch (error) {
@@ -454,12 +440,6 @@ app.put('/api/user/games/:gameId', authenticateToken, async (req, res) => {
   try {
     const { gameId } = req.params;
     const { board, rating, notes, hoursPlayed } = req.body;
-    
-    const oldGameResult = await client.query('SELECT * FROM games WHERE id = $1 AND user_id = $2', [gameId, req.user.id]);
-    if(oldGameResult.rows.length === 0) {
-        return res.status(404).json({ error: 'Игра не найдена'});
-    }
-    const oldGame = oldGameResult.rows[0];
 
     let updateFields = [];
     let values = [];
@@ -476,14 +456,6 @@ app.put('/api/user/games/:gameId', authenticateToken, async (req, res) => {
       `UPDATE games SET ${updateFields.join(', ')} WHERE id = $${paramCount} AND user_id = $${paramCount + 1} RETURNING *`,
       values
     );
-    
-    if (board && oldGame.board !== board) {
-        if (board === 'completed') {
-            logActivity(req.user.id, 'complete_game', { gameName: oldGame.name });
-        } else {
-            logActivity(req.user.id, 'move_game', { gameName: oldGame.name, fromBoard: oldGame.board, toBoard: board });
-        }
-    }
 
     res.json({ message: 'Игра обновлена', game: result.rows[0] });
   } catch (error) {
@@ -494,31 +466,34 @@ app.put('/api/user/games/:gameId', authenticateToken, async (req, res) => {
   }
 });
 
-app.put('/api/user/boards/reorder', authenticateToken, async (req, res) => {
-    const { boardId, orderedIds } = req.body;
-    if (!boardId || !Array.isArray(orderedIds)) {
-        return res.status(400).json({ error: 'Неверные параметры'});
+// === DEEP REVIEW ===
+app.post('/api/games/:gameId/deep-review', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { gameId } = req.params;
+    const { answers } = req.body;
+
+    if (!Array.isArray(answers) || answers.length !== 20) {
+      return res.status(400).json({ error: 'Требуется 20 ответов' });
     }
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-        for (let i = 0; i < orderedIds.length; i++) {
-            const gameId = orderedIds[i];
-            const position = i;
-            await client.query(
-                'UPDATE games SET position = $1 WHERE id = $2 AND user_id = $3 AND board = $4',
-                [position, gameId, req.user.id, boardId]
-            );
-        }
-        await client.query('COMMIT');
-        res.json({ message: 'Порядок обновлен' });
-    } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('Ошибка обновления порядка:', error);
-        res.status(500).json({ error: 'Ошибка сервера' });
-    } finally {
-        client.release();
+    
+    const result = await client.query(
+      'UPDATE games SET deep_review_answers = $1 WHERE id = $2 AND user_id = $3 RETURNING *',
+      [JSON.stringify(answers), gameId, req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Игра не найдена или не принадлежит вам' });
     }
+
+    res.json({ message: 'Отзыв сохранен', game: result.rows[0] });
+
+  } catch (error) {
+    console.error('Ошибка сохранения отзыва:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
 });
 
 
@@ -694,27 +669,6 @@ app.get('/api/friends', authenticateToken, async (req, res) => {
     }
 });
 
-app.get('/api/friends/activity', authenticateToken, async(req, res) => {
-    const client = await pool.connect();
-    try {
-        const result = await client.query(
-            `SELECT al.id, al.action_type, al.details, al.created_at, u.username 
-             FROM activity_log al 
-             JOIN users u ON al.user_id = u.id
-             WHERE al.user_id IN (SELECT friend_id FROM friendships WHERE user_id = $1 AND status = 'accepted')
-             ORDER BY al.created_at DESC
-             LIMIT 50`,
-             [req.user.id]
-        );
-        res.json({ activities: result.rows });
-    } catch(error) {
-        console.error("Ошибка получения активности:", error);
-        res.status(500).json({ error: 'Ошибка сервера' });
-    } finally {
-        client.release();
-    }
-});
-
 
 app.get('/api/user/:userId/boards', authenticateToken, async (req, res) => {
   const client = await pool.connect();
@@ -731,7 +685,7 @@ app.get('/api/user/:userId/boards', authenticateToken, async (req, res) => {
        LEFT JOIN users ru ON r.user_id = ru.id
        WHERE g.user_id = $1
        GROUP BY g.id, u.username, u.avatar
-       ORDER BY g.position ASC, g.added_at DESC`,
+       ORDER BY g.added_at DESC`,
       [userId]
     );
 
@@ -747,6 +701,8 @@ app.get('/api/user/:userId/boards', authenticateToken, async (req, res) => {
         hoursPlayed: game.hours_played,
         addedDate: game.added_at,
         reactions: game.reactions,
+        videoId: game.video_id,
+        deep_review_answers: game.deep_review_answers,
         owner: { username: game.username, avatar: game.avatar }
       };
       if (boards[game.board]) boards[game.board].push(card);
@@ -786,6 +742,61 @@ app.get('/api/user/:userId/boards', authenticateToken, async (req, res) => {
   }
 });
 
+
+app.put('/api/user/boards/reorder', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+      const { boardId, orderedIds } = req.body;
+      if (!boardId || !Array.isArray(orderedIds)) {
+          return res.status(400).json({ error: 'Invalid data' });
+      }
+
+      await client.query('BEGIN');
+      for (let i = 0; i < orderedIds.length; i++) {
+          const gameId = orderedIds[i];
+          // A simple reordering can be just updating a field, e.g. `order_index`
+          // For simplicity, we can update `updated_at` to reorder by it, though a dedicated field is better
+          await client.query(
+              `UPDATE games SET updated_at = (NOW() - interval '1 second' * $1) WHERE id = $2 AND user_id = $3 AND board = $4`,
+              [orderedIds.length - i, gameId, req.user.id, boardId]
+          );
+      }
+      await client.query('COMMIT');
+
+      res.json({ message: 'Board reordered successfully' });
+  } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Error reordering board:', error);
+      res.status(500).json({ error: 'Server error' });
+  } finally {
+      client.release();
+  }
+});
+
+app.get('/api/friends/activity', authenticateToken, async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const result = await client.query(`
+            SELECT a.id, a.action_type, a.details, a.created_at, u.username
+            FROM activities a
+            JOIN users u ON u.id = a.user_id
+            WHERE a.user_id IN (
+                SELECT friend_id FROM friendships WHERE user_id = $1 AND status = 'accepted'
+            )
+            ORDER BY a.created_at DESC
+            LIMIT 30;
+        `, [req.user.id]);
+        res.json({ activities: result.rows });
+    } catch (error) {
+        console.error('Error fetching friend activity:', error);
+        res.status(500).json({ error: 'Server error' });
+    } finally {
+        client.release();
+    }
+});
+
+
 app.listen(PORT, () => {
   console.log(`🚀 Сервер на порту ${PORT}`);
 });
+
