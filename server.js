@@ -843,6 +843,60 @@ app.get('/api/user/:userId/boards', authenticateToken, async (req, res) => {
   }
 });
 
+// MEDIA: view another user's boards (movies/tv)
+app.get('/api/user/:userId/media/boards', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { userId } = req.params;
+    const result = await client.query(
+      `SELECT m.*, u.username, u.avatar,
+              COALESCE(json_agg(json_build_object('user_id', r.user_id, 'emoji', r.emoji, 'username', ru.username, 'avatar', ru.avatar))
+                FILTER (WHERE r.id IS NOT NULL), '[]') as reactions
+       FROM media_items m
+       JOIN users u ON m.user_id = u.id
+       LEFT JOIN media_reactions r ON r.media_id = m.id
+       LEFT JOIN users ru ON ru.id = r.user_id
+       WHERE m.user_id = $1
+       GROUP BY m.id, u.username, u.avatar
+       ORDER BY m.updated_at DESC, m.added_at DESC`,
+      [userId]
+    );
+    const boards = { movies: { wishlist: [], watched: [] }, tv: { wishlist: [], watched: [] } };
+    result.rows.forEach(row => {
+      const card = {
+        id: row.id.toString(), tmdbId: row.tmdb_id, mediaType: row.media_type,
+        title: row.title, poster: row.poster, rating: row.rating, review: row.review,
+        seasonsWatched: row.seasons_watched, episodesWatched: row.episodes_watched,
+        addedDate: row.added_at, reactions: row.reactions,
+        owner: { username: row.username, avatar: row.avatar }
+      };
+      const scope = row.media_type === 'tv' ? boards.tv : boards.movies;
+      if (scope[row.board]) scope[row.board].push(card);
+    });
+    const userInfo = await client.query('SELECT id, username, avatar, bio, theme FROM users WHERE id = $1', [userId]);
+    let friendship = 'none';
+    if (req.user.id != userId) {
+      const friendshipStatusQuery = await client.query(
+        `SELECT status, user_id
+         FROM friendships
+         WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)`,
+        [req.user.id, userId]
+      );
+      if (friendshipStatusQuery.rows.length > 0) {
+        const f = friendshipStatusQuery.rows[0];
+        if (f.status === 'accepted') friendship = 'friends';
+        else if (f.status === 'pending') friendship = (f.user_id == req.user.id) ? 'request_sent' : 'request_received';
+      }
+    }
+    res.json({ boards, user: userInfo.rows[0], friendship });
+  } catch (error) {
+    console.error('Ошибка загрузки медиа досок пользователя:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
 app.put('/api/user/boards/reorder', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
