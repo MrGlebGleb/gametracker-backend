@@ -1,3 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Прототип: Vector Runner v4</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #0f0f1a;
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #game-container {
+            border: 2px solid #8b5cf6;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+            background: #111;
+            position: relative;
+        }
+        
+        canvas {
+            display: block;
+        }
+
+        #game-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.75);
+            color: white;
+            text-align: center;
+            z-index: 10;
+        }
+        
+        #game-overlay h2 {
+            /* --- ИЗМЕНЕНО: Заголовок уменьшен в два раза --- */
+            font-size: 1.5em; 
+            margin-bottom: 0.5em;
+            text-shadow: 0 0 10px #8b5cf6;
+        }
+
+        #game-overlay p {
+            font-size: 1em; /* Уменьшен размер подзаголовка для баланса */
+            margin: 0.2em 0;
+        }
+
+        #game-overlay button {
+            /* --- ИЗМЕНЕНО: Кнопка и шрифт уменьшены --- */
+            margin-top: 1.5em;
+            padding: 8px 18px; 
+            font-size: 0.75em;
+            font-family: 'Inter', sans-serif;
+            font-weight: bold;
+            color: #000;
+            background: #ffffff;
+            border: none;
+            border-radius: 6px; /* Уменьшен радиус для соответствия размеру */
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        #game-overlay button:hover {
+            background-color: #e0e0e0;
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    <div id="game-overlay" style="display: none;">
+        <h2 id="overlay-title"></h2>
+        <p id="final-score"></p>
+        <div id="high-scores" style="margin-top: 20px; display: none;">
+             <p><strong>Рекорд друзей:</strong> Player2 (150 оч.)</p>
+             <p><strong>Общий рекорд:</strong> BestPlayer (500 оч.)</p>
+        </div>
+        <button id="restart-button"></button>
+    </div>
+</div>
+
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -308,3 +406,6 @@
     
     showStartScreen();
 </script>
+
+</body>
+</html>
