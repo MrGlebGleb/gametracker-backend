@@ -1,4 +1,4 @@
-// server.js - УЛУЧШЕННЫЙ Backend v6 (с детальными отзывами)
+// server.js - УЛУЧШЕННЫЙ Backend v6 (с детальными отзывами и игрой)
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -80,6 +80,12 @@ async function initDatabase() {
           action_type VARCHAR(50) NOT NULL,
           details JSONB,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS game_scores (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        score INTEGER NOT NULL DEFAULT 0,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE INDEX IF NOT EXISTS idx_games_user_id ON games(user_id);
@@ -774,8 +780,6 @@ app.put('/api/user/boards/reorder', authenticateToken, async (req, res) => {
       await client.query('BEGIN');
       for (let i = 0; i < orderedIds.length; i++) {
           const gameId = orderedIds[i];
-          // A simple reordering can be just updating a field, e.g. `order_index`
-          // For simplicity, we can update `updated_at` to reorder by it, though a dedicated field is better
           await client.query(
               `UPDATE games SET updated_at = (NOW() - interval '1 second' * $1) WHERE id = $2 AND user_id = $3 AND board = $4`,
               [orderedIds.length - i, gameId, req.user.id, boardId]
@@ -815,8 +819,55 @@ app.get('/api/friends/activity', authenticateToken, async (req, res) => {
     }
 });
 
+// === GAME SCORES API (NEW) ===
+
+app.post('/api/game/score', authenticateToken, async (req, res) => {
+    const { score } = req.body;
+    if (typeof score !== 'number' || score < 0) {
+        return res.status(400).json({ error: 'Неверный формат очков' });
+    }
+    const client = await pool.connect();
+    try {
+        await client.query(`
+            INSERT INTO game_scores (user_id, score, updated_at)
+            VALUES ($1, $2, CURRENT_TIMESTAMP)
+            ON CONFLICT (user_id)
+            DO UPDATE SET
+                score = GREATEST(game_scores.score, EXCLUDED.score),
+                updated_at = CURRENT_TIMESTAMP;
+        `, [req.user.id, score]);
+        res.status(200).json({ message: 'Рекорд успешно обновлен' });
+    } catch (error) {
+        console.error('Ошибка сохранения рекорда:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    } finally {
+        client.release();
+    }
+});
+
+app.get('/api/game/highscores', authenticateToken, async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const globalRes = await client.query('SELECT u.username, gs.score FROM game_scores gs JOIN users u ON u.id = gs.user_id ORDER BY gs.score DESC LIMIT 1');
+        const friendRes = await client.query(`
+            SELECT u.username, gs.score FROM game_scores gs
+            JOIN users u ON u.id = gs.user_id
+            WHERE gs.user_id IN (SELECT friend_id FROM friendships WHERE user_id = $1 AND status = 'accepted')
+            ORDER BY gs.score DESC LIMIT 1
+        `, [req.user.id]);
+        res.json({
+            global: globalRes.rows[0] || { username: 'Никто', score: 0 },
+            friend: friendRes.rows[0] || { username: 'Никто', score: 0 }
+        });
+    } catch (error) {
+        console.error('Ошибка получения рекордов:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    } finally {
+        client.release();
+    }
+});
+
 
 app.listen(PORT, () => {
   console.log(`🚀 Сервер на порту ${PORT}`);
 });
-
