@@ -1,119 +1,18 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Прототип: Vector Runner v4</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background-color: #0f0f1a;
-            color: #ffffff;
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            overflow: hidden;
-        }
-
-        #game-container {
-            border: 2px solid #8b5cf6;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
-            background: #111;
-            position: relative;
-        }
-        
-        canvas {
-            display: block;
-        }
-
-        #game-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background-color: rgba(0, 0, 0, 0.75);
-            color: white;
-            text-align: center;
-            z-index: 10;
-        }
-        
-        #game-overlay h2 {
-            /* --- ИЗМЕНЕНО: Заголовок уменьшен в два раза --- */
-            font-size: 1.5em; 
-            margin-bottom: 0.5em;
-            text-shadow: 0 0 10px #8b5cf6;
-        }
-
-        #game-overlay p {
-            font-size: 1em; /* Уменьшен размер подзаголовка для баланса */
-            margin: 0.2em 0;
-        }
-
-        #game-overlay button {
-            /* --- ИЗМЕНЕНО: Кнопка и шрифт уменьшены --- */
-            margin-top: 1.5em;
-            padding: 8px 18px; 
-            font-size: 0.75em;
-            font-family: 'Inter', sans-serif;
-            font-weight: bold;
-            color: #000;
-            background: #ffffff;
-            border: none;
-            border-radius: 6px; /* Уменьшен радиус для соответствия размеру */
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        
-        #game-overlay button:hover {
-            background-color: #e0e0e0;
-        }
-
-    </style>
-</head>
-<body>
-
-<div id="game-container">
-    <canvas id="gameCanvas"></canvas>
-    <div id="game-overlay" style="display: none;">
-        <h2 id="overlay-title"></h2>
-        <p id="final-score"></p>
-        <div id="high-scores" style="margin-top: 20px; display: none;">
-             <p><strong>Рекорд друзей:</strong> Player2 (150 оч.)</p>
-             <p><strong>Общий рекорд:</strong> BestPlayer (500 оч.)</p>
-        </div>
-        <button id="restart-button"></button>
-    </div>
-</div>
-
-<script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const gameContainer = document.getElementById('game-container');
+// Игровой модуль, управляемый React-приложением
+window.GameRunner = (function() {
+    // Переменные, которые будут доступны во всем модуле
+    let canvas, ctx, gameContainer, gameOverlay, overlayTitle, finalScoreDisplay, highScoresDisplay, friendRecordDisplay, globalRecordDisplay, restartButton;
     
-    // UI Элементы
-    const gameOverlay = document.getElementById('game-overlay');
-    const overlayTitle = document.getElementById('overlay-title');
-    const finalScoreDisplay = document.getElementById('final-score');
-    const highScoresDisplay = document.getElementById('high-scores');
-    const restartButton = document.getElementById('restart-button');
+    let score, lives, gameSpeed;
+    let gameOver, gameStarted;
+    let player, playerTrail;
+    let obstacles, obstacleTimer, nextObstacleInterval;
+    let stars;
+    let animationFrameId; // ID для управления игровым циклом
 
+    const API_URL = 'https://gametracker-backend-production.up.railway.app';
     const GAME_WIDTH = 900;
     const GAME_HEIGHT = 250;
-    canvas.width = GAME_WIDTH;
-    canvas.height = GAME_HEIGHT;
-
-    // Цветовая палитра
     const COLORS = {
         PLAYER: '#f472b6',
         PLAYER_GLOW: 'rgba(244, 114, 182, 0.5)',
@@ -128,29 +27,28 @@
         UI_ACCENT: '#a78bfa',
     };
 
-    // Состояние игры
-    let score = 0, lives = 3, gameSpeed = 5;
-    let gameOver = false, gameStarted = false;
-    
-    // Игрок
-    const player = {
-        x: 50, y: GAME_HEIGHT - 50, width: 30, height: 35,
-        velocityY: 0, gravity: 0.6, jumpStrength: -12, jumpsLeft: 2, isJumping: false
+    // --- ИМЕНОВАННЫЕ ОБРАБОТЧИКИ СОБЫТИЙ ---
+    // Они должны быть именованными, чтобы их можно было удалить при очистке
+    const handleKeyDown = (e) => {
+        // 1. Игнорируем нажатия, если пользователь печатает в поле ввода
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+            return;
+        }
+
+        // 2. Используем 'Enter' для старта/рестарта игры
+        if (e.code === 'Enter' && (!gameStarted || gameOver)) {
+            e.preventDefault(); // Предотвращаем стандартное действие Enter
+            startGame();
+        }
+
+        // 3. Используем 'Пробел' ТОЛЬКО для прыжка во время активной игры
+        if (e.code === 'Space' && gameStarted && !gameOver) {
+            e.preventDefault(); // Предотвращаем прокрутку страницы
+            jump();
+        }
     };
-    let playerTrail = [];
-
-    // Препятствия
-    let obstacles = [], obstacleTimer = 0, nextObstacleInterval = 120;
-
-    // Фон
-    let stars = [];
-    for (let i = 0; i < 100; i++) {
-        stars.push({
-            x: Math.random() * GAME_WIDTH, y: Math.random() * GAME_HEIGHT,
-            radius: Math.random() * 1.5, alpha: Math.random()
-        });
-    }
     
+    // --- ФУНКЦИИ ОТРИСОВКИ ---
     function drawPlayer() {
         ctx.fillStyle = COLORS.PLAYER_GLOW;
         playerTrail.forEach((p, index) => {
@@ -161,17 +59,14 @@
             ctx.fill();
         });
         ctx.globalAlpha = 1;
-
         ctx.shadowBlur = 15;
         ctx.shadowColor = COLORS.PLAYER_GLOW;
-
         ctx.fillStyle = COLORS.PLAYER;
         ctx.beginPath();
         ctx.moveTo(player.x, player.y + player.height);
         ctx.quadraticCurveTo(player.x + player.width / 2, player.y - 10, player.x + player.width, player.y + player.height);
         ctx.closePath();
         ctx.fill();
-
         ctx.shadowBlur = 0;
     }
 
@@ -179,7 +74,6 @@
         ctx.shadowBlur = 15;
         ctx.shadowColor = COLORS.OBSTACLE_GLOW_1;
         ctx.fillStyle = obstacle.color;
-        
         ctx.beginPath();
         ctx.moveTo(obstacle.x, obstacle.y + obstacle.height);
         ctx.lineTo(obstacle.x + obstacle.width * 0.2, obstacle.y + obstacle.height * 0.5);
@@ -188,7 +82,6 @@
         ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height);
         ctx.closePath();
         ctx.fill();
-
         ctx.shadowBlur = 0;
     }
 
@@ -196,10 +89,8 @@
         ctx.shadowBlur = 15;
         ctx.shadowColor = COLORS.OBSTACLE_GLOW_2;
         ctx.fillStyle = obstacle.color;
-
         const centerX = obstacle.x + obstacle.width / 2;
         const centerY = obstacle.y + obstacle.height / 2;
-
         ctx.beginPath();
         ctx.moveTo(centerX, centerY - obstacle.height / 2);
         ctx.lineTo(centerX + obstacle.width / 2, centerY);
@@ -207,7 +98,6 @@
         ctx.lineTo(centerX - obstacle.width / 2, centerY);
         ctx.closePath();
         ctx.fill();
-
         ctx.shadowBlur = 0;
     }
 
@@ -236,7 +126,7 @@
         ctx.fillStyle = COLORS.GROUND_LINE;
         ctx.fillRect(0, GAME_HEIGHT - 20, GAME_WIDTH, 3);
     }
-    
+
     function drawUI() {
         ctx.font = "bold 24px Inter";
         ctx.fillStyle = "white";
@@ -244,7 +134,7 @@
         ctx.fillText(`Очки: ${score}`, 20, 35);
         for (let i = 0; i < lives; i++) drawHeart(GAME_WIDTH - 35 - (i * 30), 22, 12, 12);
     }
-    
+
     function drawHeart(x, y, width, height) {
         ctx.fillStyle = COLORS.UI_ACCENT;
         ctx.beginPath();
@@ -256,14 +146,13 @@
         ctx.closePath();
         ctx.fill();
     }
-    
+
+    // --- ФУНКЦИИ ОБНОВЛЕНИЯ ИГРЫ ---
     function updatePlayer() {
         player.velocityY += player.gravity;
         player.y += player.velocityY;
-        
         playerTrail.push({ x: player.x, y: player.y });
         if (playerTrail.length > 10) playerTrail.shift();
-        
         const groundLevel = GAME_HEIGHT - player.height - 20;
         if (player.y > groundLevel) {
             player.y = groundLevel;
@@ -274,7 +163,7 @@
             }
         }
     }
-    
+
     function updateObstacles() {
         obstacleTimer++;
         if (obstacleTimer > nextObstacleInterval) {
@@ -282,7 +171,6 @@
             obstacleTimer = 0;
             if (nextObstacleInterval > 60) nextObstacleInterval -= 1;
         }
-        
         obstacles.forEach((obstacle, index) => {
             obstacle.x -= gameSpeed;
             if (!obstacle.passed && obstacle.x + obstacle.width < player.x) {
@@ -295,23 +183,31 @@
             }
         });
     }
-    
+
     function spawnObstacle() {
         const obstacleTypes = [
             { width: 40, height: 50, color: COLORS.OBSTACLE_1, drawFunc: drawCrystalObstacle },
             { width: 45, height: 45, color: COLORS.OBSTACLE_2, drawFunc: drawAnomalyObstacle },
         ];
-        
         const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
         obstacles.push({
             x: GAME_WIDTH, y: GAME_HEIGHT - type.height - 20, ...type, passed: false
         });
     }
+
+    // --- УПРАВЛЕНИЕ ИГРОВЫМ ПРОЦЕССОМ ---
+    function jump() {
+        if (!gameStarted || gameOver) return;
+        if (player.jumpsLeft > 0) {
+            player.velocityY = player.jumpStrength;
+            player.jumpsLeft--;
+            player.isJumping = true;
+        }
+    }
     
     function checkCollisions() {
         obstacles.forEach(obstacle => {
-            if (
-                player.x < obstacle.x + obstacle.width &&
+            if (player.x < obstacle.x + obstacle.width &&
                 player.x + player.width > obstacle.x &&
                 player.y < obstacle.y + obstacle.height &&
                 player.y + player.height > obstacle.y
@@ -330,33 +226,7 @@
             setTimeout(() => gameContainer.style.borderColor = '#8b5cf6', 200);
         }
     }
-    
-    function jump() {
-        if (!gameStarted || gameOver) return;
-        if (player.jumpsLeft > 0) {
-            player.velocityY = player.jumpStrength;
-            player.jumpsLeft--;
-            player.isJumping = true;
-        }
-    }
 
-    function showGameOverScreen() {
-        overlayTitle.textContent = 'Игра окончена';
-        finalScoreDisplay.textContent = `Ваши очки: ${score}`;
-        restartButton.textContent = 'Играть снова';
-        highScoresDisplay.style.display = 'block';
-        gameOverlay.style.display = 'flex';
-    }
-
-    function showStartScreen() {
-        /* --- ИЗМЕНЕНО: Обновлен стартовый экран --- */
-        overlayTitle.textContent = 'Начать игру';
-        finalScoreDisplay.textContent = 'Нажмите Пробел';
-        restartButton.textContent = 'Старт';
-        highScoresDisplay.style.display = 'none';
-        gameOverlay.style.display = 'flex';
-    }
-    
     function resetGame() {
         score = 0; lives = 3; gameSpeed = 5;
         obstacles = []; obstacleTimer = 0; nextObstacleInterval = 120;
@@ -364,23 +234,88 @@
         player.velocityY = 0; player.jumpsLeft = 2; playerTrail = [];
         gameOver = false;
         gameOverlay.style.display = 'none';
-        requestAnimationFrame(gameLoop);
+        
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        gameLoop();
     }
 
     function startGame() {
+        if (gameStarted && !gameOver) return;
         gameStarted = true;
         resetGame();
     }
 
     function endGame() {
         gameOver = true;
+        gameStarted = false;
+        submitScore(score);
         showGameOverScreen();
     }
+    
+    // --- ИНТЕГРАЦИЯ С СЕРВЕРОМ ---
+    async function submitScore(finalScore) {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        try {
+            await fetch(`${API_URL}/api/game/score`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ score: finalScore })
+            });
+        } catch (error) {
+            console.error('Failed to submit score:', error);
+        }
+    }
 
+    async function fetchHighScores() {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            friendRecordDisplay.innerHTML = 'Войдите, чтобы видеть рекорды';
+            globalRecordDisplay.innerHTML = '';
+            return;
+        }
+        try {
+            const response = await fetch(`${API_URL}/api/game/highscores`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                friendRecordDisplay.innerHTML = `<strong>Рекорд друзей:</strong> ${data.friend.username} (${data.friend.score} оч.)`;
+                globalRecordDisplay.innerHTML = `<strong>Общий рекорд:</strong> ${data.global.username} (${data.global.score} оч.)`;
+            } else {
+                throw new Error('Failed to fetch scores');
+            }
+        } catch (error) {
+            friendRecordDisplay.innerHTML = '<strong>Рекорд друзей:</strong> Ошибка';
+            globalRecordDisplay.innerHTML = '<strong>Общий рекорд:</strong> Ошибка';
+        }
+    }
+
+    // --- УПРАВЛЕНИЕ UI ---
+    function showGameOverScreen() {
+        overlayTitle.textContent = 'Игра окончена';
+        finalScoreDisplay.textContent = `Ваши очки: ${score}`;
+        restartButton.textContent = 'Играть снова';
+        highScoresDisplay.style.display = 'block';
+        gameOverlay.style.display = 'flex';
+        fetchHighScores();
+    }
+
+    function showStartScreen() {
+        overlayTitle.textContent = 'Начать игру';
+        finalScoreDisplay.textContent = 'Нажмите Enter или Старт';
+        restartButton.textContent = 'Старт';
+        highScoresDisplay.style.display = 'none';
+        gameOverlay.style.display = 'flex';
+    }
+
+    // --- ГЛАВНЫЙ ЦИКЛ И ФУНКЦИИ МОДУЛЯ ---
     function gameLoop() {
-        if (gameOver) return;
+        if (gameOver) {
+            animationFrameId = null;
+            return;
+        }
         ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-        
         drawBackground();
         updatePlayer();
         drawPlayer();
@@ -388,24 +323,74 @@
         drawObstacles();
         checkCollisions();
         drawUI();
-        
-        requestAnimationFrame(gameLoop);
+        animationFrameId = requestAnimationFrame(gameLoop);
     }
     
-    window.addEventListener('keydown', (e) => {
-        if (e.code === 'Space') {
-            e.preventDefault();
-            if (!gameStarted || gameOver) startGame();
-            else jump();
+    // Функция очистки
+    function destroy() {
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
         }
-    });
+        window.removeEventListener('keydown', handleKeyDown);
+        restartButton.removeEventListener('click', startGame);
+        console.log("Game instance destroyed.");
+    }
 
-    restartButton.addEventListener('click', () => {
-        if (gameOver || !gameStarted) startGame();
-    });
-    
-    showStartScreen();
-</script>
+    // Главная функция инициализации, вызываемая из React
+    function init(canvasElement) {
+        canvas = canvasElement;
+        if (!canvas) {
+            console.error("GameRunner init failed: canvas element not provided.");
+            return;
+        }
 
-</body>
-</html>
+        ctx = canvas.getContext('2d');
+        gameContainer = document.getElementById('game-container');
+        gameOverlay = document.getElementById('game-overlay');
+        overlayTitle = document.getElementById('overlay-title');
+        finalScoreDisplay = document.getElementById('final-score');
+        highScoresDisplay = document.getElementById('high-scores');
+        friendRecordDisplay = document.getElementById('friend-record');
+        globalRecordDisplay = document.getElementById('global-record');
+        restartButton = document.getElementById('restart-button');
+        
+        // Сбрасываем состояние игры
+        score = 0; lives = 3; gameSpeed = 5;
+        gameOver = false; gameStarted = false;
+        player = {
+            x: 50, y: GAME_HEIGHT - 50, width: 30, height: 35,
+            velocityY: 0, gravity: 0.6, jumpStrength: -12, jumpsLeft: 2, isJumping: false
+        };
+        playerTrail = [];
+        obstacles = []; obstacleTimer = 0; nextObstacleInterval = 120;
+        stars = [];
+        for (let i = 0; i < 100; i++) {
+            stars.push({
+                x: Math.random() * GAME_WIDTH, y: Math.random() * GAME_HEIGHT,
+                radius: Math.random() * 1.5, alpha: Math.random()
+            });
+        }
+
+        canvas.width = GAME_WIDTH;
+        canvas.height = GAME_HEIGHT;
+
+        const reloadHint = document.getElementById('game-reload-hint');
+        if(reloadHint) reloadHint.style.display = 'none';
+
+        window.addEventListener('keydown', handleKeyDown);
+        restartButton.addEventListener('click', startGame);
+
+        showStartScreen();
+
+        console.log("Game instance initialized.");
+        
+        // Возвращаем объект с функцией очистки
+        return { destroy };
+    }
+
+    // Публичный API модуля
+    return {
+        init,
+    };
+})();
