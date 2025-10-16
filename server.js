@@ -15,6 +15,7 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID;
 const TWITCH_CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
+const TMDB_API_KEY = process.env.TMDB_API_KEY;
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -98,6 +99,35 @@ async function initDatabase() {
       ALTER TABLE friendships ADD COLUMN IF NOT EXISTS nickname VARCHAR(100);
       ALTER TABLE games ADD COLUMN IF NOT EXISTS video_id VARCHAR(255);
       ALTER TABLE games ADD COLUMN IF NOT EXISTS deep_review_answers JSONB;
+
+      -- MEDIA (movies/series)
+      CREATE TABLE IF NOT EXISTS media_items (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        tmdb_id BIGINT NOT NULL,
+        media_type VARCHAR(10) NOT NULL CHECK (media_type IN ('movie','tv')),
+        title VARCHAR(255) NOT NULL,
+        poster TEXT,
+        board VARCHAR(20) NOT NULL CHECK (board IN ('wishlist','watched')),
+        rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+        review TEXT,
+        seasons_watched INTEGER DEFAULT 0,
+        episodes_watched INTEGER DEFAULT 0,
+        added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS media_reactions (
+        id SERIAL PRIMARY KEY,
+        media_id INTEGER REFERENCES media_items(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        emoji VARCHAR(10) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(media_id, user_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_media_items_user_id ON media_items(user_id);
+      CREATE INDEX IF NOT EXISTS idx_media_reactions_media_id ON media_reactions(media_id);
     `);
     console.log('✅ База данных инициализирована');
   } catch (error) {
@@ -502,6 +532,161 @@ app.post('/api/games/:gameId/reactions', authenticateToken, async (req, res) => 
   }
 });
 
+// === TMDB PROXY AND MEDIA ENDPOINTS ===
+app.get('/api/media/search', authenticateToken, async (req, res) => {
+  try {
+    const { q, type } = req.query; // type: 'movie' | 'tv'
+    if (!TMDB_API_KEY) return res.status(500).json({ error: 'TMDB_API_KEY not configured' });
+    if (!q || q.length < 2) return res.status(400).json({ error: 'Минимум 2 символа' });
+    const endpoint = type === 'tv' ? 'search/tv' : 'search/movie';
+    const url = `https://api.themoviedb.org/3/${endpoint}`;
+    const response = await axios.get(url, {
+      params: { api_key: TMDB_API_KEY, query: q, language: 'ru-RU', include_adult: false }
+    });
+    const items = response.data.results.slice(0, 20).map(it => ({
+      tmdbId: it.id,
+      mediaType: type === 'tv' ? 'tv' : 'movie',
+      title: it.title || it.name,
+      poster: it.poster_path ? `https://image.tmdb.org/t/p/w342${it.poster_path}` : null,
+      overview: it.overview || '',
+      year: (it.release_date || it.first_air_date || '').slice(0, 4)
+    }));
+    res.json({ items });
+  } catch (error) {
+    console.error('TMDB search error:', error.message);
+    res.status(500).json({ error: 'Ошибка поиска' });
+  }
+});
+
+app.post('/api/user/media', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { item, board } = req.body; // item: { tmdbId, mediaType, title, poster }
+    if (!item || !item.tmdbId || !item.mediaType || !item.title) {
+      return res.status(400).json({ error: 'Неполные данные медиа' });
+    }
+    const safeBoard = board === 'watched' ? 'watched' : 'wishlist';
+    const result = await client.query(
+      `INSERT INTO media_items (user_id, tmdb_id, media_type, title, poster, board)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [req.user.id, item.tmdbId, item.mediaType, item.title, item.poster || null, safeBoard]
+    );
+    await logActivity(req.user.id, 'add_media', { title: item.title, mediaType: item.mediaType, board: safeBoard });
+    res.status(201).json({ message: 'Добавлено', media: result.rows[0] });
+  } catch (error) {
+    console.error('Ошибка добавления медиа:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+app.get('/api/user/media/boards', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `SELECT m.*, COALESCE(json_agg(json_build_object('user_id', r.user_id, 'emoji', r.emoji, 'username', u.username, 'avatar', u.avatar))
+          FILTER (WHERE r.id IS NOT NULL), '[]') as reactions
+       FROM media_items m
+       LEFT JOIN media_reactions r ON r.media_id = m.id
+       LEFT JOIN users u ON u.id = r.user_id
+       WHERE m.user_id = $1
+       GROUP BY m.id
+       ORDER BY m.updated_at DESC, m.added_at DESC`,
+      [req.user.id]
+    );
+    const boards = {
+      movies: { wishlist: [], watched: [] },
+      tv: { wishlist: [], watched: [] }
+    };
+    result.rows.forEach(row => {
+      const card = {
+        id: row.id.toString(), tmdbId: row.tmdb_id, mediaType: row.media_type,
+        title: row.title, poster: row.poster, rating: row.rating, review: row.review,
+        seasonsWatched: row.seasons_watched, episodesWatched: row.episodes_watched,
+        addedDate: row.added_at, reactions: row.reactions
+      };
+      const scope = row.media_type === 'tv' ? boards.tv : boards.movies;
+      if (scope[row.board]) scope[row.board].push(card);
+    });
+    res.json({ boards });
+  } catch (error) {
+    console.error('Ошибка загрузки медиа:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+app.put('/api/user/media/:id', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const { board, rating, review, seasonsWatched, episodesWatched } = req.body;
+    let updateFields = [], values = [], n = 1;
+    if (board) { updateFields.push(`board = $${n++}`); values.push(board === 'watched' ? 'watched' : 'wishlist'); }
+    if (rating !== undefined) { updateFields.push(`rating = $${n++}`); values.push(rating); }
+    if (review !== undefined) { updateFields.push(`review = $${n++}`); values.push(review); }
+    if (seasonsWatched !== undefined) { updateFields.push(`seasons_watched = $${n++}`); values.push(seasonsWatched); }
+    if (episodesWatched !== undefined) { updateFields.push(`episodes_watched = $${n++}`); values.push(episodesWatched); }
+    updateFields.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(id, req.user.id);
+    const result = await client.query(
+      `UPDATE media_items SET ${updateFields.join(', ')} WHERE id = $${n} AND user_id = $${n + 1} RETURNING *`,
+      values
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Не найдено' });
+    const row = result.rows[0];
+    if (board) {
+      await logActivity(req.user.id, row.board === 'watched' ? 'complete_media' : 'move_media', {
+        title: row.title, mediaType: row.media_type, toBoard: board
+      });
+    }
+    res.json({ message: 'Обновлено', media: row });
+  } catch (error) {
+    console.error('Ошибка обновления медиа:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+app.delete('/api/user/media/:id', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const existed = await client.query('SELECT title FROM media_items WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+    await client.query('DELETE FROM media_items WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+    if (existed.rows[0]) await logActivity(req.user.id, 'remove_media', { title: existed.rows[0].title });
+    res.json({ message: 'Удалено' });
+  } catch (error) {
+    console.error('Ошибка удаления медиа:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/media/:id/reactions', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params; // media id
+    const { emoji } = req.body;
+    await client.query(
+      `INSERT INTO media_reactions (media_id, user_id, emoji)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (media_id, user_id) DO UPDATE SET emoji = $3`,
+      [id, req.user.id, emoji]
+    );
+    res.json({ message: 'Реакция добавлена' });
+  } catch (error) {
+    console.error('Ошибка реакции медиа:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
 app.get('/api/users', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -684,11 +869,22 @@ app.put('/api/user/boards/reorder', authenticateToken, async (req, res) => {
 app.get('/api/friends/activity', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
-        const result = await client.query(`
-            SELECT a.id, a.action_type, a.details, a.created_at, u.username
-            FROM activities a JOIN users u ON u.id = a.user_id
-            WHERE a.user_id IN (SELECT friend_id FROM friendships WHERE user_id = $1 AND status = 'accepted')
-            ORDER BY a.created_at DESC LIMIT 30;`, [req.user.id]);
+        const { media } = req.query; // optional: 'games' | 'media'
+        let whereMedia = '';
+        if (media === 'games') {
+          // filter only game-related actions
+          whereMedia = " AND (a.action_type LIKE '%%game%%') ";
+        } else if (media === 'media') {
+          // we will log movie/tv actions to include 'media' in action_type
+          whereMedia = " AND (a.action_type LIKE '%%media%%') ";
+        }
+        const result = await client.query(
+          `SELECT a.id, a.action_type, a.details, a.created_at, u.username
+           FROM activities a JOIN users u ON u.id = a.user_id
+           WHERE a.user_id IN (SELECT friend_id FROM friendships WHERE user_id = $1 AND status = 'accepted')${whereMedia}
+           ORDER BY a.created_at DESC LIMIT 12;`,
+          [req.user.id]
+        );
         res.json({ activities: result.rows });
     } catch (error) {
         console.error('Error fetching friend activity:', error);
