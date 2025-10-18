@@ -44,6 +44,34 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
+// Database migration endpoint
+app.get('/api/migrate', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    
+    // Добавляем недостающие колонки
+    await client.query(`
+      ALTER TABLE users 
+      ADD COLUMN IF NOT EXISTS is_profile_public BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS show_activity BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS show_stats BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS allow_friend_requests BOOLEAN DEFAULT true
+    `);
+    
+    client.release();
+    res.json({ 
+      status: 'OK', 
+      message: 'Migration completed successfully' 
+    });
+  } catch (error) {
+    console.error('Migration failed:', error);
+    res.status(500).json({ 
+      status: 'Error', 
+      error: error.message 
+    });
+  }
+});
+
 // Временный endpoint для тестирования без аутентификации
 app.get('/api/test-boards', async (req, res) => {
   try {
