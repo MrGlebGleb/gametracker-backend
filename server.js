@@ -1330,6 +1330,7 @@ app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (re
           averageRating: 0
         },
         topMovies: [],
+        topTv: [],
         monthlyStats: []
       });
       return;
@@ -1365,19 +1366,31 @@ app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (re
     
     const monthlyStats = await client.query(monthlyStatsQuery, [req.user.id]);
     
-    // 3. Топ-10 самых высоко оцененных медиа
-    const topRatedQuery = `
+    // 3. Топ-10 самых высоко оцененных фильмов
+    const topMoviesQuery = `
       SELECT title, rating, board, media_type, poster, added_at
       FROM media_items 
-      WHERE user_id = $1 AND rating > 0
+      WHERE user_id = $1 AND rating > 0 AND media_type = 'movie'
       ORDER BY rating DESC, added_at DESC
       LIMIT 10
     `;
     
-    const topRated = await client.query(topRatedQuery, [req.user.id]);
+    const topMovies = await client.query(topMoviesQuery, [req.user.id]);
+    
+    // 4. Топ-10 самых высоко оцененных сериалов
+    const topTvQuery = `
+      SELECT title, rating, board, media_type, poster, added_at
+      FROM media_items 
+      WHERE user_id = $1 AND rating > 0 AND media_type = 'tv'
+      ORDER BY rating DESC, added_at DESC
+      LIMIT 10
+    `;
+    
+    const topTv = await client.query(topTvQuery, [req.user.id]);
     
     console.log('Monthly stats result:', monthlyStats.rows);
-    console.log('Top rated result:', topRated.rows);
+    console.log('Top movies result:', topMovies.rows);
+    console.log('Top TV result:', topTv.rows);
     
     // Подготавливаем данные в том же формате, что и для игр
     const summary = {
@@ -1387,7 +1400,15 @@ app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (re
       averageRating: 0
     };
     
-    const topMovies = topRated.rows.map(item => ({
+    const topMoviesList = topMovies.rows.map(item => ({
+      id: item.title,
+      title: item.title,
+      year: new Date(item.added_at).getFullYear(),
+      poster: item.poster, // Получаем постер из БД
+      rating: item.rating
+    }));
+    
+    const topTvList = topTv.rows.map(item => ({
       id: item.title,
       title: item.title,
       year: new Date(item.added_at).getFullYear(),
@@ -1428,16 +1449,17 @@ app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (re
       }
     });
     
-    // Вычисляем средний рейтинг
-    const ratedItems = topRated.rows.filter(item => item.rating > 0);
-    if (ratedItems.length > 0) {
-      const totalRating = ratedItems.reduce((sum, item) => sum + item.rating, 0);
-      summary.averageRating = parseFloat((totalRating / ratedItems.length).toFixed(1));
+    // Вычисляем средний рейтинг из всех рейтинговых элементов
+    const allRatedItems = [...topMovies.rows, ...topTv.rows].filter(item => item.rating > 0);
+    if (allRatedItems.length > 0) {
+      const totalRating = allRatedItems.reduce((sum, item) => sum + item.rating, 0);
+      summary.averageRating = parseFloat((totalRating / allRatedItems.length).toFixed(1));
     }
     
     const statistics = {
       summary: summary,
-      topMovies: topMovies,
+      topMovies: topMoviesList,
+      topTv: topTvList,
       monthlyStats: monthlyStatsFormatted
     };
     
@@ -1455,6 +1477,7 @@ app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (re
         averageRating: 0
       },
       topMovies: [],
+      topTv: [],
       monthlyStats: []
     });
   } finally {
