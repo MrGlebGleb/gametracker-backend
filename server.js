@@ -1257,6 +1257,7 @@ app.get('/api/user/statistics/games', statsLimiter, authenticateToken, async (re
       topRatedGames: topRatedGames,
       summary: {
         totalGames: parseInt(additionalStats.total_games),
+        completedGames: generalStats.completed.count,
         ratedGames: parseInt(additionalStats.rated_games),
         overallAvgRating: additionalStats.overall_avg_rating ? 
           parseFloat(additionalStats.overall_avg_rating).toFixed(1) : 0,
