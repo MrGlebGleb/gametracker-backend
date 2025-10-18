@@ -1324,9 +1324,10 @@ app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (re
       // Если таблица не существует, возвращаем пустые данные в правильном формате
       res.json({
         summary: {
-          totalMovies: 0,
-          totalTvShows: 0,
-          watchedMedia: 0,
+          watchedMovies: 0,
+          watchedTvShows: 0,
+          wishlistMovies: 0,
+          wishlistTvShows: 0,
           averageRating: 0
         },
         topMovies: [],
@@ -1392,11 +1393,12 @@ app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (re
     console.log('Top movies result:', topMovies.rows);
     console.log('Top TV result:', topTv.rows);
     
-    // Подготавливаем данные в том же формате, что и для игр
+    // Подготавливаем данные в новом формате
     const summary = {
-      totalMovies: 0,
-      totalTvShows: 0,
-      watchedMedia: 0,
+      watchedMovies: 0,
+      watchedTvShows: 0,
+      wishlistMovies: 0,
+      wishlistTvShows: 0,
       averageRating: 0
     };
     
@@ -1437,14 +1439,16 @@ app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (re
     // Подсчитываем общую статистику
     generalStats.rows.forEach(row => {
       if (row.media_type === 'movie') {
-        summary.totalMovies += parseInt(row.count);
         if (row.board === 'watched') {
-          summary.watchedMedia += parseInt(row.count);
+          summary.watchedMovies += parseInt(row.count);
+        } else if (row.board === 'wishlist') {
+          summary.wishlistMovies += parseInt(row.count);
         }
       } else if (row.media_type === 'tv') {
-        summary.totalTvShows += parseInt(row.count);
         if (row.board === 'watched') {
-          summary.watchedMedia += parseInt(row.count);
+          summary.watchedTvShows += parseInt(row.count);
+        } else if (row.board === 'wishlist') {
+          summary.wishlistTvShows += parseInt(row.count);
         }
       }
     });
@@ -1471,9 +1475,10 @@ app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (re
     // Возвращаем пустые данные в правильном формате
     res.json({
       summary: {
-        totalMovies: 0,
-        totalTvShows: 0,
-        watchedMedia: 0,
+        watchedMovies: 0,
+        watchedTvShows: 0,
+        wishlistMovies: 0,
+        wishlistTvShows: 0,
         averageRating: 0
       },
       topMovies: [],
