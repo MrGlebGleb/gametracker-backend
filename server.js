@@ -5,11 +5,284 @@ const bcrypt = require('bcryptjs');
 const jwt =require('jsonwebtoken');
 const axios = require('axios');
 const { Pool } = require('pg');
+const helmet = require('helmet');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
+const { body, param, validationResult } = require('express-validator');
+const { JSDOM } = require('jsdom');
+const DOMPurify = require('dompurify');
+const { Parser } = require('json2csv');
 
 const app = express();
 
-app.use(cors());
+// Security middleware
+app.use(helmet());
+
+// Compression middleware
+app.use(compression());
+
+// CORS configuration - только для фронтенд доменов
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://localhost:3000',
+  // Добавьте ваш production URL здесь
+  // 'https://your-production-domain.com'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Разрешить запросы без origin (например, мобильные приложения, Postman)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Не разрешено CORS политикой'));
+    }
+  },
+  credentials: true
+}));
+
+// JSON payload validation middleware
+const validateJsonSize = (maxSize) => (req, res, next) => {
+  const contentLength = parseInt(req.headers['content-length'] || '0');
+  if (contentLength > maxSize) {
+    return res.status(413).json({ 
+      error: `Payload слишком большой. Максимум ${maxSize / (1024 * 1024)}MB` 
+    });
+  }
+  next();
+};
+
+// Middleware для обычных запросов (10MB)
+app.use('/api', validateJsonSize(10 * 1024 * 1024));
+
+// Middleware для Base64 изображений (5MB)
+app.use('/api/profile/avatar', validateJsonSize(5 * 1024 * 1024));
+
 app.use(express.json({ limit: '10mb' }));
+
+// === RATE LIMITING ===
+// Общий лимит: 100 запросов в 15 минут на IP
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 минут
+  max: 100, // максимум 100 запросов
+  message: {
+    error: 'Слишком много запросов с этого IP. Попробуйте снова через 15 минут.',
+    retryAfter: '15 минут'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Лимит для входа: 5 попыток в 15 минут
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 минут
+  max: 5, // максимум 5 попыток
+  message: {
+    error: 'Слишком много попыток входа. Попробуйте снова через 15 минут.',
+    retryAfter: '15 минут'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Лимит для регистрации: 3 регистрации в час
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 час
+  max: 3, // максимум 3 регистрации
+  message: {
+    error: 'Слишком много попыток регистрации. Попробуйте снова через час.',
+    retryAfter: '1 час'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Лимит для поиска: 30 запросов в минуту
+const searchLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 минута
+  max: 30, // максимум 30 запросов
+  message: {
+    error: 'Слишком много запросов поиска. Попробуйте снова через минуту.',
+    retryAfter: '1 минута'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Лимит для загрузки аватара: 5 загрузок в час
+const avatarLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 час
+  max: 5, // максимум 5 загрузок
+  message: {
+    error: 'Слишком много загрузок аватара. Попробуйте снова через час.',
+    retryAfter: '1 час'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Применяем общий лимит ко всем API запросам
+app.use('/api', generalLimiter);
+
+// === ВАЛИДАЦИЯ ВХОДНЫХ ДАННЫХ ===
+// Middleware для обработки ошибок валидации
+const handleValidationErrors = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      error: 'Ошибки валидации',
+      details: errors.array().map(err => ({
+        field: err.path,
+        message: err.msg,
+        value: err.value
+      }))
+    });
+  }
+  next();
+};
+
+// Валидационные правила
+const validateRegister = [
+  body('username')
+    .isLength({ min: 3, max: 30 })
+    .withMessage('Имя пользователя должно быть от 3 до 30 символов')
+    .matches(/^[a-zA-Z0-9_]+$/)
+    .withMessage('Имя пользователя может содержать только буквы, цифры и подчеркивания'),
+  body('email')
+    .isEmail()
+    .withMessage('Неверный формат email')
+    .normalizeEmail(),
+  body('password')
+    .isLength({ min: 8 })
+    .withMessage('Пароль должен содержать минимум 8 символов')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('Пароль должен содержать минимум одну строчную букву, одну заглавную букву и одну цифру'),
+  handleValidationErrors
+];
+
+const validateProfile = [
+  body('username')
+    .optional()
+    .isLength({ min: 3, max: 30 })
+    .withMessage('Имя пользователя должно быть от 3 до 30 символов')
+    .matches(/^[a-zA-Z0-9_]+$/)
+    .withMessage('Имя пользователя может содержать только буквы, цифры и подчеркивания'),
+  body('bio')
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage('Биография не должна превышать 500 символов'),
+  body('theme')
+    .optional()
+    .isIn(['default', 'liquid-eye'])
+    .withMessage('Тема должна быть "default" или "liquid-eye"'),
+  body('is_profile_public')
+    .optional()
+    .isBoolean()
+    .withMessage('Публичность профиля должна быть булевым значением'),
+  body('show_activity')
+    .optional()
+    .isBoolean()
+    .withMessage('Показ активности должен быть булевым значением'),
+  body('show_stats')
+    .optional()
+    .isBoolean()
+    .withMessage('Показ статистики должен быть булевым значением'),
+  body('allow_friend_requests')
+    .optional()
+    .isBoolean()
+    .withMessage('Разрешение заявок в друзья должно быть булевым значением'),
+  handleValidationErrors
+];
+
+const validateAvatar = [
+  body('avatar')
+    .notEmpty()
+    .withMessage('Аватар обязателен')
+    .custom((value) => {
+      if (!value.startsWith('data:image/')) {
+        throw new Error('Аватар должен быть в формате Base64');
+      }
+      
+      // Проверяем тип изображения
+      const imageType = value.split(';')[0].split('/')[1];
+      if (!['jpeg', 'jpg', 'png', 'webp'].includes(imageType)) {
+        throw new Error('Поддерживаются только форматы: JPEG, PNG, WebP');
+      }
+      
+      // Проверяем размер (примерно 2MB в Base64)
+      const base64Data = value.split(',')[1];
+      const sizeInBytes = (base64Data.length * 3) / 4;
+      const maxSize = 2 * 1024 * 1024; // 2MB
+      
+      if (sizeInBytes > maxSize) {
+        throw new Error('Размер изображения не должен превышать 2MB');
+      }
+      
+      return true;
+    }),
+  handleValidationErrors
+];
+
+const validateReaction = [
+  body('emoji')
+    .isIn(['👍', '👎', '❤️', '😂', '😮', '😢', '😡', '🎮', '🔥', '⭐'])
+    .withMessage('Недопустимый emoji. Разрешены: 👍, 👎, ❤️, 😂, 😮, 😢, 😡, 🎮, 🔥, ⭐'),
+  handleValidationErrors
+];
+
+const validateIdParam = (paramName) => [
+  param(paramName)
+    .isInt({ min: 1 })
+    .withMessage(`${paramName} должен быть положительным числом`),
+  handleValidationErrors
+];
+
+const validateTag = [
+  body('name')
+    .isLength({ min: 1, max: 50 })
+    .withMessage('Название тега должно быть от 1 до 50 символов')
+    .matches(/^[a-zA-Zа-яА-Я0-9\s\-_]+$/)
+    .withMessage('Название тега может содержать только буквы, цифры, пробелы, дефисы и подчеркивания'),
+  body('color')
+    .optional()
+    .matches(/^#[0-9A-Fa-f]{6}$/)
+    .withMessage('Цвет должен быть в формате hex (#RRGGBB)'),
+  handleValidationErrors
+];
+
+// === САНИТИЗАЦИЯ ВХОДНЫХ ДАННЫХ ===
+// Настройка DOMPurify для серверной среды
+const window = new JSDOM('').window;
+const purify = DOMPurify(window);
+
+// Middleware для санитизации пользовательского ввода
+const sanitizeInput = (req, res, next) => {
+  if (req.body) {
+    // Поля, которые нужно санитизировать
+    const fieldsToSanitize = ['notes', 'review', 'bio', 'nickname', 'name'];
+    
+    fieldsToSanitize.forEach(field => {
+      if (req.body[field] && typeof req.body[field] === 'string') {
+        // Санитизируем HTML теги и потенциально опасные символы
+        req.body[field] = purify.sanitize(req.body[field], {
+          ALLOWED_TAGS: [], // Не разрешаем никакие HTML теги
+          ALLOWED_ATTR: [], // Не разрешаем никакие атрибуты
+          KEEP_CONTENT: true // Сохраняем текстовое содержимое
+        });
+        
+        // Дополнительная очистка от потенциально опасных символов
+        req.body[field] = req.body[field]
+          .replace(/[<>]/g, '') // Удаляем оставшиеся < и >
+          .replace(/javascript:/gi, '') // Удаляем javascript: ссылки
+          .replace(/on\w+=/gi, '') // Удаляем event handlers
+          .trim(); // Убираем лишние пробелы
+      }
+    });
+  }
+  next();
+};
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
@@ -37,6 +310,10 @@ async function initDatabase() {
         avatar TEXT,
         bio TEXT,
         theme VARCHAR(20) DEFAULT 'default',
+        is_profile_public BOOLEAN DEFAULT true,
+        show_activity BOOLEAN DEFAULT true,
+        show_stats BOOLEAN DEFAULT true,
+        allow_friend_requests BOOLEAN DEFAULT true,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -128,6 +405,64 @@ async function initDatabase() {
 
       CREATE INDEX IF NOT EXISTS idx_media_items_user_id ON media_items(user_id);
       CREATE INDEX IF NOT EXISTS idx_media_reactions_media_id ON media_reactions(media_id);
+
+      -- NOTIFICATIONS TABLE
+      CREATE TABLE IF NOT EXISTS notifications (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        from_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        type VARCHAR(50) NOT NULL CHECK (type IN ('friend_request', 'friend_accepted', 'game_completed', 'review_added')),
+        reference_id INTEGER,
+        message TEXT NOT NULL,
+        is_read BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_notifications_user_read_created ON notifications(user_id, is_read, created_at);
+
+      -- TAGS SYSTEM
+      CREATE TABLE IF NOT EXISTS tags (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(50) NOT NULL,
+        color VARCHAR(7) NOT NULL DEFAULT '#3B82F6',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, name)
+      );
+
+      CREATE TABLE IF NOT EXISTS game_tags (
+        game_id INTEGER REFERENCES games(id) ON DELETE CASCADE,
+        tag_id INTEGER REFERENCES tags(id) ON DELETE CASCADE,
+        PRIMARY KEY(game_id, tag_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS media_tags (
+        media_id INTEGER REFERENCES media_items(id) ON DELETE CASCADE,
+        tag_id INTEGER REFERENCES tags(id) ON DELETE CASCADE,
+        PRIMARY KEY(media_id, tag_id)
+      );
+
+      -- TAGS INDEXES
+      CREATE INDEX IF NOT EXISTS idx_tags_user_id ON tags(user_id);
+      CREATE INDEX IF NOT EXISTS idx_game_tags_game_id ON game_tags(game_id);
+      CREATE INDEX IF NOT EXISTS idx_game_tags_tag_id ON game_tags(tag_id);
+      CREATE INDEX IF NOT EXISTS idx_media_tags_media_id ON media_tags(media_id);
+      CREATE INDEX IF NOT EXISTS idx_media_tags_tag_id ON media_tags(tag_id);
+
+      -- HISTORY LOG TABLE
+      CREATE TABLE IF NOT EXISTS history_log (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        entity_type VARCHAR(20) NOT NULL CHECK (entity_type IN ('game', 'media')),
+        entity_id INTEGER NOT NULL,
+        entity_name VARCHAR(255) NOT NULL,
+        action VARCHAR(50) NOT NULL CHECK (action IN ('created', 'moved', 'updated', 'deleted')),
+        old_value JSONB,
+        new_value JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_history_user_entity_created ON history_log(user_id, entity_type, created_at);
     `);
     console.log('✅ База данных инициализирована');
   } catch (error) {
@@ -186,8 +521,23 @@ async function logActivity(userId, actionType, details) {
   }
 }
 
+// ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ СОЗДАНИЯ УВЕДОМЛЕНИЙ
+async function createNotification(userId, fromUserId, type, message, referenceId = null) {
+  const client = await pool.connect();
+  try {
+    await client.query(
+      'INSERT INTO notifications (user_id, from_user_id, type, message, reference_id) VALUES ($1, $2, $3, $4, $5)',
+      [userId, fromUserId, type, message, referenceId]
+    );
+  } catch (error) {
+    console.error(`Failed to create notification [${type}]:`, error);
+  } finally {
+    client.release();
+  }
+}
+
 // === AUTH (без изменений) ===
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', registerLimiter, validateRegister, async (req, res) => {
   const client = await pool.connect();
   try {
     const { username, email, password } = req.body;
@@ -216,7 +566,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
   const client = await pool.connect();
   try {
     const { username, password } = req.body;
@@ -260,7 +610,7 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/profile/avatar', authenticateToken, async (req, res) => {
+app.post('/api/profile/avatar', avatarLimiter, authenticateToken, validateAvatar, async (req, res) => {
   const client = await pool.connect();
   try {
     const { avatar } = req.body;
@@ -281,14 +631,18 @@ app.post('/api/profile/avatar', authenticateToken, async (req, res) => {
   }
 });
 
-app.put('/api/profile', authenticateToken, async (req, res) => {
+app.put('/api/profile', authenticateToken, validateProfile, sanitizeInput, async (req, res) => {
   const client = await pool.connect();
   try {
-    const { username, bio, theme, currentPassword, newPassword } = req.body;
+    const { username, bio, theme, currentPassword, newPassword, is_profile_public, show_activity, show_stats, allow_friend_requests } = req.body;
     let updateFields = [], values = [], paramCount = 1;
     if (username) { updateFields.push(`username = $${paramCount++}`); values.push(username); }
     if (bio !== undefined) { updateFields.push(`bio = $${paramCount++}`); values.push(bio); }
     if (theme) { updateFields.push(`theme = $${paramCount++}`); values.push(theme); }
+    if (is_profile_public !== undefined) { updateFields.push(`is_profile_public = $${paramCount++}`); values.push(is_profile_public); }
+    if (show_activity !== undefined) { updateFields.push(`show_activity = $${paramCount++}`); values.push(show_activity); }
+    if (show_stats !== undefined) { updateFields.push(`show_stats = $${paramCount++}`); values.push(show_stats); }
+    if (allow_friend_requests !== undefined) { updateFields.push(`allow_friend_requests = $${paramCount++}`); values.push(allow_friend_requests); }
     if (newPassword) {
       if (!currentPassword) return res.status(400).json({ error: 'Требуется текущий пароль' });
       const userResult = await client.query('SELECT password FROM users WHERE id = $1', [req.user.id]);
@@ -318,7 +672,7 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
 });
 
 // === GAMES (С ИЗМЕНЕНИЯМИ ДЛЯ ЛОГИРОВАНИЯ) ===
-app.get('/api/games/search', authenticateToken, async (req, res) => {
+app.get('/api/games/search', searchLimiter, authenticateToken, async (req, res) => {
   try {
     const { q } = req.query;
     if (!q || q.length < 2) return res.status(400).json({ error: 'Минимум 2 символа' });
@@ -337,6 +691,105 @@ app.get('/api/games/search', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Ошибка поиска:', error.message);
     res.status(500).json({ error: 'Ошибка поиска' });
+  }
+});
+
+// === ПОИСК ПО СОБСТВЕННЫМ ИГРАМ ===
+app.get('/api/user/games/search', searchLimiter, authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { q, board, minRating, maxRating } = req.query;
+    
+    if (!q || q.length < 2) {
+      return res.status(400).json({ error: 'Минимум 2 символа для поиска' });
+    }
+
+    // Построение WHERE условий
+    let whereConditions = ['g.user_id = $1'];
+    let queryParams = [req.user.id];
+    let paramCount = 1;
+
+    // Поиск по названию и заметкам
+    paramCount++;
+    whereConditions.push(`(g.name ILIKE $${paramCount} OR g.notes ILIKE $${paramCount})`);
+    queryParams.push(`%${q}%`);
+
+    // Фильтр по доске
+    if (board && ['backlog', 'playing', 'completed', 'dropped'].includes(board)) {
+      paramCount++;
+      whereConditions.push(`g.board = $${paramCount}`);
+      queryParams.push(board);
+    }
+
+    // Фильтр по рейтингу
+    if (minRating && !isNaN(minRating)) {
+      paramCount++;
+      whereConditions.push(`g.rating >= $${paramCount}`);
+      queryParams.push(parseInt(minRating));
+    }
+
+    if (maxRating && !isNaN(maxRating)) {
+      paramCount++;
+      whereConditions.push(`g.rating <= $${paramCount}`);
+      queryParams.push(parseInt(maxRating));
+    }
+
+    // SQL запрос с сортировкой по релевантности
+    const query = `
+      SELECT g.*, 
+        COALESCE(json_agg(
+          json_build_object('user_id', r.user_id, 'emoji', r.emoji, 'username', u.username, 'avatar', u.avatar)
+        ) FILTER (WHERE r.id IS NOT NULL), '[]') as reactions,
+        CASE 
+          WHEN g.name ILIKE $${paramCount + 1} THEN 3
+          WHEN g.name ILIKE $${paramCount + 2} THEN 2
+          WHEN g.notes ILIKE $${paramCount + 1} THEN 1
+          ELSE 0
+        END as relevance_score
+      FROM games g
+      LEFT JOIN reactions r ON g.id = r.game_id
+      LEFT JOIN users u ON r.user_id = u.id
+      WHERE ${whereConditions.join(' AND ')}
+      GROUP BY g.id
+      ORDER BY relevance_score DESC, g.updated_at DESC, g.added_at DESC
+      LIMIT 20
+    `;
+
+    // Добавляем параметры для точного совпадения (высший приоритет)
+    queryParams.push(q); // Точное совпадение названия
+    queryParams.push(`${q}%`); // Начинается с поискового запроса
+
+    const result = await client.query(query, queryParams);
+    
+    const games = result.rows.map(game => ({
+      id: game.id.toString(),
+      gameId: game.game_id,
+      name: game.name,
+      cover: game.cover,
+      board: game.board,
+      rating: game.rating,
+      notes: game.notes,
+      hoursPlayed: game.hours_played,
+      addedDate: game.added_at,
+      updatedDate: game.updated_at,
+      videoId: game.video_id,
+      deepReviewAnswers: game.deep_review_answers,
+      reactions: game.reactions,
+      relevanceScore: game.relevance_score
+    }));
+
+    res.json({ 
+      games,
+      total: games.length,
+      query: q,
+      filters: { board, minRating, maxRating }
+    });
+
+  } catch (error) {
+    console.error('Ошибка поиска по играм:', error);
+    res.status(500).json({ error: 'Ошибка поиска по играм' });
+  } finally {
+    client.release();
   }
 });
 
@@ -363,7 +816,7 @@ app.post('/api/user/boards/:boardId/games', authenticateToken, async (req, res) 
   }
 });
 
-app.delete('/api/user/games/:gameId', authenticateToken, async (req, res) => {
+app.delete('/api/user/games/:gameId', authenticateToken, validateIdParam('gameId'), async (req, res) => {
   const client = await pool.connect();
   try {
     const { gameId } = req.params;
@@ -387,7 +840,7 @@ app.delete('/api/user/games/:gameId', authenticateToken, async (req, res) => {
   }
 });
 
-app.put('/api/user/games/:gameId', authenticateToken, async (req, res) => {
+app.put('/api/user/games/:gameId', authenticateToken, validateIdParam('gameId'), sanitizeInput, async (req, res) => {
   const client = await pool.connect();
   try {
     const { gameId } = req.params;
@@ -412,10 +865,26 @@ app.put('/api/user/games/:gameId', authenticateToken, async (req, res) => {
       values
     );
 
-    // ЛОГИРОВАНИЕ
+    // ЛОГИРОВАНИЕ И УВЕДОМЛЕНИЯ
     if (oldGameData && oldGameData.board !== board) {
       if (board === 'completed') {
         await logActivity(req.user.id, 'complete_game', { gameName: oldGameData.name });
+        
+        // Уведомляем друзей о завершении игры
+        const friendsResult = await client.query(
+          'SELECT friend_id FROM friendships WHERE user_id = $1 AND status = $2',
+          [req.user.id, 'accepted']
+        );
+        
+        for (const friend of friendsResult.rows) {
+          await createNotification(
+            friend.friend_id,
+            req.user.id,
+            'game_completed',
+            `${req.user.username} завершил игру "${oldGameData.name}"`,
+            gameId
+          );
+        }
       } else {
         await logActivity(req.user.id, 'move_game', { gameName: oldGameData.name, fromBoard: oldGameData.board, toBoard: board });
       }
@@ -431,7 +900,7 @@ app.put('/api/user/games/:gameId', authenticateToken, async (req, res) => {
 });
 
 // === DEEP REVIEW (С ИЗМЕНЕНИЯМИ ДЛЯ ЛОГИРОВАНИЯ) ===
-app.post('/api/games/:gameId/deep-review', authenticateToken, async (req, res) => {
+app.post('/api/games/:gameId/deep-review', authenticateToken, validateIdParam('gameId'), async (req, res) => {
   const client = await pool.connect();
   try {
     const { gameId } = req.params;
@@ -446,8 +915,25 @@ app.post('/api/games/:gameId/deep-review', authenticateToken, async (req, res) =
     if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Игра не найдена или не принадлежит вам' });
     }
-    // ЛОГИРОВАНИЕ
+    // ЛОГИРОВАНИЕ И УВЕДОМЛЕНИЯ
     await logActivity(req.user.id, 'add_review', { gameName: result.rows[0].name });
+    
+    // Уведомляем друзей о добавлении отзыва
+    const friendsResult = await client.query(
+      'SELECT friend_id FROM friendships WHERE user_id = $1 AND status = $2',
+      [req.user.id, 'accepted']
+    );
+    
+    for (const friend of friendsResult.rows) {
+      await createNotification(
+        friend.friend_id,
+        req.user.id,
+        'review_added',
+        `${req.user.username} добавил отзыв к игре "${result.rows[0].name}"`,
+        gameId
+      );
+    }
+    
     res.json({ message: 'Отзыв сохранен', game: result.rows[0] });
   } catch (error) {
     console.error('Ошибка сохранения отзыва:', error);
@@ -461,19 +947,45 @@ app.post('/api/games/:gameId/deep-review', authenticateToken, async (req, res) =
 app.get('/api/user/boards', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
+    const { tags } = req.query;
+    
+    // Построение WHERE условий
+    let whereConditions = ['g.user_id = $1'];
+    let queryParams = [req.user.id];
+    let paramCount = 1;
+
+    // Фильтр по тегам
+    if (tags) {
+      const tagIds = tags.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      if (tagIds.length > 0) {
+        paramCount++;
+        whereConditions.push(`g.id IN (
+          SELECT gt.game_id FROM game_tags gt 
+          WHERE gt.tag_id = ANY($${paramCount})
+        )`);
+        queryParams.push(tagIds);
+      }
+    }
+
     const result = await client.query(
       `SELECT g.*, 
         COALESCE(json_agg(
           json_build_object('user_id', r.user_id, 'emoji', r.emoji, 'username', u.username, 'avatar', u.avatar)
-        ) FILTER (WHERE r.id IS NOT NULL), '[]') as reactions
+        ) FILTER (WHERE r.id IS NOT NULL), '[]') as reactions,
+        COALESCE(json_agg(
+          json_build_object('id', t.id, 'name', t.name, 'color', t.color)
+        ) FILTER (WHERE t.id IS NOT NULL), '[]') as tags
        FROM games g
        LEFT JOIN reactions r ON g.id = r.game_id
        LEFT JOIN users u ON r.user_id = u.id
-       WHERE g.user_id = $1
+       LEFT JOIN game_tags gt ON g.id = gt.game_id
+       LEFT JOIN tags t ON gt.tag_id = t.id
+       WHERE ${whereConditions.join(' AND ')}
        GROUP BY g.id
        ORDER BY g.updated_at DESC, g.added_at DESC`,
-      [req.user.id]
+      queryParams
     );
+    
     const boards = { backlog: [], playing: [], completed: [], dropped: [] };
     result.rows.forEach(game => {
       const card = {
@@ -482,6 +994,7 @@ app.get('/api/user/boards', authenticateToken, async (req, res) => {
         hoursPlayed: game.hours_played, addedDate: game.added_at,
         reactions: game.reactions, videoId: game.video_id,
         deep_review_answers: game.deep_review_answers,
+        tags: game.tags
       };
       if (boards[game.board]) boards[game.board].push(card);
     });
@@ -494,7 +1007,643 @@ app.get('/api/user/boards', authenticateToken, async (req, res) => {
   }
 });
 
-app.delete('/api/games/:gameId/deep-review', authenticateToken, async (req, res) => {
+// === СТАТИСТИКА ИГР ===
+app.get('/api/user/statistics/games', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    // 1. Общая статистика
+    const generalStatsQuery = `
+      SELECT 
+        board,
+        COUNT(*) as count,
+        AVG(rating) as avg_rating,
+        SUM(hours_played) as total_hours
+      FROM games 
+      WHERE user_id = $1 
+      GROUP BY board
+    `;
+    const generalStatsResult = await client.query(generalStatsQuery, [req.user.id]);
+    
+    const generalStats = {
+      backlog: { count: 0, avgRating: 0, totalHours: 0 },
+      playing: { count: 0, avgRating: 0, totalHours: 0 },
+      completed: { count: 0, avgRating: 0, totalHours: 0 },
+      dropped: { count: 0, avgRating: 0, totalHours: 0 }
+    };
+    
+    generalStatsResult.rows.forEach(row => {
+      if (generalStats[row.board]) {
+        generalStats[row.board] = {
+          count: parseInt(row.count),
+          avgRating: row.avg_rating ? parseFloat(row.avg_rating).toFixed(1) : 0,
+          totalHours: parseInt(row.total_hours) || 0
+        };
+      }
+    });
+
+    // 2. Статистика по месяцам за последние 12 месяцев
+    const monthlyStatsQuery = `
+      SELECT 
+        DATE_TRUNC('month', added_at) as month,
+        COUNT(*) as added_count,
+        COUNT(CASE WHEN board = 'completed' THEN 1 END) as completed_count
+      FROM games 
+      WHERE user_id = $1 
+        AND added_at >= NOW() - INTERVAL '12 months'
+      GROUP BY DATE_TRUNC('month', added_at)
+      ORDER BY month
+    `;
+    const monthlyStatsResult = await client.query(monthlyStatsQuery, [req.user.id]);
+    
+    // Создаем массив для всех месяцев (даже если нет данных)
+    const monthlyStats = [];
+    const currentDate = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const monthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const monthKey = monthDate.toISOString().slice(0, 7); // YYYY-MM
+      
+      const monthData = monthlyStatsResult.rows.find(row => 
+        row.month.toISOString().slice(0, 7) === monthKey
+      );
+      
+      monthlyStats.push({
+        month: monthKey,
+        added: monthData ? parseInt(monthData.added_count) : 0,
+        completed: monthData ? parseInt(monthData.completed_count) : 0
+      });
+    }
+
+    // 3. Топ-5 жанров (если есть данные о жанрах)
+    // Пока что возвращаем пустой массив, так как жанры не сохраняются в текущей схеме
+    const topGenres = [];
+
+    // 4. Топ-10 самых высоко оцененных игр
+    const topRatedQuery = `
+      SELECT 
+        id, name, cover, rating, board, hours_played, added_at
+      FROM games 
+      WHERE user_id = $1 
+        AND rating IS NOT NULL 
+        AND rating > 0
+      ORDER BY rating DESC, hours_played DESC
+      LIMIT 10
+    `;
+    const topRatedResult = await client.query(topRatedQuery, [req.user.id]);
+    
+    const topRatedGames = topRatedResult.rows.map(game => ({
+      id: game.id.toString(),
+      name: game.name,
+      cover: game.cover,
+      rating: game.rating,
+      board: game.board,
+      hoursPlayed: game.hours_played,
+      addedDate: game.added_at
+    }));
+
+    // 5. Дополнительная статистика
+    const additionalStatsQuery = `
+      SELECT 
+        COUNT(*) as total_games,
+        COUNT(CASE WHEN rating IS NOT NULL THEN 1 END) as rated_games,
+        AVG(rating) as overall_avg_rating,
+        SUM(hours_played) as total_hours_all,
+        MIN(added_at) as first_game_date,
+        MAX(added_at) as last_game_date
+      FROM games 
+      WHERE user_id = $1
+    `;
+    const additionalStatsResult = await client.query(additionalStatsQuery, [req.user.id]);
+    const additionalStats = additionalStatsResult.rows[0];
+
+    // Формируем итоговый ответ
+    const statistics = {
+      general: generalStats,
+      monthly: monthlyStats,
+      topGenres: topGenres,
+      topRatedGames: topRatedGames,
+      summary: {
+        totalGames: parseInt(additionalStats.total_games),
+        ratedGames: parseInt(additionalStats.rated_games),
+        overallAvgRating: additionalStats.overall_avg_rating ? 
+          parseFloat(additionalStats.overall_avg_rating).toFixed(1) : 0,
+        totalHours: parseInt(additionalStats.total_hours_all) || 0,
+        firstGameDate: additionalStats.first_game_date,
+        lastGameDate: additionalStats.last_game_date
+      }
+    };
+
+    res.json(statistics);
+
+  } catch (error) {
+    console.error('Ошибка получения статистики игр:', error);
+    res.status(500).json({ error: 'Ошибка получения статистики' });
+  } finally {
+    client.release();
+  }
+});
+
+// === ЭКСПОРТ ДАННЫХ ===
+app.get('/api/export/games', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { format = 'json' } = req.query;
+    const currentDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const filename = `gametracker_games_${currentDate}`;
+    
+    // Получаем все игры пользователя
+    const result = await client.query(
+      `SELECT 
+        g.*,
+        COALESCE(json_agg(
+          json_build_object('user_id', r.user_id, 'emoji', r.emoji, 'username', u.username, 'avatar', u.avatar)
+        ) FILTER (WHERE r.id IS NOT NULL), '[]') as reactions
+       FROM games g
+       LEFT JOIN reactions r ON g.id = r.game_id
+       LEFT JOIN users u ON r.user_id = u.id
+       WHERE g.user_id = $1
+       GROUP BY g.id
+       ORDER BY g.added_at DESC`,
+      [req.user.id]
+    );
+
+    if (format === 'csv') {
+      // CSV экспорт - основные поля
+      const csvData = result.rows.map(game => ({
+        'ID': game.id,
+        'Game ID': game.game_id,
+        'Название': game.name,
+        'Доска': game.board,
+        'Рейтинг': game.rating || '',
+        'Заметки': game.notes || '',
+        'Часы игры': game.hours_played || 0,
+        'Дата добавления': game.added_at,
+        'Дата обновления': game.updated_at,
+        'Обложка': game.cover || '',
+        'Видео ID': game.video_id || '',
+        'Есть отзыв': game.deep_review_answers ? 'Да' : 'Нет'
+      }));
+
+      const parser = new Parser();
+      const csv = parser.parse(csvData);
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+      res.send(csv);
+    } else {
+      // JSON экспорт - полная структура
+      const jsonData = {
+        exportDate: new Date().toISOString(),
+        totalGames: result.rows.length,
+        games: result.rows.map(game => ({
+          id: game.id.toString(),
+          gameId: game.game_id,
+          name: game.name,
+          cover: game.cover,
+          board: game.board,
+          rating: game.rating,
+          notes: game.notes,
+          hoursPlayed: game.hours_played,
+          addedDate: game.added_at,
+          updatedDate: game.updated_at,
+          videoId: game.video_id,
+          deepReviewAnswers: game.deep_review_answers,
+          reactions: game.reactions
+        }))
+      };
+
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}.json"`);
+      res.json(jsonData);
+    }
+
+  } catch (error) {
+    console.error('Ошибка экспорта игр:', error);
+    res.status(500).json({ error: 'Ошибка экспорта игр' });
+  } finally {
+    client.release();
+  }
+});
+
+app.get('/api/export/media', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { format = 'json' } = req.query;
+    const currentDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const filename = `gametracker_media_${currentDate}`;
+    
+    // Получаем все медиа пользователя
+    const result = await client.query(
+      `SELECT 
+        m.*,
+        COALESCE(json_agg(
+          json_build_object('user_id', r.user_id, 'emoji', r.emoji, 'username', u.username, 'avatar', u.avatar)
+        ) FILTER (WHERE r.id IS NOT NULL), '[]') as reactions
+       FROM media_items m
+       LEFT JOIN media_reactions r ON m.id = r.media_id
+       LEFT JOIN users u ON r.user_id = u.id
+       WHERE m.user_id = $1
+       GROUP BY m.id
+       ORDER BY m.added_at DESC`,
+      [req.user.id]
+    );
+
+    if (format === 'csv') {
+      // CSV экспорт - основные поля
+      const csvData = result.rows.map(media => ({
+        'ID': media.id,
+        'TMDB ID': media.tmdb_id,
+        'Тип': media.media_type,
+        'Название': media.title,
+        'Доска': media.board,
+        'Рейтинг': media.rating || '',
+        'Отзыв': media.review || '',
+        'Просмотрено сезонов': media.seasons_watched || 0,
+        'Просмотрено серий': media.episodes_watched || 0,
+        'Дата добавления': media.added_at,
+        'Дата обновления': media.updated_at,
+        'Постер': media.poster || ''
+      }));
+
+      const parser = new Parser();
+      const csv = parser.parse(csvData);
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+      res.send(csv);
+    } else {
+      // JSON экспорт - полная структура
+      const jsonData = {
+        exportDate: new Date().toISOString(),
+        totalMedia: result.rows.length,
+        media: result.rows.map(media => ({
+          id: media.id.toString(),
+          tmdbId: media.tmdb_id,
+          mediaType: media.media_type,
+          title: media.title,
+          poster: media.poster,
+          board: media.board,
+          rating: media.rating,
+          review: media.review,
+          seasonsWatched: media.seasons_watched,
+          episodesWatched: media.episodes_watched,
+          addedDate: media.added_at,
+          updatedDate: media.updated_at,
+          reactions: media.reactions
+        }))
+      };
+
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}.json"`);
+      res.json(jsonData);
+    }
+
+  } catch (error) {
+    console.error('Ошибка экспорта медиа:', error);
+    res.status(500).json({ error: 'Ошибка экспорта медиа' });
+  } finally {
+    client.release();
+  }
+});
+
+// === УПРАВЛЕНИЕ ТЕГАМИ ===
+// Получить все теги пользователя
+app.get('/api/tags', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'SELECT * FROM tags WHERE user_id = $1 ORDER BY name ASC',
+      [req.user.id]
+    );
+    res.json({ tags: result.rows });
+  } catch (error) {
+    console.error('Ошибка получения тегов:', error);
+    res.status(500).json({ error: 'Ошибка получения тегов' });
+  } finally {
+    client.release();
+  }
+});
+
+// Создать новый тег
+app.post('/api/tags', authenticateToken, validateTag, sanitizeInput, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { name, color = '#3B82F6' } = req.body;
+    const result = await client.query(
+      'INSERT INTO tags (user_id, name, color) VALUES ($1, $2, $3) RETURNING *',
+      [req.user.id, name, color]
+    );
+    res.status(201).json({ message: 'Тег создан', tag: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'Тег с таким названием уже существует' });
+    }
+    console.error('Ошибка создания тега:', error);
+    res.status(500).json({ error: 'Ошибка создания тега' });
+  } finally {
+    client.release();
+  }
+});
+
+// Обновить тег
+app.put('/api/tags/:id', authenticateToken, validateIdParam('id'), validateTag, sanitizeInput, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const { name, color } = req.body;
+    
+    const result = await client.query(
+      'UPDATE tags SET name = $1, color = $2 WHERE id = $3 AND user_id = $4 RETURNING *',
+      [name, color, id, req.user.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Тег не найден' });
+    }
+    
+    res.json({ message: 'Тег обновлен', tag: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'Тег с таким названием уже существует' });
+    }
+    console.error('Ошибка обновления тега:', error);
+    res.status(500).json({ error: 'Ошибка обновления тега' });
+  } finally {
+    client.release();
+  }
+});
+
+// Удалить тег
+app.delete('/api/tags/:id', authenticateToken, validateIdParam('id'), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    
+    const result = await client.query(
+      'DELETE FROM tags WHERE id = $1 AND user_id = $2 RETURNING *',
+      [id, req.user.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Тег не найден' });
+    }
+    
+    res.json({ message: 'Тег удален' });
+  } catch (error) {
+    console.error('Ошибка удаления тега:', error);
+    res.status(500).json({ error: 'Ошибка удаления тега' });
+  } finally {
+    client.release();
+  }
+});
+
+// === ПРИВЯЗКА ТЕГОВ К ИГРАМ ===
+// Прикрепить тег к игре
+app.post('/api/games/:gameId/tags/:tagId', authenticateToken, validateIdParam('gameId'), validateIdParam('tagId'), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { gameId, tagId } = req.params;
+    
+    // Проверяем, что игра принадлежит пользователю
+    const gameCheck = await client.query(
+      'SELECT id FROM games WHERE id = $1 AND user_id = $2',
+      [gameId, req.user.id]
+    );
+    if (gameCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Игра не найдена' });
+    }
+    
+    // Проверяем, что тег принадлежит пользователю
+    const tagCheck = await client.query(
+      'SELECT id FROM tags WHERE id = $1 AND user_id = $2',
+      [tagId, req.user.id]
+    );
+    if (tagCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Тег не найден' });
+    }
+    
+    // Привязываем тег к игре
+    await client.query(
+      'INSERT INTO game_tags (game_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [gameId, tagId]
+    );
+    
+    res.json({ message: 'Тег прикреплен к игре' });
+  } catch (error) {
+    console.error('Ошибка привязки тега к игре:', error);
+    res.status(500).json({ error: 'Ошибка привязки тега' });
+  } finally {
+    client.release();
+  }
+});
+
+// Открепить тег от игры
+app.delete('/api/games/:gameId/tags/:tagId', authenticateToken, validateIdParam('gameId'), validateIdParam('tagId'), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { gameId, tagId } = req.params;
+    
+    const result = await client.query(
+      'DELETE FROM game_tags WHERE game_id = $1 AND tag_id = $2',
+      [gameId, tagId]
+    );
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Связь не найдена' });
+    }
+    
+    res.json({ message: 'Тег откреплен от игры' });
+  } catch (error) {
+    console.error('Ошибка отвязки тега от игры:', error);
+    res.status(500).json({ error: 'Ошибка отвязки тега' });
+  } finally {
+    client.release();
+  }
+});
+
+// === ПРИВЯЗКА ТЕГОВ К МЕДИА ===
+// Прикрепить тег к медиа
+app.post('/api/media/:mediaId/tags/:tagId', authenticateToken, validateIdParam('mediaId'), validateIdParam('tagId'), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { mediaId, tagId } = req.params;
+    
+    // Проверяем, что медиа принадлежит пользователю
+    const mediaCheck = await client.query(
+      'SELECT id FROM media_items WHERE id = $1 AND user_id = $2',
+      [mediaId, req.user.id]
+    );
+    if (mediaCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Медиа не найдено' });
+    }
+    
+    // Проверяем, что тег принадлежит пользователю
+    const tagCheck = await client.query(
+      'SELECT id FROM tags WHERE id = $1 AND user_id = $2',
+      [tagId, req.user.id]
+    );
+    if (tagCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Тег не найден' });
+    }
+    
+    // Привязываем тег к медиа
+    await client.query(
+      'INSERT INTO media_tags (media_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [mediaId, tagId]
+    );
+    
+    res.json({ message: 'Тег прикреплен к медиа' });
+  } catch (error) {
+    console.error('Ошибка привязки тега к медиа:', error);
+    res.status(500).json({ error: 'Ошибка привязки тега' });
+  } finally {
+    client.release();
+  }
+});
+
+// Открепить тег от медиа
+app.delete('/api/media/:mediaId/tags/:tagId', authenticateToken, validateIdParam('mediaId'), validateIdParam('tagId'), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { mediaId, tagId } = req.params;
+    
+    const result = await client.query(
+      'DELETE FROM media_tags WHERE media_id = $1 AND tag_id = $2',
+      [mediaId, tagId]
+    );
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Связь не найдена' });
+    }
+    
+    res.json({ message: 'Тег откреплен от медиа' });
+  } catch (error) {
+    console.error('Ошибка отвязки тега от медиа:', error);
+    res.status(500).json({ error: 'Ошибка отвязки тега' });
+  } finally {
+    client.release();
+  }
+});
+
+// === ПОЛУЧЕНИЕ КОНТЕНТА ПО ТЕГАМ ===
+// Получить все игры с определенным тегом
+app.get('/api/user/games/by-tag/:tagId', authenticateToken, validateIdParam('tagId'), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { tagId } = req.params;
+    
+    // Проверяем, что тег принадлежит пользователю
+    const tagCheck = await client.query(
+      'SELECT id, name, color FROM tags WHERE id = $1 AND user_id = $2',
+      [tagId, req.user.id]
+    );
+    if (tagCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Тег не найден' });
+    }
+    
+    const result = await client.query(
+      `SELECT g.*, 
+        COALESCE(json_agg(
+          json_build_object('user_id', r.user_id, 'emoji', r.emoji, 'username', u.username, 'avatar', u.avatar)
+        ) FILTER (WHERE r.id IS NOT NULL), '[]') as reactions
+       FROM games g
+       JOIN game_tags gt ON g.id = gt.game_id
+       LEFT JOIN reactions r ON g.id = r.game_id
+       LEFT JOIN users u ON r.user_id = u.id
+       WHERE g.user_id = $1 AND gt.tag_id = $2
+       GROUP BY g.id
+       ORDER BY g.updated_at DESC, g.added_at DESC`,
+      [req.user.id, tagId]
+    );
+    
+    const games = result.rows.map(game => ({
+      id: game.id.toString(),
+      gameId: game.game_id,
+      name: game.name,
+      cover: game.cover,
+      board: game.board,
+      rating: game.rating,
+      notes: game.notes,
+      hoursPlayed: game.hours_played,
+      addedDate: game.added_at,
+      updatedDate: game.updated_at,
+      videoId: game.video_id,
+      deepReviewAnswers: game.deep_review_answers,
+      reactions: game.reactions
+    }));
+    
+    res.json({ 
+      tag: tagCheck.rows[0],
+      games,
+      total: games.length
+    });
+  } catch (error) {
+    console.error('Ошибка получения игр по тегу:', error);
+    res.status(500).json({ error: 'Ошибка получения игр' });
+  } finally {
+    client.release();
+  }
+});
+
+// Получить все медиа с определенным тегом
+app.get('/api/user/media/by-tag/:tagId', authenticateToken, validateIdParam('tagId'), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { tagId } = req.params;
+    
+    // Проверяем, что тег принадлежит пользователю
+    const tagCheck = await client.query(
+      'SELECT id, name, color FROM tags WHERE id = $1 AND user_id = $2',
+      [tagId, req.user.id]
+    );
+    if (tagCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Тег не найден' });
+    }
+    
+    const result = await client.query(
+      `SELECT m.*, 
+        COALESCE(json_agg(
+          json_build_object('user_id', r.user_id, 'emoji', r.emoji, 'username', u.username, 'avatar', u.avatar)
+        ) FILTER (WHERE r.id IS NOT NULL), '[]') as reactions
+       FROM media_items m
+       JOIN media_tags mt ON m.id = mt.media_id
+       LEFT JOIN media_reactions r ON m.id = r.media_id
+       LEFT JOIN users u ON r.user_id = u.id
+       WHERE m.user_id = $1 AND mt.tag_id = $2
+       GROUP BY m.id
+       ORDER BY m.updated_at DESC, m.added_at DESC`,
+      [req.user.id, tagId]
+    );
+    
+    const media = result.rows.map(item => ({
+      id: item.id.toString(),
+      tmdbId: item.tmdb_id,
+      mediaType: item.media_type,
+      title: item.title,
+      poster: item.poster,
+      board: item.board,
+      rating: item.rating,
+      review: item.review,
+      seasonsWatched: item.seasons_watched,
+      episodesWatched: item.episodes_watched,
+      addedDate: item.added_at,
+      updatedDate: item.updated_at,
+      reactions: item.reactions
+    }));
+    
+    res.json({ 
+      tag: tagCheck.rows[0],
+      media,
+      total: media.length
+    });
+  } catch (error) {
+    console.error('Ошибка получения медиа по тегу:', error);
+    res.status(500).json({ error: 'Ошибка получения медиа' });
+  } finally {
+    client.release();
+  }
+});
+
+app.delete('/api/games/:gameId/deep-review', authenticateToken, validateIdParam('gameId'), async (req, res) => {
   const client = await pool.connect();
   try {
     const { gameId } = req.params;
@@ -514,7 +1663,7 @@ app.delete('/api/games/:gameId/deep-review', authenticateToken, async (req, res)
   }
 });
 
-app.post('/api/games/:gameId/reactions', authenticateToken, async (req, res) => {
+app.post('/api/games/:gameId/reactions', authenticateToken, validateIdParam('gameId'), validateReaction, async (req, res) => {
   const client = await pool.connect();
   try {
     const { gameId } = req.params;
@@ -533,7 +1682,7 @@ app.post('/api/games/:gameId/reactions', authenticateToken, async (req, res) => 
 });
 
 // === TMDB PROXY AND MEDIA ENDPOINTS ===
-app.get('/api/media/search', authenticateToken, async (req, res) => {
+app.get('/api/media/search', searchLimiter, authenticateToken, async (req, res) => {
   try {
     const { q, type } = req.query; // type: 'movie' | 'tv'
     if (!TMDB_API_KEY) return res.status(500).json({ error: 'TMDB_API_KEY not configured' });
@@ -555,6 +1704,130 @@ app.get('/api/media/search', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('TMDB search error:', error.message);
     res.status(500).json({ error: 'Ошибка поиска' });
+  }
+});
+
+// === ПОИСК ПО СОБСТВЕННЫМ МЕДИА ===
+app.get('/api/user/media/search', searchLimiter, authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { q, mediaType, board, minRating, maxRating, offset = 0 } = req.query;
+    
+    if (!q || q.length < 2) {
+      return res.status(400).json({ error: 'Минимум 2 символа для поиска' });
+    }
+
+    // Построение WHERE условий
+    let whereConditions = ['m.user_id = $1'];
+    let queryParams = [req.user.id];
+    let paramCount = 1;
+
+    // Поиск по названию и отзыву
+    paramCount++;
+    whereConditions.push(`(m.title ILIKE $${paramCount} OR m.review ILIKE $${paramCount})`);
+    queryParams.push(`%${q}%`);
+
+    // Фильтр по типу медиа
+    if (mediaType && ['movie', 'tv'].includes(mediaType)) {
+      paramCount++;
+      whereConditions.push(`m.media_type = $${paramCount}`);
+      queryParams.push(mediaType);
+    }
+
+    // Фильтр по доске
+    if (board && ['wishlist', 'watched'].includes(board)) {
+      paramCount++;
+      whereConditions.push(`m.board = $${paramCount}`);
+      queryParams.push(board);
+    }
+
+    // Фильтр по рейтингу
+    if (minRating && !isNaN(minRating)) {
+      paramCount++;
+      whereConditions.push(`m.rating >= $${paramCount}`);
+      queryParams.push(parseInt(minRating));
+    }
+
+    if (maxRating && !isNaN(maxRating)) {
+      paramCount++;
+      whereConditions.push(`m.rating <= $${paramCount}`);
+      queryParams.push(parseInt(maxRating));
+    }
+
+    // Валидация offset
+    const offsetValue = parseInt(offset) || 0;
+    if (offsetValue < 0) {
+      return res.status(400).json({ error: 'Offset не может быть отрицательным' });
+    }
+
+    // SQL запрос с сортировкой по релевантности
+    const query = `
+      SELECT m.*, 
+        COALESCE(json_agg(
+          json_build_object('user_id', r.user_id, 'emoji', r.emoji, 'username', u.username, 'avatar', u.avatar)
+        ) FILTER (WHERE r.id IS NOT NULL), '[]') as reactions,
+        CASE 
+          WHEN m.title ILIKE $${paramCount + 1} THEN 3
+          WHEN m.title ILIKE $${paramCount + 2} THEN 2
+          WHEN m.review ILIKE $${paramCount + 1} THEN 1
+          ELSE 0
+        END as relevance_score
+      FROM media_items m
+      LEFT JOIN media_reactions r ON m.id = r.media_id
+      LEFT JOIN users u ON r.user_id = u.id
+      WHERE ${whereConditions.join(' AND ')}
+      GROUP BY m.id
+      ORDER BY relevance_score DESC, m.updated_at DESC, m.added_at DESC
+      LIMIT 20 OFFSET $${paramCount + 3}
+    `;
+
+    // Добавляем параметры для точного совпадения и offset
+    queryParams.push(q); // Точное совпадение названия
+    queryParams.push(`${q}%`); // Начинается с поискового запроса
+    queryParams.push(offsetValue); // Offset для пагинации
+
+    const result = await client.query(query, queryParams);
+    
+    const media = result.rows.map(item => ({
+      id: item.id.toString(),
+      tmdbId: item.tmdb_id,
+      mediaType: item.media_type,
+      title: item.title,
+      poster: item.poster,
+      board: item.board,
+      rating: item.rating,
+      review: item.review,
+      seasonsWatched: item.seasons_watched,
+      episodesWatched: item.episodes_watched,
+      addedDate: item.added_at,
+      updatedDate: item.updated_at,
+      reactions: item.reactions,
+      relevanceScore: item.relevance_score
+    }));
+
+    // Получаем общее количество результатов для пагинации
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM media_items m
+      WHERE ${whereConditions.join(' AND ')}
+    `;
+    const countResult = await client.query(countQuery, queryParams.slice(0, -3)); // Убираем параметры для точного совпадения и offset
+    const total = parseInt(countResult.rows[0].total);
+
+    res.json({ 
+      media,
+      total,
+      offset: offsetValue,
+      hasMore: offsetValue + media.length < total,
+      query: q,
+      filters: { mediaType, board, minRating, maxRating }
+    });
+
+  } catch (error) {
+    console.error('Ошибка поиска по медиа:', error);
+    res.status(500).json({ error: 'Ошибка поиска по медиа' });
+  } finally {
+    client.release();
   }
 });
 
@@ -584,17 +1857,44 @@ app.post('/api/user/media', authenticateToken, async (req, res) => {
 app.get('/api/user/media/boards', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
+    const { tags } = req.query;
+    
+    // Построение WHERE условий
+    let whereConditions = ['m.user_id = $1'];
+    let queryParams = [req.user.id];
+    let paramCount = 1;
+
+    // Фильтр по тегам
+    if (tags) {
+      const tagIds = tags.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      if (tagIds.length > 0) {
+        paramCount++;
+        whereConditions.push(`m.id IN (
+          SELECT mt.media_id FROM media_tags mt 
+          WHERE mt.tag_id = ANY($${paramCount})
+        )`);
+        queryParams.push(tagIds);
+      }
+    }
+
     const result = await client.query(
-      `SELECT m.*, COALESCE(json_agg(json_build_object('user_id', r.user_id, 'emoji', r.emoji, 'username', u.username, 'avatar', u.avatar))
-          FILTER (WHERE r.id IS NOT NULL), '[]') as reactions
+      `SELECT m.*, 
+        COALESCE(json_agg(json_build_object('user_id', r.user_id, 'emoji', r.emoji, 'username', u.username, 'avatar', u.avatar))
+          FILTER (WHERE r.id IS NOT NULL), '[]') as reactions,
+        COALESCE(json_agg(
+          json_build_object('id', t.id, 'name', t.name, 'color', t.color)
+        ) FILTER (WHERE t.id IS NOT NULL), '[]') as tags
        FROM media_items m
        LEFT JOIN media_reactions r ON r.media_id = m.id
        LEFT JOIN users u ON u.id = r.user_id
-       WHERE m.user_id = $1
+       LEFT JOIN media_tags mt ON m.id = mt.media_id
+       LEFT JOIN tags t ON mt.tag_id = t.id
+       WHERE ${whereConditions.join(' AND ')}
        GROUP BY m.id
        ORDER BY m.updated_at DESC, m.added_at DESC`,
-      [req.user.id]
+      queryParams
     );
+    
     const boards = {
       movies: { wishlist: [], watched: [] },
       tv: { wishlist: [], watched: [] }
@@ -604,7 +1904,7 @@ app.get('/api/user/media/boards', authenticateToken, async (req, res) => {
         id: row.id.toString(), tmdbId: row.tmdb_id, mediaType: row.media_type,
         title: row.title, poster: row.poster, rating: row.rating, review: row.review,
         seasonsWatched: row.seasons_watched, episodesWatched: row.episodes_watched,
-        addedDate: row.added_at, reactions: row.reactions
+        addedDate: row.added_at, reactions: row.reactions, tags: row.tags
       };
       const scope = row.media_type === 'tv' ? boards.tv : boards.movies;
       if (scope[row.board]) scope[row.board].push(card);
@@ -618,7 +1918,7 @@ app.get('/api/user/media/boards', authenticateToken, async (req, res) => {
   }
 });
 
-app.put('/api/user/media/:id', authenticateToken, async (req, res) => {
+app.put('/api/user/media/:id', authenticateToken, validateIdParam('id'), sanitizeInput, async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
@@ -651,7 +1951,7 @@ app.put('/api/user/media/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.delete('/api/user/media/:id', authenticateToken, async (req, res) => {
+app.delete('/api/user/media/:id', authenticateToken, validateIdParam('id'), async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
@@ -667,7 +1967,7 @@ app.delete('/api/user/media/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/media/:id/reactions', authenticateToken, async (req, res) => {
+app.post('/api/media/:id/reactions', authenticateToken, validateIdParam('id'), validateReaction, async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params; // media id
@@ -714,10 +2014,38 @@ app.post('/api/friends/request', authenticateToken, async (req, res) => {
     try {
         const { friendId } = req.body;
         if (req.user.id == friendId) return res.status(400).json({ error: 'Нельзя добавить себя в друзья' });
+        
+        // Проверяем настройки приватности получателя
+        const userResult = await client.query(
+            'SELECT allow_friend_requests, username FROM users WHERE id = $1',
+            [friendId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Пользователь не найден' });
+        }
+        
+        const { allow_friend_requests, username } = userResult.rows[0];
+        
+        if (!allow_friend_requests) {
+            return res.status(403).json({ 
+                error: `Пользователь ${username} не принимает заявки в друзья` 
+            });
+        }
+        
         await client.query(
             "INSERT INTO friendships (user_id, friend_id, status) VALUES ($1, $2, 'pending') ON CONFLICT (user_id, friend_id) DO NOTHING",
             [req.user.id, friendId]
         );
+        
+        // Создаем уведомление для получателя запроса
+        await createNotification(
+            friendId, 
+            req.user.id, 
+            'friend_request', 
+            `${req.user.username} отправил вам запрос в друзья`
+        );
+        
         res.json({ message: 'Запрос в друзья отправлен' });
     } catch (error) {
         console.error('Ошибка отправки запроса:', error);
@@ -733,6 +2061,15 @@ app.post('/api/friends/accept', authenticateToken, async (req, res) => {
         const { friendId } = req.body;
         await client.query("UPDATE friendships SET status = 'accepted' WHERE user_id = $1 AND friend_id = $2 AND status = 'pending'", [friendId, req.user.id]);
         await client.query("INSERT INTO friendships (user_id, friend_id, status) VALUES ($1, $2, 'accepted') ON CONFLICT (user_id, friend_id) DO UPDATE SET status = 'accepted'", [req.user.id, friendId]);
+        
+        // Создаем уведомление для отправителя запроса
+        await createNotification(
+            friendId, 
+            req.user.id, 
+            'friend_accepted', 
+            `${req.user.username} принял ваш запрос в друзья`
+        );
+        
         res.json({ message: 'Друг добавлен' });
     } catch (error) {
         console.error('Ошибка принятия запроса:', error);
@@ -756,7 +2093,7 @@ app.post('/api/friends/reject', authenticateToken, async (req, res) => {
     }
 });
 
-app.put('/api/friends/:friendId/nickname', authenticateToken, async (req, res) => {
+app.put('/api/friends/:friendId/nickname', authenticateToken, validateIdParam('friendId'), sanitizeInput, async (req, res) => {
   const client = await pool.connect();
   try {
     const { friendId } = req.params;
@@ -771,7 +2108,7 @@ app.put('/api/friends/:friendId/nickname', authenticateToken, async (req, res) =
   }
 });
 
-app.delete('/api/friends/:friendId', authenticateToken, async (req, res) => {
+app.delete('/api/friends/:friendId', authenticateToken, validateIdParam('friendId'), async (req, res) => {
   const client = await pool.connect();
   try {
     const { friendId } = req.params;
@@ -800,10 +2137,39 @@ app.get('/api/friends', authenticateToken, async (req, res) => {
     }
 });
 
-app.get('/api/user/:userId/boards', authenticateToken, async (req, res) => {
+app.get('/api/user/:userId/boards', authenticateToken, validateIdParam('userId'), async (req, res) => {
   const client = await pool.connect();
   try {
     const { userId } = req.params;
+    
+    // Проверка приватности профиля
+    const userResult = await client.query(
+      'SELECT is_profile_public FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+    
+    const isProfilePublic = userResult.rows[0].is_profile_public;
+    
+    // Если профиль приватный, проверяем дружбу
+    if (!isProfilePublic) {
+      if (parseInt(userId) !== req.user.id) {
+        const friendshipResult = await client.query(
+          'SELECT status FROM friendships WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)',
+          [req.user.id, userId]
+        );
+        
+        if (friendshipResult.rows.length === 0 || friendshipResult.rows[0].status !== 'accepted') {
+          return res.status(403).json({ 
+            error: 'Профиль пользователя приватный. Доступ разрешен только друзьям.' 
+          });
+        }
+      }
+    }
+    
     const result = await client.query(
       `SELECT g.*, u.username, u.avatar, COALESCE(json_agg(json_build_object('user_id', r.user_id, 'emoji', r.emoji, 'username', ru.username, 'avatar', ru.avatar)) FILTER (WHERE r.id IS NOT NULL), '[]') as reactions
        FROM games g JOIN users u ON g.user_id = u.id LEFT JOIN reactions r ON g.id = r.game_id LEFT JOIN users ru ON r.user_id = ru.id
@@ -844,10 +2210,39 @@ app.get('/api/user/:userId/boards', authenticateToken, async (req, res) => {
 });
 
 // MEDIA: view another user's boards (movies/tv)
-app.get('/api/user/:userId/media/boards', authenticateToken, async (req, res) => {
+app.get('/api/user/:userId/media/boards', authenticateToken, validateIdParam('userId'), async (req, res) => {
   const client = await pool.connect();
   try {
     const { userId } = req.params;
+    
+    // Проверка приватности профиля
+    const userResult = await client.query(
+      'SELECT is_profile_public FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+    
+    const isProfilePublic = userResult.rows[0].is_profile_public;
+    
+    // Если профиль приватный, проверяем дружбу
+    if (!isProfilePublic) {
+      if (parseInt(userId) !== req.user.id) {
+        const friendshipResult = await client.query(
+          'SELECT status FROM friendships WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)',
+          [req.user.id, userId]
+        );
+        
+        if (friendshipResult.rows.length === 0 || friendshipResult.rows[0].status !== 'accepted') {
+          return res.status(403).json({ 
+            error: 'Профиль пользователя приватный. Доступ разрешен только друзьям.' 
+          });
+        }
+      }
+    }
+    
     const result = await client.query(
       `SELECT m.*, u.username, u.avatar,
               COALESCE(json_agg(json_build_object('user_id', r.user_id, 'emoji', r.emoji, 'username', ru.username, 'avatar', ru.avatar))
@@ -934,8 +2329,10 @@ app.get('/api/friends/activity', authenticateToken, async (req, res) => {
         }
         const result = await client.query(
           `SELECT a.id, a.action_type, a.details, a.created_at, u.username
-           FROM activities a JOIN users u ON u.id = a.user_id
-           WHERE a.user_id IN (SELECT friend_id FROM friendships WHERE user_id = $1 AND status = 'accepted')${whereMedia}
+           FROM activities a 
+           JOIN users u ON u.id = a.user_id
+           JOIN friendships f ON f.friend_id = a.user_id
+           WHERE f.user_id = $1 AND f.status = 'accepted' AND u.show_activity = true${whereMedia}
            ORDER BY a.created_at DESC LIMIT 12;`,
           [req.user.id]
         );
@@ -985,6 +2382,83 @@ app.get('/api/game/highscores', authenticateToken, async (req, res) => {
     } finally {
         client.release();
     }
+});
+
+// API эндпоинты для уведомлений
+app.get('/api/notifications', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `SELECT n.*, u.username as from_username, u.avatar as from_user_avatar
+       FROM notifications n
+       LEFT JOIN users u ON n.from_user_id = u.id
+       WHERE n.user_id = $1
+       ORDER BY n.created_at DESC
+       LIMIT 50`,
+      [req.user.id]
+    );
+    res.json({ notifications: result.rows });
+  } catch (error) {
+    console.error('Ошибка загрузки уведомлений:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+app.get('/api/notifications/unread-count', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'SELECT COUNT(*) as count FROM notifications WHERE user_id = $1 AND is_read = false',
+      [req.user.id]
+    );
+    res.json({ count: parseInt(result.rows[0].count) });
+  } catch (error) {
+    console.error('Ошибка загрузки счетчика уведомлений:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+app.put('/api/notifications/:id/read', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const result = await client.query(
+      'UPDATE notifications SET is_read = true WHERE id = $1 AND user_id = $2 RETURNING *',
+      [id, req.user.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Уведомление не найдено' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Ошибка отметки уведомления:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+app.put('/api/notifications/mark-all-read', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false',
+      [req.user.id]
+    );
+    
+    res.json({ success: true, updated: result.rowCount });
+  } catch (error) {
+    console.error('Ошибка отметки всех уведомлений:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
 });
 
 app.listen(PORT, () => {
