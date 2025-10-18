@@ -20,6 +20,18 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// Временный CORS для отладки
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
 // Security middleware
 app.use(helmet());
 
@@ -30,18 +42,26 @@ app.use(compression());
 const allowedOrigins = [
   'http://localhost:3000',
   'https://localhost:3000',
-  // Добавьте ваш production URL здесь
-  // 'https://your-production-domain.com'
+  'https://gametracker-frontend.vercel.app',
+  'https://gametracker-frontend-git-main-mrglebgleb.vercel.app'
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
+    console.log('CORS request from origin:', origin);
+    console.log('Allowed origins:', allowedOrigins);
+    
     // Разрешить запросы без origin (например, мобильные приложения, Postman)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('No origin, allowing request');
+      return callback(null, true);
+    }
     
     if (allowedOrigins.indexOf(origin) !== -1) {
+      console.log('Origin allowed:', origin);
       callback(null, true);
     } else {
+      console.log('CORS blocked origin:', origin);
       callback(new Error('Не разрешено CORS политикой'));
     }
   },
