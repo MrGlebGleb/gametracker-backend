@@ -15,9 +15,33 @@ const { Parser } = require('json2csv');
 
 const app = express();
 
+// Trust proxy for Railway deployment
+app.set('trust proxy', 1);
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Database test endpoint
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query('SELECT NOW() as current_time');
+    client.release();
+    res.json({ 
+      status: 'OK', 
+      database: 'Connected',
+      time: result.rows[0].current_time 
+    });
+  } catch (error) {
+    console.error('Database test failed:', error);
+    res.status(500).json({ 
+      status: 'Error', 
+      database: 'Failed',
+      error: error.message 
+    });
+  }
 });
 
 // Временный CORS для отладки
@@ -324,6 +348,7 @@ let twitchAccessToken = null;
 let tokenExpiry = null;
 
 async function initDatabase() {
+  console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Present' : 'Missing');
   const client = await pool.connect();
   try {
     await client.query(`
@@ -523,9 +548,21 @@ async function getTwitchToken() {
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Требуется авторизация' });
+  
+  console.log('Auth header:', authHeader);
+  console.log('Token:', token ? 'Present' : 'Missing');
+  
+  if (!token) {
+    console.log('No token provided');
+    return res.status(401).json({ error: 'Требуется авторизация' });
+  }
+  
   jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Недействительный токен' });
+    if (err) {
+      console.log('Token verification failed:', err.message);
+      return res.status(403).json({ error: 'Недействительный токен' });
+    }
+    console.log('User authenticated:', user.id);
     req.user = user;
     next();
   });
