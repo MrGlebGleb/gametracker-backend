@@ -1321,11 +1321,16 @@ app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (re
     `);
     
     if (!tableExists.rows[0].exists) {
-      // Если таблица не существует, возвращаем пустые данные
+      // Если таблица не существует, возвращаем пустые данные в правильном формате
       res.json({
-        general: [],
-        monthly: [],
-        topRated: []
+        summary: {
+          totalMovies: 0,
+          totalTvShows: 0,
+          watchedMedia: 0,
+          averageRating: 0
+        },
+        topMovies: [],
+        monthlyStats: []
       });
       return;
     }
@@ -1374,19 +1379,83 @@ app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (re
     console.log('Monthly stats result:', monthlyStats.rows);
     console.log('Top rated result:', topRated.rows);
     
-    res.json({
-      general: generalStats.rows,
-      monthly: monthlyStats.rows,
-      topRated: topRated.rows
+    // Подготавливаем данные в том же формате, что и для игр
+    const summary = {
+      totalMovies: 0,
+      totalTvShows: 0,
+      watchedMedia: 0,
+      averageRating: 0
+    };
+    
+    const topMovies = topRated.rows.map(item => ({
+      id: item.title,
+      title: item.title,
+      year: new Date(item.added_at).getFullYear(),
+      poster: null, // У нас нет постеров в БД
+      rating: item.rating
+    }));
+    
+    // Создаем месячную статистику в правильном формате
+    const monthlyStatsFormatted = [];
+    const currentDate = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const monthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const monthKey = monthDate.toLocaleDateString('ru-RU', { month: 'short', year: 'numeric' });
+      
+      const monthData = monthlyStats.rows.find(row => 
+        row.month === monthDate.toISOString().slice(0, 7)
+      );
+      
+      monthlyStatsFormatted.push({
+        month: monthKey,
+        mediaAdded: monthData ? parseInt(monthData.added) : 0,
+        mediaWatched: monthData ? parseInt(monthData.completed) : 0
+      });
+    }
+    
+    // Подсчитываем общую статистику
+    generalStats.rows.forEach(row => {
+      if (row.media_type === 'movie') {
+        summary.totalMovies += parseInt(row.count);
+        if (row.board === 'watched') {
+          summary.watchedMedia += parseInt(row.count);
+        }
+      } else if (row.media_type === 'tv') {
+        summary.totalTvShows += parseInt(row.count);
+        if (row.board === 'watched') {
+          summary.watchedMedia += parseInt(row.count);
+        }
+      }
     });
+    
+    // Вычисляем средний рейтинг
+    const ratedItems = topRated.rows.filter(item => item.rating > 0);
+    if (ratedItems.length > 0) {
+      const totalRating = ratedItems.reduce((sum, item) => sum + item.rating, 0);
+      summary.averageRating = (totalRating / ratedItems.length).toFixed(1);
+    }
+    
+    const statistics = {
+      summary: summary,
+      topMovies: topMovies,
+      monthlyStats: monthlyStatsFormatted
+    };
+    
+    console.log('Media statistics result:', statistics);
+    res.json(statistics);
   } catch (error) {
     console.error('Ошибка статистики медиа:', error);
     console.error('Stack trace:', error.stack);
-    // Возвращаем пустые данные вместо ошибки
+    // Возвращаем пустые данные в правильном формате
     res.json({
-      general: [],
-      monthly: [],
-      topRated: []
+      summary: {
+        totalMovies: 0,
+        totalTvShows: 0,
+        watchedMedia: 0,
+        averageRating: 0
+      },
+      topMovies: [],
+      monthlyStats: []
     });
   } finally {
     client.release();
