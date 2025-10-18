@@ -1258,12 +1258,12 @@ app.get('/api/user/statistics/games', statsLimiter, authenticateToken, async (re
     const additionalStatsResult = await client.query(additionalStatsQuery, [req.user.id]);
     const additionalStats = additionalStatsResult.rows[0];
 
-    // Формируем итоговый ответ
+    // Формируем итоговый ответ в правильном формате для фронтенда
     const statistics = {
       general: generalStats,
-      monthly: monthlyStats,
+      monthlyStats: monthlyStats,
       topGenres: topGenres,
-      topRatedGames: topRatedGames,
+      topGames: topRatedGames,
       summary: {
         totalGames: parseInt(additionalStats.total_games),
         completedGames: generalStats.completed.count,
@@ -1276,10 +1276,12 @@ app.get('/api/user/statistics/games', statsLimiter, authenticateToken, async (re
       }
     };
 
+    console.log('Games statistics result:', statistics);
     res.json(statistics);
 
   } catch (error) {
     console.error('Ошибка получения статистики игр:', error);
+    console.error('Stack trace:', error.stack);
     res.status(500).json({ error: 'Ошибка получения статистики' });
   } finally {
     client.release();
