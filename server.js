@@ -172,10 +172,17 @@ app.use('/api/profile/avatar', validateJsonSize(5 * 1024 * 1024));
 app.use(express.json({ limit: '10mb' }));
 
 // === RATE LIMITING ===
-// Общий лимит: 100 запросов в 15 минут на IP
+// Временно отключаем rate limiting для разработки
+const generalLimiter = (req, res, next) => {
+  console.log(`Request to ${req.path} from ${req.ip}`);
+  next();
+};
+
+// Общий лимит: 500 запросов в 15 минут на IP (закомментирован)
+/*
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 минут
-  max: 100, // максимум 100 запросов
+  max: 500, // максимум 500 запросов
   message: {
     error: 'Слишком много запросов с этого IP. Попробуйте снова через 15 минут.',
     retryAfter: '15 минут'
@@ -183,6 +190,7 @@ const generalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+*/
 
 // Лимит для входа: 5 попыток в 15 минут
 const loginLimiter = rateLimit({
