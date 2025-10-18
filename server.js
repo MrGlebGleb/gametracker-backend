@@ -111,8 +111,28 @@ app.use((req, res, next) => {
   }
 });
 
-// Security middleware
-app.use(helmet());
+// Security middleware with enhanced configuration
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.tailwindcss.com", "https://unpkg.com", "https://cdnjs.cloudflare.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:", "http:"],
+      connectSrc: ["'self'", "https://gametracker-backend-production.up.railway.app", "https://api.themoviedb.org", "https://id.twitch.tv"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"]
+    }
+  },
+  crossOriginEmbedderPolicy: false, // Отключаем для совместимости с внешними API
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
+}));
 
 // Compression middleware
 app.use(compression());
