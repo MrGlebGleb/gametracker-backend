@@ -44,6 +44,26 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
+// Временный endpoint для тестирования без аутентификации
+app.get('/api/test-boards', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query('SELECT COUNT(*) as total_games FROM games');
+    client.release();
+    res.json({ 
+      status: 'OK', 
+      total_games: result.rows[0].total_games,
+      message: 'Database connection works'
+    });
+  } catch (error) {
+    console.error('Test boards failed:', error);
+    res.status(500).json({ 
+      status: 'Error', 
+      error: error.message 
+    });
+  }
+});
+
 // Временный CORS для отладки
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -2517,10 +2537,10 @@ app.put('/api/notifications/mark-all-read', authenticateToken, async (req, res) 
     res.json({ success: true, updated: result.rowCount });
   } catch (error) {
     console.error('Ошибка отметки всех уведомлений:', error);
-    res.status(500).json({ error: 'Ошибка сервера' });
-  } finally {
-    client.release();
-  }
+        res.status(500).json({ error: 'Ошибка сервера' });
+    } finally {
+        client.release();
+    }
 });
 
 app.listen(PORT, () => {
