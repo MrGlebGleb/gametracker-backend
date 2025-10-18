@@ -48,11 +48,18 @@ app.get('/api/test-db', async (req, res) => {
 app.get('/api/test-boards', async (req, res) => {
   try {
     const client = await pool.connect();
-    const result = await client.query('SELECT COUNT(*) as total_games FROM games');
+    
+    // Проверяем все таблицы
+    const gamesCount = await client.query('SELECT COUNT(*) as total_games FROM games');
+    const usersCount = await client.query('SELECT COUNT(*) as total_users FROM users');
+    const boardsCount = await client.query('SELECT COUNT(*) as total_boards FROM user_boards');
+    
     client.release();
     res.json({ 
       status: 'OK', 
-      total_games: result.rows[0].total_games,
+      total_games: gamesCount.rows[0].total_games,
+      total_users: usersCount.rows[0].total_users,
+      total_boards: boardsCount.rows[0].total_boards,
       message: 'Database connection works'
     });
   } catch (error) {
@@ -87,6 +94,10 @@ const allowedOrigins = [
   'http://localhost:3000',
   'https://localhost:3000',
   'https://gametracker-frontend.vercel.app',
+  'https://gametracker-frontend-git-main-mrglebgleb.vercel.app',
+  // Добавляем все возможные домены Vercel
+  'https://gametracker-frontend-git-main-mrglebgleb.vercel.app',
+  'https://gametracker-frontend-git-main.vercel.app',
   'https://gametracker-frontend-git-main-mrglebgleb.vercel.app'
 ];
 
@@ -101,7 +112,8 @@ app.use(cors({
       return callback(null, true);
     }
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Временно разрешаем все домены Vercel
+    if (origin.includes('vercel.app') || origin.includes('localhost') || allowedOrigins.indexOf(origin) !== -1) {
       console.log('Origin allowed:', origin);
       callback(null, true);
     } else {
