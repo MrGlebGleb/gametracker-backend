@@ -1280,6 +1280,24 @@ app.get('/api/user/statistics/games', statsLimiter, authenticateToken, async (re
 app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
+    // Проверяем, существует ли таблица media
+    const tableExists = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'media'
+      );
+    `);
+    
+    if (!tableExists.rows[0].exists) {
+      // Если таблица не существует, возвращаем пустые данные
+      res.json({
+        general: [],
+        monthly: [],
+        topRated: []
+      });
+      return;
+    }
+    
     // 1. Общая статистика
     const generalStatsQuery = `
       SELECT 
@@ -1326,7 +1344,12 @@ app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (re
     });
   } catch (error) {
     console.error('Ошибка статистики медиа:', error);
-    res.status(500).json({ error: 'Ошибка получения статистики медиа' });
+    // Возвращаем пустые данные вместо ошибки
+    res.json({
+      general: [],
+      monthly: [],
+      topRated: []
+    });
   } finally {
     client.release();
   }
