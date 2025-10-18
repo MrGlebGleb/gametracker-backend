@@ -2540,21 +2540,21 @@ app.put('/api/user/boards/reorder', authenticateToken, async (req, res) => {
 app.get('/api/friends/activity', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
-        const { media } = req.query; // optional: 'games' | 'media'
-        let whereMedia = '';
-        if (media === 'games') {
+        const { type } = req.query; // optional: 'games' | 'media'
+        let whereType = '';
+        if (type === 'games') {
           // filter only game-related actions
-          whereMedia = " AND (a.action_type LIKE '%%game%%') ";
-        } else if (media === 'media') {
-          // we will log movie/tv actions to include 'media' in action_type
-          whereMedia = " AND (a.action_type LIKE '%%media%%') ";
+          whereType = " AND (a.action_type LIKE '%game%') ";
+        } else if (type === 'media') {
+          // filter only media-related actions
+          whereType = " AND (a.action_type LIKE '%media%') ";
         }
         const result = await client.query(
-          `SELECT a.id, a.action_type, a.details, a.created_at, u.username
+          `SELECT a.id, a.action_type, a.details, a.created_at, u.username, u.id as user_id
            FROM activities a 
            JOIN users u ON u.id = a.user_id
            JOIN friendships f ON f.friend_id = a.user_id
-           WHERE f.user_id = $1 AND f.status = 'accepted' AND u.show_activity = true${whereMedia}
+           WHERE f.user_id = $1 AND f.status = 'accepted' AND u.show_activity = true${whereType}
            ORDER BY a.created_at DESC LIMIT 12;`,
           [req.user.id]
         );
