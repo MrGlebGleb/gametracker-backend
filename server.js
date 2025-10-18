@@ -1367,7 +1367,7 @@ app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (re
     
     // 3. Топ-10 самых высоко оцененных медиа
     const topRatedQuery = `
-      SELECT title, rating, board, media_type, added_at
+      SELECT title, rating, board, media_type, poster, added_at
       FROM media_items 
       WHERE user_id = $1 AND rating > 0
       ORDER BY rating DESC, added_at DESC
@@ -1391,7 +1391,7 @@ app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (re
       id: item.title,
       title: item.title,
       year: new Date(item.added_at).getFullYear(),
-      poster: null, // У нас нет постеров в БД
+      poster: item.poster, // Получаем постер из БД
       rating: item.rating
     }));
     
@@ -1432,7 +1432,7 @@ app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (re
     const ratedItems = topRated.rows.filter(item => item.rating > 0);
     if (ratedItems.length > 0) {
       const totalRating = ratedItems.reduce((sum, item) => sum + item.rating, 0);
-      summary.averageRating = (totalRating / ratedItems.length).toFixed(1);
+      summary.averageRating = parseFloat((totalRating / ratedItems.length).toFixed(1));
     }
     
     const statistics = {
