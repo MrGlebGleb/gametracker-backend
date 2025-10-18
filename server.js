@@ -15,6 +15,11 @@ const { Parser } = require('json2csv');
 
 const app = express();
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
 // Security middleware
 app.use(helmet());
 
