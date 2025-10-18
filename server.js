@@ -1290,11 +1290,11 @@ app.get('/api/user/statistics/games', statsLimiter, authenticateToken, async (re
 app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
-    // Проверяем, существует ли таблица media
+    // Проверяем, существует ли таблица media_items
     const tableExists = await client.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
-        WHERE table_name = 'media'
+        WHERE table_name = 'media_items'
       );
     `);
     
@@ -1311,41 +1311,46 @@ app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (re
     // 1. Общая статистика
     const generalStatsQuery = `
       SELECT 
+        media_type,
         board,
         COUNT(*) as count,
-        AVG(rating) as avg_rating,
-        SUM(hours_watched) as total_hours
-      FROM media 
+        AVG(rating) as avg_rating
+      FROM media_items 
       WHERE user_id = $1
-      GROUP BY board
+      GROUP BY media_type, board
     `;
     
     const generalStats = await client.query(generalStatsQuery, [req.user.id]);
     
+    console.log('General stats result:', generalStats.rows);
+    
     // 2. Статистика по месяцам
     const monthlyStatsQuery = `
       SELECT 
-        DATE_TRUNC('month', created_at) as month,
+        TO_CHAR(DATE_TRUNC('month', added_at), 'YYYY-MM') as month,
         COUNT(*) as added,
-        COUNT(CASE WHEN board = 'completed' THEN 1 END) as completed
-      FROM media 
-      WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '12 months'
-      GROUP BY DATE_TRUNC('month', created_at)
-      ORDER BY month
+        COUNT(CASE WHEN board = 'watched' THEN 1 END) as completed
+      FROM media_items 
+      WHERE user_id = $1 AND added_at >= NOW() - INTERVAL '12 months'
+      GROUP BY DATE_TRUNC('month', added_at)
+      ORDER BY DATE_TRUNC('month', added_at)
     `;
     
     const monthlyStats = await client.query(monthlyStatsQuery, [req.user.id]);
     
     // 3. Топ-10 самых высоко оцененных медиа
     const topRatedQuery = `
-      SELECT title, rating, board, created_at
-      FROM media 
+      SELECT title, rating, board, media_type, added_at
+      FROM media_items 
       WHERE user_id = $1 AND rating > 0
-      ORDER BY rating DESC, created_at DESC
+      ORDER BY rating DESC, added_at DESC
       LIMIT 10
     `;
     
     const topRated = await client.query(topRatedQuery, [req.user.id]);
+    
+    console.log('Monthly stats result:', monthlyStats.rows);
+    console.log('Top rated result:', topRated.rows);
     
     res.json({
       general: generalStats.rows,
@@ -1354,6 +1359,7 @@ app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (re
     });
   } catch (error) {
     console.error('Ошибка статистики медиа:', error);
+    console.error('Stack trace:', error.stack);
     // Возвращаем пустые данные вместо ошибки
     res.json({
       general: [],
