@@ -220,6 +220,18 @@ const searchLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Лимит для статистики: 10 запросов в минуту
+const statsLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 минута
+  max: 10, // максимум 10 запросов
+  message: {
+    error: 'Слишком много запросов статистики. Попробуйте снова через минуту.',
+    retryAfter: '1 минута'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Лимит для загрузки аватара: 5 загрузок в час
 const avatarLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 час
@@ -1130,7 +1142,7 @@ app.get('/api/user/boards', authenticateToken, async (req, res) => {
 });
 
 // === СТАТИСТИКА ИГР ===
-app.get('/api/user/statistics/games', authenticateToken, async (req, res) => {
+app.get('/api/user/statistics/games', statsLimiter, authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
     // 1. Общая статистика
@@ -1259,6 +1271,62 @@ app.get('/api/user/statistics/games', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Ошибка получения статистики игр:', error);
     res.status(500).json({ error: 'Ошибка получения статистики' });
+  } finally {
+    client.release();
+  }
+});
+
+// === СТАТИСТИКА МЕДИА ===
+app.get('/api/user/statistics/media', statsLimiter, authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    // 1. Общая статистика
+    const generalStatsQuery = `
+      SELECT 
+        board,
+        COUNT(*) as count,
+        AVG(rating) as avg_rating,
+        SUM(hours_watched) as total_hours
+      FROM media 
+      WHERE user_id = $1
+      GROUP BY board
+    `;
+    
+    const generalStats = await client.query(generalStatsQuery, [req.user.id]);
+    
+    // 2. Статистика по месяцам
+    const monthlyStatsQuery = `
+      SELECT 
+        DATE_TRUNC('month', created_at) as month,
+        COUNT(*) as added,
+        COUNT(CASE WHEN board = 'completed' THEN 1 END) as completed
+      FROM media 
+      WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '12 months'
+      GROUP BY DATE_TRUNC('month', created_at)
+      ORDER BY month
+    `;
+    
+    const monthlyStats = await client.query(monthlyStatsQuery, [req.user.id]);
+    
+    // 3. Топ-10 самых высоко оцененных медиа
+    const topRatedQuery = `
+      SELECT title, rating, board, created_at
+      FROM media 
+      WHERE user_id = $1 AND rating > 0
+      ORDER BY rating DESC, created_at DESC
+      LIMIT 10
+    `;
+    
+    const topRated = await client.query(topRatedQuery, [req.user.id]);
+    
+    res.json({
+      general: generalStats.rows,
+      monthly: monthlyStats.rows,
+      topRated: topRated.rows
+    });
+  } catch (error) {
+    console.error('Ошибка статистики медиа:', error);
+    res.status(500).json({ error: 'Ошибка получения статистики медиа' });
   } finally {
     client.release();
   }
