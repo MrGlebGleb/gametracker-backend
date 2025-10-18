@@ -556,8 +556,9 @@ async function initDatabase() {
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         name VARCHAR(50) NOT NULL,
         color VARCHAR(7) NOT NULL DEFAULT '#3B82F6',
+        type VARCHAR(20) NOT NULL DEFAULT 'game', -- 'game' или 'media'
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user_id, name)
+        UNIQUE(user_id, name, type)
       );
 
       CREATE TABLE IF NOT EXISTS game_tags (
@@ -1532,9 +1533,10 @@ app.get('/api/export/media', authenticateToken, async (req, res) => {
 app.get('/api/tags', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
+    const { type = 'game' } = req.query; // По умолчанию 'game' для обратной совместимости
     const result = await client.query(
-      'SELECT * FROM tags WHERE user_id = $1 ORDER BY name ASC',
-      [req.user.id]
+      'SELECT * FROM tags WHERE user_id = $1 AND type = $2 ORDER BY name ASC',
+      [req.user.id, type]
     );
     res.json({ tags: result.rows });
   } catch (error) {
@@ -1549,10 +1551,10 @@ app.get('/api/tags', authenticateToken, async (req, res) => {
 app.post('/api/tags', authenticateToken, validateTag, sanitizeInput, async (req, res) => {
   const client = await pool.connect();
   try {
-    const { name, color = '#3B82F6' } = req.body;
+    const { name, color = '#3B82F6', type = 'game' } = req.body;
     const result = await client.query(
-      'INSERT INTO tags (user_id, name, color) VALUES ($1, $2, $3) RETURNING *',
-      [req.user.id, name, color]
+      'INSERT INTO tags (user_id, name, color, type) VALUES ($1, $2, $3, $4) RETURNING *',
+      [req.user.id, name, color, type]
     );
     res.status(201).json({ message: 'Тег создан', tag: result.rows[0] });
   } catch (error) {
