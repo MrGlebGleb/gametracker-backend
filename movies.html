@@ -192,42 +192,52 @@
       margin: 0 !important;
       box-shadow: none !important;
       display: inline-block;
+      -webkit-tap-highlight-color: transparent !important;
     }
 
-    .star-rating button:focus {
+    .star-rating button:focus,
+    .star-rating button:focus-visible,
+    .star-rating button:active {
       outline: none !important;
       box-shadow: none !important;
+      border: none !important;
     }
 
     .star-rating svg {
       transition: all 0.2s ease-out;
-      display: inline-block;
+      display: block;
       border: none !important;
       outline: none !important;
       background: transparent !important;
       box-shadow: none !important;
+      pointer-events: none;
     }
 
     .star-rating svg:hover {
-      /* Убираем drop-shadow, используем только цвет и поворот */
       color: #a0d2eb !important;
-      transform: rotate(-5deg);
-      /* Добавляем тонкое свечение через box-shadow */
-      box-shadow: 0 0 8px rgba(160, 210, 235, 0.6);
+      transform: rotate(-5deg) scale(1.1);
+      filter: drop-shadow(0 0 8px rgba(160, 210, 235, 0.8)) !important;
     }
 
     /* Дополнительная защита от любых границ */
-    .star-rating * {
+    .star-rating *,
+    .star-rating *:hover,
+    .star-rating *:focus,
+    .star-rating *:active {
       border: none !important;
       outline: none !important;
-      background: transparent !important;
       box-sizing: border-box !important;
+      -webkit-tap-highlight-color: transparent !important;
     }
 
-    .star-rating button:hover {
+    .star-rating button:hover,
+    .star-rating button:focus,
+    .star-rating button:active {
       background: transparent !important;
       border: none !important;
       box-shadow: none !important;
+      outline: none !important;
+      outline-offset: 0 !important;
     }
 
     /* Убираем любые псевдоэлементы */
@@ -236,12 +246,16 @@
     .star-rating svg::before,
     .star-rating svg::after {
       display: none !important;
+      content: none !important;
     }
 
     /* КРИТИЧЕСКИ ВАЖНО: Убираем квадратную зону полностью */
     .star-rating svg polygon {
       vector-effect: non-scaling-stroke !important;
       shape-rendering: geometricPrecision !important;
+      stroke: none !important;
+      stroke-width: 0 !important;
+      outline: none !important;
     }
 
     /* Убираем любые эффекты от fill и stroke */
@@ -251,15 +265,9 @@
       stroke-width: 0 !important;
     }
 
-    /* Убираем полосы по углам */
-    .star-rating svg polygon {
-      stroke: none !important;
-      stroke-width: 0 !important;
-      vector-effect: non-scaling-stroke !important;
-    }
-
     /* Убираем любые outline у SVG элементов */
-    .star-rating svg * {
+    .star-rating svg *,
+    .star-rating svg *:hover {
       stroke: none !important;
       stroke-width: 0 !important;
       outline: none !important;
@@ -270,17 +278,12 @@
       overflow: visible !important;
       clip-path: none !important;
       mask: none !important;
-      filter: none !important;
     }
 
     .star-rating svg:hover {
       overflow: visible !important;
       clip-path: none !important;
       mask: none !important;
-      /* Возвращаем мягкое свечение */
-      color: #a0d2eb !important;
-      transform: rotate(-5deg);
-      filter: drop-shadow(0 0 8px rgba(160, 210, 235, 0.8)) !important;
     }
 
     /* Волновой эффект при выборе рейтинга */
