@@ -244,11 +244,25 @@
       shape-rendering: geometricPrecision !important;
     }
 
-    /* Убираем любые эффекты от fill */
+    /* Убираем любые эффекты от fill и stroke */
     .star-rating svg[fill="currentColor"] {
       fill: currentColor !important;
       stroke: none !important;
       stroke-width: 0 !important;
+    }
+
+    /* Убираем полосы по углам */
+    .star-rating svg polygon {
+      stroke: none !important;
+      stroke-width: 0 !important;
+      vector-effect: non-scaling-stroke !important;
+    }
+
+    /* Убираем любые outline у SVG элементов */
+    .star-rating svg * {
+      stroke: none !important;
+      stroke-width: 0 !important;
+      outline: none !important;
     }
 
     /* Дополнительная защита от любых границ SVG */
@@ -263,10 +277,10 @@
       overflow: visible !important;
       clip-path: none !important;
       mask: none !important;
-      /* Только цвет и поворот, никаких других эффектов */
+      /* Возвращаем мягкое свечение */
       color: #a0d2eb !important;
       transform: rotate(-5deg);
-      box-shadow: 0 0 8px rgba(160, 210, 235, 0.6) !important;
+      filter: drop-shadow(0 0 8px rgba(160, 210, 235, 0.8)) !important;
     }
 
     /* Волновой эффект при выборе рейтинга */
