@@ -46,8 +46,11 @@ app.get('/api/test-db', async (req, res) => {
 
 // Tags table test endpoint
 app.get('/api/test-tags-table', async (req, res) => {
+  let client;
   try {
-    const client = await pool.connect();
+    console.log('Testing tags table...');
+    client = await pool.connect();
+    console.log('Database connection successful for test');
     
     // Проверяем существование таблицы tags
     const tableExists = await client.query(`
@@ -76,7 +79,6 @@ app.get('/api/test-tags-table', async (req, res) => {
       tagsCount = count.rows[0].count;
     }
     
-    client.release();
     res.json({ 
       status: 'OK',
       tableExists: tableExists.rows[0].exists,
@@ -88,8 +90,13 @@ app.get('/api/test-tags-table', async (req, res) => {
     res.status(500).json({ 
       status: 'Error',
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
+      code: error.code
     });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
@@ -503,8 +510,10 @@ let tokenExpiry = null;
 
 async function initDatabase() {
   console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Present' : 'Missing');
-  const client = await pool.connect();
+  console.log('NODE_ENV:', process.env.NODE_ENV);
   try {
+    const client = await pool.connect();
+    console.log('Database connection successful');
     console.log('Initializing database tables...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -672,11 +681,16 @@ async function initDatabase() {
     `);
     console.log('✅ База данных инициализирована');
     console.log('✅ Таблицы тегов созданы успешно');
+    client.release();
   } catch (error) {
     console.error('❌ Ошибка инициализации БД:', error);
     console.error('❌ Stack trace:', error.stack);
-  } finally {
-    client.release();
+    if (error.code) {
+      console.error('❌ Error code:', error.code);
+    }
+    if (error.message) {
+      console.error('❌ Error message:', error.message);
+    }
   }
 }
 
@@ -1713,10 +1727,15 @@ app.get('/api/export/media', authenticateToken, async (req, res) => {
 // === УПРАВЛЕНИЕ ТЕГАМИ ===
 // Получить все теги пользователя
 app.get('/api/tags', authenticateToken, async (req, res) => {
-  const client = await pool.connect();
+  let client;
   try {
+    console.log('GET /api/tags - Attempting to connect to database...');
+    client = await pool.connect();
+    console.log('GET /api/tags - Database connection successful');
+    
     const { type = 'game' } = req.query; // По умолчанию 'game' для обратной совместимости
     console.log('GET /api/tags - User ID:', req.user.id, 'Type:', type);
+    
     const result = await client.query(
       'SELECT * FROM tags WHERE user_id = $1 AND type = $2 ORDER BY name ASC',
       [req.user.id, type]
@@ -1724,19 +1743,28 @@ app.get('/api/tags', authenticateToken, async (req, res) => {
     console.log('GET /api/tags - Found tags:', result.rows.length);
     res.json({ tags: result.rows });
   } catch (error) {
-    console.error('Ошибка получения тегов:', error);
+    console.error('GET /api/tags - Ошибка получения тегов:', error);
+    console.error('GET /api/tags - Error code:', error.code);
+    console.error('GET /api/tags - Error message:', error.message);
     res.status(500).json({ error: 'Ошибка получения тегов' });
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+    }
   }
 });
 
 // Создать новый тег
 app.post('/api/tags', authenticateToken, validateTag, sanitizeInput, async (req, res) => {
-  const client = await pool.connect();
+  let client;
   try {
+    console.log('POST /api/tags - Attempting to connect to database...');
+    client = await pool.connect();
+    console.log('POST /api/tags - Database connection successful');
+    
     const { name, color = '#3B82F6', type = 'game' } = req.body;
     console.log('POST /api/tags - User ID:', req.user.id, 'Name:', name, 'Color:', color, 'Type:', type);
+    
     const result = await client.query(
       'INSERT INTO tags (user_id, name, color, type) VALUES ($1, $2, $3, $4) RETURNING *',
       [req.user.id, name, color, type]
@@ -1745,13 +1773,17 @@ app.post('/api/tags', authenticateToken, validateTag, sanitizeInput, async (req,
     res.status(201).json({ message: 'Тег создан', tag: result.rows[0] });
   } catch (error) {
     console.error('POST /api/tags - Error:', error);
+    console.error('POST /api/tags - Error code:', error.code);
+    console.error('POST /api/tags - Error message:', error.message);
     if (error.code === '23505') {
       return res.status(400).json({ error: 'Тег с таким названием уже существует' });
     }
     console.error('Ошибка создания тега:', error);
     res.status(500).json({ error: 'Ошибка создания тега' });
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+    }
   }
 });
 
