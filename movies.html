@@ -180,11 +180,27 @@
     /* Анимация звезд рейтинга */
     .star-rating svg {
       transition: all 0.2s ease-out;
+      display: inline-block;
+      box-sizing: content-box;
+      overflow: visible;
     }
 
     .star-rating svg:hover {
-      transform: scale(1.2) rotate(-10deg);
-      filter: drop-shadow(0 0 8px rgba(160, 210, 235, 0.8));
+      filter: drop-shadow(0 0 12px rgba(160, 210, 235, 1)) drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
+      transform: rotate(-5deg);
+    }
+
+    /* Убираем любые границы вокруг звезд */
+    .star-rating {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .star-rating svg {
+      border: none !important;
+      outline: none !important;
+      background: transparent !important;
     }
 
     /* Волновой эффект при выборе рейтинга */
@@ -649,7 +665,7 @@
       z-index: 9995 !important; /* Частицы выше постера */
     }
 
-    /* Световые лучи будут иметь z-index: 9994 в inline стилях */
+    /* Световые лучи имеют z-index: 9989 - ниже постера */
 
 
     /* Эффект "магнитного притяжения" */

@@ -82,7 +82,7 @@ const LightRays = ({ posterRect, visible }) => {
         top: posterRect.y + posterRect.height / 2,
         width: 0,
         height: 0,
-        zIndex: 9994,
+        zIndex: 9989,
         pointerEvents: 'none',
       }}
     >
