@@ -224,12 +224,11 @@ app.use(compression());
 const allowedOrigins = [
   'http://localhost:3000',
   'https://localhost:3000',
+  'https://gametracker-backend-production.up.railway.app',
+  // Vercel домены (для обратной совместимости)
   'https://gametracker-frontend.vercel.app',
   'https://gametracker-frontend-git-main-mrglebgleb.vercel.app',
-  // Добавляем все возможные домены Vercel
-  'https://gametracker-frontend-git-main-mrglebgleb.vercel.app',
-  'https://gametracker-frontend-git-main.vercel.app',
-  'https://gametracker-frontend-git-main-mrglebgleb.vercel.app'
+  'https://gametracker-frontend-git-main.vercel.app'
 ];
 
 app.use(cors({
@@ -243,8 +242,8 @@ app.use(cors({
       return callback(null, true);
     }
     
-    // Временно разрешаем все домены Vercel
-    if (origin.includes('vercel.app') || origin.includes('localhost') || allowedOrigins.indexOf(origin) !== -1) {
+    // Разрешаем Railway домены и Vercel домены
+    if (origin.includes('railway.app') || origin.includes('vercel.app') || origin.includes('localhost') || allowedOrigins.indexOf(origin) !== -1) {
       console.log('Origin allowed:', origin);
       callback(null, true);
     } else {
@@ -273,6 +272,10 @@ app.use('/api', validateJsonSize(10 * 1024 * 1024));
 app.use('/api/profile/avatar', validateJsonSize(5 * 1024 * 1024));
 
 app.use(express.json({ limit: '10mb' }));
+
+// === STATIC FILES ===
+// Раздача статических файлов (HTML, CSS, JS)
+app.use(express.static('.'));
 
 // === RATE LIMITING ===
 // Временно отключаем rate limiting для разработки

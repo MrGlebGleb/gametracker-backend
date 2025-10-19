@@ -1,13 +1,13 @@
 {
-  "name": "gametracker-backend",
+  "name": "omnilogue-backend",
   "version": "2.1.0",
-  "description": "Backend для GameTracker",
+  "description": "Backend для Omnilogue",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
-  "keywords": ["gametracker", "twitch", "igdb", "postgresql"],
+  "keywords": ["omnilogue", "twitch", "igdb", "postgresql"],
   "author": "",
   "license": "MIT",
   "dependencies": {
