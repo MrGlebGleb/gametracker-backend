@@ -47,31 +47,6 @@ const ParticleSystem = ({ particles, onComplete }) => {
 };
 
 
-// Энергетические кольца
-const EnergyRings = ({ isActive, centerX, centerY }) => {
-  if (!isActive) return null;
-  
-  return (
-    <>
-      {[0, 1, 2].map((ring) => (
-        <div
-          key={ring}
-          className="energy-ring"
-          style={{
-            left: centerX - 50,
-            top: centerY - 50,
-            width: 100,
-            height: 100,
-            animationDelay: `${ring * 0.3}s`,
-            borderColor: ring === 0 ? 'rgba(160, 210, 235, 0.6)' : 
-                        ring === 1 ? 'rgba(255, 215, 0, 0.4)' : 
-                        'rgba(255, 20, 147, 0.5)'
-          }}
-        />
-      ))}
-    </>
-  );
-};
 
 // Вспышка света
 const FlashEffect = ({ isActive }) => {
@@ -85,36 +60,56 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
   const [stage, setStage] = useState(0);
   const [particles, setParticles] = useState([]);
   const [showGlow, setShowGlow] = useState(false);
-  const [showRings, setShowRings] = useState(false);
   const [isReturning, setIsReturning] = useState(false);
   const [cardPosition, setCardPosition] = useState({ x: 0, y: 0, width: 64, height: 96 });
   
-  // Генерация частиц - желто-оранжевые искры из центра постера во все стороны
+  // Генерация частиц - желто-оранжевые искры по периметру постера
   const generateParticles = (posterX, posterY, posterWidth, posterHeight, count, intensity = 1) => {
     const newParticles = [];
-    // Центр постера - оттуда разлетаются искры во все стороны
-    const centerX = posterX + posterWidth / 2;
-    const centerY = posterY + posterHeight / 2; // Центр постера
     
     for (let i = 0; i < count; i++) {
-      // Угол от 0 до 360 градусов (во все стороны от постера)
-      const angle = Math.random() * Math.PI * 2; // Полный круг 0-360°
-      const speed = 50 + Math.random() * 80; // Скорость разлета
+      // Выбираем случайную сторону постера (верх, низ, лево, право)
+      const side = Math.floor(Math.random() * 4);
+      let startX, startY, directionX, directionY;
+      
+      if (side === 0) { // Верх
+        startX = posterX + Math.random() * posterWidth;
+        startY = posterY;
+        directionX = (Math.random() - 0.5) * 2; // -1 до 1
+        directionY = -Math.random() - 0.5; // -1.5 до -0.5 (вверх)
+      } else if (side === 1) { // Низ
+        startX = posterX + Math.random() * posterWidth;
+        startY = posterY + posterHeight;
+        directionX = (Math.random() - 0.5) * 2; // -1 до 1
+        directionY = Math.random() + 0.5; // 0.5 до 1.5 (вниз)
+      } else if (side === 2) { // Лево
+        startX = posterX;
+        startY = posterY + Math.random() * posterHeight;
+        directionX = -Math.random() - 0.5; // -1.5 до -0.5 (влево)
+        directionY = (Math.random() - 0.5) * 2; // -1 до 1
+      } else { // Право
+        startX = posterX + posterWidth;
+        startY = posterY + Math.random() * posterHeight;
+        directionX = Math.random() + 0.5; // 0.5 до 1.5 (вправо)
+        directionY = (Math.random() - 0.5) * 2; // -1 до 1
+      }
+      
+      const speed = 40 + Math.random() * 60; // Скорость разлета
       
       // Желто-оранжевые цвета
       const colors = ['#FFD700', '#FFA500', '#FF8C00', '#FFB347', '#FFE135'];
       const color = colors[Math.floor(Math.random() * colors.length)];
       
       newParticles.push({
-        x: centerX, // Центр постера
-        y: centerY, // Центр постера
-        // Вылетают ИЗ ЦЕНТРА постера во все стороны радиально
-        dx: Math.cos(angle) * speed * intensity,
-        dy: Math.sin(angle) * speed * intensity,
+        x: startX, // Начальная позиция на периметре постера
+        y: startY, // Начальная позиция на периметре постера
+        // Вылетают ОТ постера в направлении от него
+        dx: directionX * speed * intensity,
+        dy: directionY * speed * intensity,
         color: color,
-        size: 4 + Math.random() * 6, // Нормальный размер 4-10px
+        size: 3 + Math.random() * 4, // Тонкие искры 3-7px
         opacity: 0.8 + Math.random() * 0.2,
-        duration: 1200 + Math.random() * 800,
+        duration: 1000 + Math.random() * 600,
       });
     }
     return newParticles;
@@ -159,7 +154,6 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
         time: 1600, 
         action: () => {
           setStage(3);
-          setShowRings(true);
           setParticles(generateParticles(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height, 25, 1.2));
         }
       },
@@ -238,12 +232,6 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
       />
       
       
-      {/* Энергетические кольца */}
-      <EnergyRings 
-        isActive={showRings} 
-        centerX={cardPosition.x + cardPosition.width / 2} 
-        centerY={cardPosition.y + cardPosition.height / 2} 
-      />
       
       {/* Система частиц */}
       <ParticleSystem 

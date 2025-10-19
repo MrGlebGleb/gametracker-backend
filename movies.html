@@ -493,8 +493,8 @@
       border-radius: 50%;
       pointer-events: none;
       z-index: 9997;
-      animation: sparkleFade 1.2s ease-out forwards;
-      box-shadow: 0 0 6px currentColor;
+      animation: sparkleFade 1s ease-out forwards;
+      box-shadow: 0 0 4px currentColor;
     }
 
     @keyframes sparkleFade {
@@ -513,26 +513,6 @@
     }
 
 
-    /* Энергетические кольца */
-    .energy-ring {
-      position: fixed;
-      border: 3px solid;
-      border-radius: 50%;
-      pointer-events: none;
-      animation: ringExpand 1.2s ease-out forwards;
-      z-index: 9996;
-    }
-
-    @keyframes ringExpand {
-      0% {
-        transform: translate(-50%, -50%) scale(0.5);
-        opacity: 0.8;
-      }
-      100% {
-        transform: translate(-50%, -50%) scale(4);
-        opacity: 0;
-      }
-    }
 
     /* Мягкое свечение вместо вспышки */
     @keyframes softGlow {
@@ -616,7 +596,6 @@
     /* Reduced motion */
     @media (prefers-reduced-motion: reduce) {
       .epic-poster,
-      .energy-ring,
       .epic-particle {
         animation-duration: 0.01s !important;
       }
