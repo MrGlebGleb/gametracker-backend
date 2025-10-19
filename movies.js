@@ -46,24 +46,6 @@ const ParticleSystem = ({ particles, onComplete }) => {
   );
 };
 
-// Компонент звезды
-const AnimatedStar = ({ index, isActive, position, size = 80 }) => {
-  if (!isActive) return null;
-  
-  return (
-    <div 
-      className="epic-star"
-      style={{
-        left: position.x,
-        bottom: position.y,
-        fontSize: size,
-        animationDelay: `${index * 0.1}s`
-      }}
-    >
-      ★
-    </div>
-  );
-};
 
 // Энергетические кольца
 const EnergyRings = ({ isActive, centerX, centerY }) => {
@@ -104,49 +86,40 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
   const [particles, setParticles] = useState([]);
   const [showGlow, setShowGlow] = useState(false);
   const [showRings, setShowRings] = useState(false);
-  const [stars, setStars] = useState([]);
   const [isReturning, setIsReturning] = useState(false);
   const [cardPosition, setCardPosition] = useState({ x: 0, y: 0, width: 64, height: 96 });
   
-  // Генерация частиц - вылетают из-за постера радиально
-  const generateParticles = (centerX, centerY, count, colors, intensity = 1) => {
+  // Генерация частиц - желто-оранжевые искры из центра постера во все стороны
+  const generateParticles = (posterX, posterY, posterWidth, posterHeight, count, intensity = 1) => {
     const newParticles = [];
+    // Центр постера - оттуда разлетаются искры во все стороны
+    const centerX = posterX + posterWidth / 2;
+    const centerY = posterY + posterHeight / 2; // Центр постера
+    
     for (let i = 0; i < count; i++) {
-      // Угол от 0 до 360 градусов для равномерного распределения
-      const angle = (Math.PI * 2 * i) / count;
-      const speed = 80 + Math.random() * 120; // Скорость разлета
+      // Угол от 0 до 360 градусов (во все стороны от постера)
+      const angle = Math.random() * Math.PI * 2; // Полный круг 0-360°
+      const speed = 50 + Math.random() * 80; // Скорость разлета
+      
+      // Желто-оранжевые цвета
+      const colors = ['#FFD700', '#FFA500', '#FF8C00', '#FFB347', '#FFE135'];
       const color = colors[Math.floor(Math.random() * colors.length)];
       
       newParticles.push({
         x: centerX, // Центр постера
         y: centerY, // Центр постера
-        // Вылетают ИЗ-ЗА постера во все стороны радиально
+        // Вылетают ИЗ ЦЕНТРА постера во все стороны радиально
         dx: Math.cos(angle) * speed * intensity,
         dy: Math.sin(angle) * speed * intensity,
         color: color,
-        size: 6 + Math.random() * 8,
-        opacity: 0.9,
-        duration: 1500 + Math.random() * 1000,
+        size: 4 + Math.random() * 6, // Нормальный размер 4-10px
+        opacity: 0.8 + Math.random() * 0.2,
+        duration: 1200 + Math.random() * 800,
       });
     }
     return newParticles;
   };
 
-  // Получение позиций звезд - выровнены в ряд под постером
-  const getStarPositions = (posterX, posterY, posterWidth, posterHeight) => {
-    const starSize = 60; // Размер одной звезды
-    const totalWidth = starSize * 5; // 5 звезд
-    const startX = posterX + (posterWidth / 2) - (totalWidth / 2); // Центрируем под постером
-    const starY = posterY + posterHeight + 20; // 20px под постером
-    
-    return [
-      { x: startX, y: starY },
-      { x: startX + starSize, y: starY },
-      { x: startX + starSize * 2, y: starY },
-      { x: startX + starSize * 3, y: starY },
-      { x: startX + starSize * 4, y: starY }
-    ];
-  };
 
   useEffect(() => {
     // Находим карточку в DOM
@@ -172,18 +145,14 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
         time: 0, 
         action: () => {
           setStage(1);
-          const positions = getStarPositions(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height);
-          setStars([{ index: 0, position: positions[0] }]);
-          setParticles(generateParticles(centerX, centerY, 7, ['#FFD700', '#FFA500'], 0.5));
+          setParticles(generateParticles(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height, 15, 0.8));
         }
       },
       { 
         time: 800, 
         action: () => {
           setStage(2);
-          const positions = getStarPositions(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height);
-          setStars(prev => [...prev, { index: 1, position: positions[1] }]);
-          setParticles(generateParticles(centerX, centerY, 10, ['#a0d2eb', '#FFD700'], 0.7));
+          setParticles(generateParticles(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height, 20, 1.0));
         }
       },
       { 
@@ -191,18 +160,14 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
         action: () => {
           setStage(3);
           setShowRings(true);
-          const positions = getStarPositions(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height);
-          setStars(prev => [...prev, { index: 2, position: positions[2] }]);
-          setParticles(generateParticles(centerX, centerY, 15, ['#8458B3', '#d0bdf4', '#FFD700'], 1));
+          setParticles(generateParticles(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height, 25, 1.2));
         }
       },
       { 
         time: 2400, 
         action: () => {
           setStage(4);
-          const positions = getStarPositions(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height);
-          setStars(prev => [...prev, { index: 3, position: positions[3] }]);
-          setParticles(generateParticles(centerX, centerY, 20, ['#FF00FF', '#00FFFF', '#FFD700', '#FF1493'], 1.2));
+          setParticles(generateParticles(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height, 30, 1.4));
         }
       },
       { 
@@ -210,9 +175,7 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
         action: () => {
           setStage(5);
           setShowGlow(true);
-          const positions = getStarPositions(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height);
-          setStars(prev => [...prev, { index: 4, position: positions[4] }]);
-          setParticles(generateParticles(centerX, centerY, 30, ['#FFD700', '#FF1493', '#00FFFF', '#00FF00'], 1.5));
+          setParticles(generateParticles(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height, 40, 1.6));
         }
       },
       { 
@@ -274,16 +237,6 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
         }}
       />
       
-      {/* Звезды выровнены в ряд под постером */}
-      {stars.map((star, index) => (
-        <AnimatedStar
-          key={index}
-          index={index}
-          isActive={stage >= index + 1}
-          position={{ x: star.position.x, y: star.position.y }}
-          size={60}
-        />
-      ))}
       
       {/* Энергетические кольца */}
       <EnergyRings 

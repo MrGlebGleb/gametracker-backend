@@ -487,52 +487,31 @@
       100% { transform: scale(1); }
     }
 
-    /* Частицы */
+    /* Желто-оранжевые искры */
     .epic-particle {
       position: fixed;
       border-radius: 50%;
       pointer-events: none;
       z-index: 9997;
-      animation: particleFade 1.5s ease-out forwards;
+      animation: sparkleFade 1.2s ease-out forwards;
+      box-shadow: 0 0 6px currentColor;
     }
 
-    @keyframes particleFade {
+    @keyframes sparkleFade {
       0% {
         opacity: 1;
         transform: scale(1);
       }
-      100% {
-        opacity: 0;
-        transform: scale(0.3);
-      }
-    }
-
-    /* Звезды */
-    .epic-star {
-      position: fixed;
-      color: #FFD700;
-      text-shadow: 
-        0 0 10px rgba(255, 215, 0, 0.8),
-        0 0 20px rgba(255, 215, 0, 0.5),
-        0 0 30px rgba(255, 215, 0, 0.3);
-      animation: starAppearBounce 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
-      z-index: 9999;
-      pointer-events: none;
-    }
-
-    @keyframes starAppearBounce {
-      0% {
-        transform: scale(0) translateY(20px);
-        opacity: 0;
-      }
       50% {
-        transform: scale(1.3) translateY(-5px);
+        opacity: 0.8;
+        transform: scale(1.2);
       }
       100% {
-        transform: scale(1) translateY(0);
-        opacity: 1;
+        opacity: 0;
+        transform: scale(0.2);
       }
     }
+
 
     /* Энергетические кольца */
     .energy-ring {
@@ -632,16 +611,11 @@
       .epic-stage-3 .epic-poster { transform: scale(1.6); }
       .epic-stage-4 .epic-poster { transform: scale(1.7); }
       .epic-stage-5 .epic-poster { transform: scale(1.7); }
-      
-      .epic-star {
-        font-size: 48px;
-      }
     }
 
     /* Reduced motion */
     @media (prefers-reduced-motion: reduce) {
       .epic-poster,
-      .epic-star,
       .energy-ring,
       .epic-particle {
         animation-duration: 0.01s !important;
