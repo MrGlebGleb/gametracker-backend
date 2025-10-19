@@ -12,6 +12,253 @@ const MEDIA_PER_COLUMN = 5;
 
 // --- Переиспользуемые UI-компоненты (идентичны странице игр) ---
 
+// === ЭПИЧЕСКАЯ АНИМАЦИЯ 5 ЗВЕЗД ===
+
+// Система частиц
+const ParticleSystem = ({ particles, onComplete }) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onComplete && onComplete();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [onComplete]);
+
+  return (
+    <>
+      {particles.map((particle, index) => (
+        <div
+          key={index}
+          className="epic-particle"
+          style={{
+            left: particle.x,
+            top: particle.y,
+            backgroundColor: particle.color,
+            transform: `translate(${particle.dx}px, ${particle.dy}px)`,
+            opacity: particle.opacity,
+            width: particle.size,
+            height: particle.size,
+            boxShadow: `0 0 ${particle.size * 2}px ${particle.color}`,
+            transition: `all ${particle.duration}ms ease-out`,
+          }}
+        />
+      ))}
+    </>
+  );
+};
+
+// Компонент звезды
+const AnimatedStar = ({ index, isActive, position, size = 80 }) => {
+  if (!isActive) return null;
+  
+  return (
+    <div 
+      className="epic-star"
+      style={{
+        left: position.x,
+        bottom: position.y,
+        fontSize: size,
+        animationDelay: `${index * 0.1}s`
+      }}
+    >
+      ★
+    </div>
+  );
+};
+
+// Энергетические кольца
+const EnergyRings = ({ isActive, centerX, centerY }) => {
+  if (!isActive) return null;
+  
+  return (
+    <>
+      {[0, 1, 2].map((ring) => (
+        <div
+          key={ring}
+          className="energy-ring"
+          style={{
+            left: centerX - 50,
+            top: centerY - 50,
+            width: 100,
+            height: 100,
+            animationDelay: `${ring * 0.3}s`,
+            borderColor: ring === 0 ? 'rgba(160, 210, 235, 0.6)' : 
+                        ring === 1 ? 'rgba(255, 215, 0, 0.4)' : 
+                        'rgba(255, 20, 147, 0.5)'
+          }}
+        />
+      ))}
+    </>
+  );
+};
+
+// Вспышка света
+const FlashEffect = ({ isActive }) => {
+  if (!isActive) return null;
+  
+  return <div className="flash-overlay" />;
+};
+
+// Главный компонент эпической анимации
+const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
+  const [stage, setStage] = useState(0);
+  const [particles, setParticles] = useState([]);
+  const [showFlash, setShowFlash] = useState(false);
+  const [showRings, setShowRings] = useState(false);
+  const [stars, setStars] = useState([]);
+  const [isReturning, setIsReturning] = useState(false);
+  
+  // Генерация частиц
+  const generateParticles = (centerX, centerY, count, colors, intensity = 1) => {
+    const newParticles = [];
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+      const speed = 50 + Math.random() * 150;
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      
+      newParticles.push({
+        x: centerX,
+        y: centerY,
+        dx: Math.cos(angle) * speed * intensity,
+        dy: Math.sin(angle) * speed * intensity,
+        color: color,
+        size: 4 + Math.random() * 8,
+        opacity: 0.8 + Math.random() * 0.2,
+        duration: 1000 + Math.random() * 1000,
+      });
+    }
+    return newParticles;
+  };
+
+  useEffect(() => {
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+    
+    const timeline = [
+      { 
+        time: 0, 
+        action: () => {
+          setStage(1);
+          setStars([{ index: 0, x: centerX, y: centerY - 100 }]);
+          setParticles(generateParticles(centerX, centerY, 7, ['#FFD700', '#FFA500'], 0.5));
+        }
+      },
+      { 
+        time: 800, 
+        action: () => {
+          setStage(2);
+          setStars(prev => [...prev, { index: 1, x: centerX - 120, y: centerY - 100 }]);
+          setParticles(generateParticles(centerX, centerY, 10, ['#a0d2eb', '#FFD700'], 0.7));
+        }
+      },
+      { 
+        time: 1600, 
+        action: () => {
+          setStage(3);
+          setShowRings(true);
+          setStars(prev => [...prev, { index: 2, x: centerX + 120, y: centerY - 100 }]);
+          setParticles(generateParticles(centerX, centerY, 15, ['#8458B3', '#d0bdf4', '#FFD700'], 1));
+        }
+      },
+      { 
+        time: 2400, 
+        action: () => {
+          setStage(4);
+          setStars(prev => [...prev, { index: 3, x: centerX - 240, y: centerY - 100 }]);
+          setParticles(generateParticles(centerX, centerY, 20, ['#FF00FF', '#00FFFF', '#FFD700', '#FF1493'], 1.2));
+        }
+      },
+      { 
+        time: 3200, 
+        action: () => {
+          setStage(5);
+          setShowFlash(true);
+          setStars(prev => [...prev, { index: 4, x: centerX, y: centerY - 100 }]);
+          setParticles(generateParticles(centerX, centerY, 30, ['#FFD700', '#FF1493', '#00FFFF', '#00FF00'], 1.5));
+        }
+      },
+      { 
+        time: 3500, 
+        action: () => {
+          setIsReturning(true);
+          setStage(6);
+        }
+      },
+      { 
+        time: 4000, 
+        action: () => {
+          onComplete && onComplete();
+        }
+      }
+    ];
+    
+    timeline.forEach(({ time, action }) => {
+      setTimeout(action, time);
+    });
+    
+    // Очистка flash эффекта
+    setTimeout(() => setShowFlash(false), 300);
+    
+  }, [onComplete]);
+
+  return (
+    <div className={`epic-animation-overlay epic-stage-${stage}`}>
+      <FlashEffect isActive={showFlash} />
+      
+      {/* Постер */}
+      <div style={{ position: 'relative' }}>
+        <img 
+          src={posterUrl || 'https://placehold.co/96x128/1f2937/ffffff?text=?'} 
+          alt="Epic Poster"
+          className={`epic-poster ${isReturning ? 'returning' : ''}`}
+          style={{
+            width: isReturning ? '64px' : '192px',
+            height: isReturning ? '96px' : '256px',
+            transition: isReturning ? 'all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)' : 'none',
+          }}
+        />
+        {/* Голографический эффект на постер */}
+        {stage >= 4 && (
+          <div 
+            className="holographic-effect"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              borderRadius: '12px',
+            }}
+          />
+        )}
+      </div>
+      
+      {/* Звезды */}
+      {stars.map((star, index) => (
+        <AnimatedStar
+          key={index}
+          index={index}
+          isActive={stage >= index + 1}
+          position={{ x: star.x, y: star.y }}
+          size={index === 4 ? 100 : 80}
+        />
+      ))}
+      
+      {/* Энергетические кольца */}
+      <EnergyRings 
+        isActive={showRings} 
+        centerX={window.innerWidth / 2} 
+        centerY={window.innerHeight / 2} 
+      />
+      
+      {/* Система частиц */}
+      <ParticleSystem 
+        particles={particles} 
+        onComplete={() => setParticles([])}
+      />
+    </div>
+  );
+};
+
 // Компонент уведомлений
 const NotificationsPanel = ({ token, onNavigateToUser, onNavigateToGame }) => {
   const [notifications, setNotifications] = useState([]);
@@ -868,6 +1115,7 @@ function MediaCard({ item, onSelect, onRemove, onDragStart, onDragEnd, isViewing
       onDragStart={(e) => !isViewingFriend && onDragStart(e, item)}
       onDragEnd={onDragEnd}
       onClick={() => onSelect(item)}
+      data-card-id={item.id}
           className="bg-[#1a0f2e]/70 rounded-xl border border-[#8458B3]/30 hover:border-[#a0d2eb] hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(160,210,235,0.4)] transition-all duration-200 cursor-pointer flex gap-3 p-2 group relative elevation-1 hover:elevation-2 shadow-transition media-card backdrop-blur-xl"
     >
       {/* Цветная полоска слева */}
@@ -984,11 +1232,48 @@ function Column({ title, emoji, items, columnKey, isExpanded, onToggleExpand, is
   );
 }
 
-function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, user }) {
+function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, user, onTriggerAnimation }) {
   if (!item) return null;
   const userReaction = (item.reactions || []).find(r => r.user_id === user?.id);
+  const [triggerAnimation, setTriggerAnimation] = useState(false);
+  const [previousRating, setPreviousRating] = useState(item?.rating || 0);
+
+  // Обработка изменения рейтинга
+  const handleRatingChange = (rating) => {
+    setPreviousRating(item.rating || 0);
+    onUpdate(item, { rating });
+    
+    // Если поставили 5 звезд и раньше было меньше 5
+    if (rating === 5 && (item.rating || 0) < 5) {
+      // Небольшая задержка перед анимацией
+      setTimeout(() => {
+        if (onTriggerAnimation) {
+          onTriggerAnimation(item);
+        } else {
+          setTriggerAnimation(true);
+        }
+      }, 100);
+    }
+  };
+
+  // Обработка завершения анимации
+  const handleAnimationComplete = () => {
+    setTriggerAnimation(false);
+    onClose();
+  };
 
   return (
+    <>
+      {/* Эпическая анимация */}
+      {triggerAnimation && (
+        <EpicFiveStarAnimation
+          posterUrl={item.poster}
+          cardId={item.id}
+          onComplete={handleAnimationComplete}
+        />
+      )}
+      
+      {/* Модальное окно */}
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={onClose}>
       <div className="bg-[#1a0f2e]/95 backdrop-blur-xl border border-[#8458B3]/50 modal-bg rounded-2xl p-6 w-full max-w-md border border-purple-500/30 max-h-[90vh] overflow-y-auto elevation-3" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
@@ -1000,7 +1285,7 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
               <Fragment>
                   <div>
                     <p className="text-gray-400 text-sm mb-2">Рейтинг:</p>
-                    <StarRating value={item.rating || 0} onChange={val => onUpdate(item, { rating: val })} />
+                    <StarRating value={item.rating || 0} onChange={handleRatingChange} />
                   </div>
                   <div>
                     <label className="text-gray-400 text-sm">Отзыв:</label>
@@ -1088,6 +1373,7 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
         </div>
       </div>
     </div>
+    </>
   );
 }
 
@@ -1211,6 +1497,7 @@ function MovieApp() {
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [friendshipStatus, setFriendshipStatus] = useState('none');
   const [userNickname, setUserNickname] = useState('');
+  const [animatingCard, setAnimatingCard] = useState(null);
   const [confirmingAddFriend, setConfirmingAddFriend] = useState(null);
   const [confirmingDeleteFriend, setConfirmingDeleteFriend] = useState(null);
   const [profileData, setProfileData] = useState({ username: '', bio: '', currentPassword: '', newPassword: '' });
@@ -1330,6 +1617,24 @@ function MovieApp() {
     });
     await loadBoards(viewingUser?.id);
     setSelectedMedia(prev => (prev && prev.id === item.id) ? { ...prev, ...updates } : prev);
+  };
+
+  // Обновление карточки с классом легендарной
+  const updateCardClass = (cardId, className) => {
+    // Находим карточку в DOM и добавляем класс
+    setTimeout(() => {
+      const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+      if (cardElement) {
+        cardElement.classList.add(className);
+        // Добавляем бейдж легендарной карты
+        if (!cardElement.querySelector('.legendary-badge')) {
+          const badge = document.createElement('div');
+          badge.className = 'legendary-badge';
+          badge.innerHTML = '<span class="badge-icon">★</span><span class="badge-text">ЛЕГЕНДАРНЫЙ</span>';
+          cardElement.appendChild(badge);
+        }
+      }
+    }, 100);
   };
   
   const removeItem = async (e, item) => {
@@ -1894,7 +2199,27 @@ function MovieApp() {
         showMediaTab={true}
       />
       
-      <MediaDetailsModal item={selectedMedia} onClose={() => setSelectedMedia(null)} onUpdate={updateItem} onReact={reactToItem} isViewingFriend={!!viewingUser} user={user}/>
+      <MediaDetailsModal 
+        item={selectedMedia} 
+        onClose={() => setSelectedMedia(null)} 
+        onUpdate={updateItem} 
+        onReact={reactToItem} 
+        isViewingFriend={!!viewingUser} 
+        user={user}
+        onTriggerAnimation={setAnimatingCard}
+      />
+      
+      {/* Эпическая анимация 5 звезд */}
+      {animatingCard && (
+        <EpicFiveStarAnimation
+          posterUrl={animatingCard.poster}
+          cardId={animatingCard.id}
+          onComplete={() => {
+            setAnimatingCard(null);
+            updateCardClass(animatingCard.id, 'legendary-card');
+          }}
+        />
+      )}
     </div>
   );
 }
