@@ -28,19 +28,19 @@ const ParticleSystem = ({ particles, onComplete }) => {
       {particles.map((particle, index) => (
         <div
           key={index}
-          className="epic-particle"
+          className={`epic-particle ${particle.sparkClass || ''}`}
           style={{
             left: particle.x,
             top: particle.y,
             backgroundColor: particle.color,
             transform: `translate(${particle.dx}px, ${particle.dy}px) rotate(${particle.rotation || 0}deg)`,
             opacity: particle.opacity,
-            width: particle.size,
-            height: particle.size,
-            boxShadow: `0 0 ${particle.size * 2}px ${particle.color}, inset 0 0 ${particle.size}px rgba(255, 255, 255, 0.3)`,
+            width: particle.width || particle.size || 4,
+            height: particle.height || particle.size || 6,
+            boxShadow: `0 0 ${(particle.width || 4) * 3}px ${particle.color}, 0 0 ${(particle.height || 6) * 2}px ${particle.color}`,
             transition: `all ${particle.duration}ms ease-out`,
-            // Добавляем градиент для более реалистичного вида искр
-            background: `radial-gradient(circle, ${particle.color} 0%, ${particle.color}dd 50%, ${particle.color}88 100%)`,
+            // Добавляем линейный градиент для вытянутых искр
+            background: `linear-gradient(135deg, ${particle.color} 0%, ${particle.color}ff 30%, ${particle.color}cc 70%, ${particle.color}88 100%)`,
           }}
         />
       ))}
@@ -102,8 +102,23 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
       const colors = ['#FFD700', '#FFA500', '#FF8C00', '#FFB347', '#FFE135', '#FF6B35', '#F7931E', '#FFC107', '#FF9800', '#FF5722'];
       const color = colors[Math.floor(Math.random() * colors.length)];
       
-      // Разные размеры искр
-      const size = Math.random() < 0.3 ? 2 + Math.random() * 3 : 4 + Math.random() * 6; // 30% мелких искр, 70% обычных
+      // Разные типы искр
+      const sparkType = Math.random();
+      let sparkClass, width, height;
+      
+      if (sparkType < 0.3) { // 30% длинных искр
+        sparkClass = 'long-spark';
+        width = 2;
+        height = 15;
+      } else if (sparkType < 0.7) { // 40% средних искр
+        sparkClass = 'medium-spark';
+        width = 3;
+        height = 10;
+      } else { // 30% коротких искр
+        sparkClass = 'short-spark';
+        width = 4;
+        height = 6;
+      }
       
       newParticles.push({
         x: startX, // Начальная позиция на периметре постера
@@ -112,9 +127,11 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
         dx: directionX * speed * intensity,
         dy: directionY * speed * intensity,
         color: color,
-        size: size, // Разнообразные размеры искр
-        opacity: 0.7 + Math.random() * 0.3,
-        duration: 800 + Math.random() * 800,
+        sparkClass: sparkClass,
+        width: width,
+        height: height,
+        opacity: 0.8 + Math.random() * 0.2,
+        duration: 600 + Math.random() * 800,
         // Добавляем случайное вращение для искр
         rotation: Math.random() * 360,
       });
