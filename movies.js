@@ -1494,7 +1494,9 @@ function MovieApp() {
           setDragOverColumn(targetColumn);
           console.log('Добавлен класс drag-over-column к:', targetColumn);
           
-          // Добавляем data-атрибут для направления стрелки
+          // ИСПРАВЛЕНО: Добавляем data-атрибут для направления стрелки
+          // Если карточка из wishlist, то перетаскиваем вправо (в watched)
+          // Если карточка из watched, то перетаскиваем влево (в wishlist)
           if (item.board === 'wishlist') {
             targetColumn.setAttribute('data-arrow-direction', 'right');
             console.log('Стрелка направлена направо (из wishlist в watched)');
