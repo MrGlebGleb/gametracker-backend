@@ -662,15 +662,25 @@ async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_notifications_user_read_created ON notifications(user_id, is_read, created_at);
 
       -- TAGS SYSTEM
-      CREATE TABLE IF NOT EXISTS tags (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        name VARCHAR(50) NOT NULL,
-        color VARCHAR(7) NOT NULL DEFAULT '#3B82F6',
-        type VARCHAR(20) NOT NULL DEFAULT 'game', -- 'game' или 'media'
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user_id, name, type)
-      );
+            CREATE TABLE IF NOT EXISTS tags (
+              id SERIAL PRIMARY KEY,
+              user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+              name VARCHAR(50) NOT NULL,
+              color VARCHAR(7) NOT NULL DEFAULT '#3B82F6',
+              type VARCHAR(20) NOT NULL DEFAULT 'game', -- 'game' или 'media'
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE(user_id, name, type)
+            );
+            
+            -- Добавляем колонку type если она не существует
+            DO $$ 
+            BEGIN
+              IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                           WHERE table_name = 'tags' AND column_name = 'type') THEN
+                ALTER TABLE tags ADD COLUMN type VARCHAR(20) NOT NULL DEFAULT 'game';
+                ALTER TABLE tags ADD CONSTRAINT tags_user_id_name_type_unique UNIQUE(user_id, name, type);
+              END IF;
+            END $$;
 
       CREATE TABLE IF NOT EXISTS game_tags (
         game_id INTEGER REFERENCES games(id) ON DELETE CASCADE,
