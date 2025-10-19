@@ -44,6 +44,33 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
+// Test endpoint for creating tags without authentication (TEMPORARY)
+app.post('/api/test-create-tag', async (req, res) => {
+  let client;
+  try {
+    console.log('TEST: Creating tag without auth...');
+    client = await pool.connect();
+    console.log('TEST: Database connection successful');
+    
+    const { name, color = '#3B82F6', type = 'game' } = req.body;
+    console.log('TEST: Creating tag:', { name, color, type });
+    
+    const result = await client.query(
+      'INSERT INTO tags (user_id, name, color, type) VALUES ($1, $2, $3, $4) RETURNING *',
+      [1, name, color, type] // Используем user_id = 1 для тестирования
+    );
+    console.log('TEST: Created tag:', result.rows[0]);
+    res.status(201).json({ message: 'Тег создан', tag: result.rows[0] });
+  } catch (error) {
+    console.error('TEST: Error creating tag:', error);
+    res.status(500).json({ error: 'Ошибка создания тега', details: error.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+});
+
 // Tags table test endpoint
 app.get('/api/test-tags-table', async (req, res) => {
   let client;
@@ -723,15 +750,18 @@ function authenticateToken(req, res, next) {
   
   console.log('Auth header:', authHeader);
   console.log('Token:', token ? 'Present' : 'Missing');
+  console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'Present' : 'Missing');
   
   if (!token) {
     console.log('No token provided');
     return res.status(401).json({ error: 'Требуется авторизация' });
   }
   
-  jwt.verify(token, JWT_SECRET, (err, user) => {
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) {
       console.log('Token verification failed:', err.message);
+      console.log('Token:', token);
+      console.log('JWT_SECRET length:', process.env.JWT_SECRET?.length);
       return res.status(403).json({ error: 'Недействительный токен' });
     }
     console.log('User authenticated:', user.id);
