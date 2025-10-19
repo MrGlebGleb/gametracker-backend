@@ -435,342 +435,223 @@
 
     /* Убираем только анимированную стрелку, оставляем анимацию столбцов */
     
-    /* === ЭПИЧЕСКАЯ АНИМАЦИЯ 5 ЗВЕЗД === */
-    
-    /* Интенсивная тряска */
-    @keyframes epicShake {
-      0%, 100% { transform: translate(0, 0) rotate(0deg); }
-      10% { transform: translate(-8px, 5px) rotate(-8deg); }
-      20% { transform: translate(7px, -6px) rotate(7deg); }
-      30% { transform: translate(-6px, 8px) rotate(-6deg); }
-      40% { transform: translate(8px, -5px) rotate(8deg); }
-      50% { transform: translate(-7px, 6px) rotate(-7deg); }
-      60% { transform: translate(6px, -8px) rotate(6deg); }
-      70% { transform: translate(-8px, 7px) rotate(-8deg); }
-      80% { transform: translate(7px, -6px) rotate(7deg); }
-      90% { transform: translate(-6px, 8px) rotate(-6deg); }
-    }
+    /* === ЭПИЧЕСКАЯ АНИМАЦИЯ 5 ЗВЕЗД - ОБНОВЛЕННАЯ === */
 
-    /* Пульсация с вращением */
-    @keyframes pulsateRotate {
-      0%, 100% { transform: scale(1) rotate(0deg); }
-      25% { transform: scale(1.08) rotate(5deg); }
-      50% { transform: scale(0.95) rotate(-5deg); }
-      75% { transform: scale(1.08) rotate(5deg); }
-    }
-
-    /* Голографический эффект */
-    @keyframes holographicShine {
-      0% {
-        background-position: -200% center;
-      }
-      100% {
-        background-position: 200% center;
-      }
-    }
-
-    /* Появление звезды */
-    @keyframes starAppear {
-      0% {
-        transform: scale(0) rotate(-180deg);
-        opacity: 0;
-      }
-      50% {
-        transform: scale(1.3) rotate(20deg);
-      }
-      100% {
-        transform: scale(1) rotate(0deg);
-        opacity: 1;
-      }
-    }
-
-    /* Расширяющиеся кольца */
-    @keyframes energyRing {
-      0% {
-        transform: scale(0.8);
-        opacity: 0.8;
-      }
-      100% {
-        transform: scale(3);
-        opacity: 0;
-      }
-    }
-
-    /* Вспышка света */
-    @keyframes flashEffect {
-      0% {
-        opacity: 0;
-      }
-      10% {
-        opacity: 0.9;
-      }
-      100% {
-        opacity: 0;
-      }
-    }
-
-    /* Glitch эффект */
-    @keyframes glitchEffect {
-      0%, 100% {
-        clip-path: inset(0 0 0 0);
-        transform: translate(0);
-      }
-      20% {
-        clip-path: inset(0 0 95% 0);
-        transform: translate(-5px, 5px);
-      }
-      40% {
-        clip-path: inset(95% 0 0 0);
-        transform: translate(5px, -5px);
-      }
-      60% {
-        clip-path: inset(0 95% 0 0);
-        transform: translate(-5px, 0);
-      }
-      80% {
-        clip-path: inset(0 0 0 95%);
-        transform: translate(5px, 0);
-      }
-    }
-
-    /* Пульсация легендарной карты */
-    @keyframes legendaryPulse {
-      0%, 100% {
-        box-shadow: 
-          0 0 20px rgba(255, 215, 0, 0.4),
-          0 0 40px rgba(255, 20, 147, 0.3);
-      }
-      50% {
-        box-shadow: 
-          0 0 30px rgba(255, 215, 0, 0.6),
-          0 0 60px rgba(255, 20, 147, 0.5);
-      }
-    }
-
-    /* Эпический overlay */
+    /* Overlay для анимации */
     .epic-animation-overlay {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(5px);
+      inset: 0;
       z-index: 9998;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      pointer-events: none;
     }
 
-    /* Постер в центре экрана */
+    /* Постер во время анимации */
     .epic-poster {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 9999;
       border-radius: 12px;
-      box-shadow: 0 0 60px rgba(132, 88, 179, 0.8);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      will-change: transform;
+    }
+
+    /* Стадии увеличения постера */
+    .epic-stage-1 .epic-poster { transform: scale(1.5); }
+    .epic-stage-2 .epic-poster { transform: scale(1.7); }
+    .epic-stage-3 .epic-poster { transform: scale(1.9); }
+    .epic-stage-4 .epic-poster { transform: scale(2); }
+    .epic-stage-5 .epic-poster { transform: scale(2); }
+
+    /* Легкая тряска */
+    @keyframes gentleShake {
+      0%, 100% { transform: translate(0, 0) scale(var(--scale, 1)); }
+      25% { transform: translate(-2px, 1px) scale(var(--scale, 1)); }
+      50% { transform: translate(2px, -1px) scale(var(--scale, 1)); }
+      75% { transform: translate(-1px, 2px) scale(var(--scale, 1)); }
+    }
+
+    .epic-stage-1 .epic-poster,
+    .epic-stage-2 .epic-poster,
+    .epic-stage-3 .epic-poster,
+    .epic-stage-4 .epic-poster {
+      animation: gentleShake 0.15s ease-in-out infinite;
+    }
+
+    /* Возвращение на место */
+    .epic-poster.returning {
+      animation: smoothReturn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    @keyframes smoothReturn {
+      0% { transform: scale(2); }
+      60% { transform: scale(0.95); }
+      80% { transform: scale(1.02); }
+      100% { transform: scale(1); }
+    }
+
+    /* Частицы */
+    .epic-particle {
+      position: fixed;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9997;
+      animation: particleFade 1.5s ease-out forwards;
+    }
+
+    @keyframes particleFade {
+      0% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(0.3);
+      }
     }
 
     /* Звезды */
     .epic-star {
       position: fixed;
-      font-size: 80px;
       color: #FFD700;
-      text-shadow: 0 0 20px #FFD700;
-      animation: starAppear 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-      z-index: 10000;
+      text-shadow: 
+        0 0 10px rgba(255, 215, 0, 0.8),
+        0 0 20px rgba(255, 215, 0, 0.5),
+        0 0 30px rgba(255, 215, 0, 0.3);
+      animation: starAppearBounce 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+      z-index: 9999;
+      pointer-events: none;
     }
 
-    /* Система частиц */
-    .epic-particle {
-      position: fixed;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 10001;
+    @keyframes starAppearBounce {
+      0% {
+        transform: scale(0) translateY(20px);
+        opacity: 0;
+      }
+      50% {
+        transform: scale(1.3) translateY(-5px);
+      }
+      100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+      }
     }
 
     /* Энергетические кольца */
     .energy-ring {
       position: fixed;
-      border: 3px solid rgba(160, 210, 235, 0.6);
+      border: 3px solid;
       border-radius: 50%;
-      animation: energyRing 1.5s ease-out infinite;
       pointer-events: none;
-      z-index: 10000;
+      animation: ringExpand 1.2s ease-out forwards;
+      z-index: 9996;
     }
 
-    /* Вспышка света */
-    .flash-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: white;
-      animation: flashEffect 0.3s ease-out;
-      pointer-events: none;
-      z-index: 10002;
+    @keyframes ringExpand {
+      0% {
+        transform: translate(-50%, -50%) scale(0.5);
+        opacity: 0.8;
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(4);
+        opacity: 0;
+      }
     }
 
-    /* Голографический эффект */
-    .holographic-effect {
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: linear-gradient(
-        45deg,
-        transparent 30%,
-        rgba(255, 0, 255, 0.3) 40%,
-        rgba(0, 255, 255, 0.3) 50%,
-        rgba(255, 215, 0, 0.3) 60%,
-        transparent 70%
-      );
-      background-size: 200% 200%;
-      animation: holographicShine 3s linear infinite;
-      mix-blend-mode: overlay;
-      pointer-events: none;
+    /* Мягкое свечение вместо вспышки */
+    @keyframes softGlow {
+      0%, 100% { opacity: 0; }
+      50% { opacity: 1; }
     }
 
-    /* Легендарная карта */
-    .legendary-card {
-      border: 2px solid transparent;
-      background: linear-gradient(#1a0f2e, #1a0f2e) padding-box,
-                  linear-gradient(135deg, #FFD700, #FF1493, #00FFFF, #FFD700) border-box;
+    /* Голографический эффект на постере */
+    .legendary-poster {
+      position: relative;
+      overflow: hidden;
+      border-radius: 8px;
       box-shadow: 
-        0 0 20px rgba(255, 215, 0, 0.4),
-        0 0 40px rgba(255, 20, 147, 0.3),
-        inset 0 0 20px rgba(255, 215, 0, 0.1);
-      animation: legendaryPulse 2s ease-in-out infinite;
+        0 0 8px rgba(255, 215, 0, 0.2),
+        0 0 16px rgba(0, 255, 255, 0.15),
+        inset 0 0 12px rgba(255, 255, 255, 0.08);
+      transition: box-shadow 0.3s ease;
     }
 
-    .legendary-card .media-poster {
-      position: relative;
-      overflow: hidden;
-    }
-
-    .legendary-card .media-poster::before {
+    .legendary-poster::before {
       content: '';
       position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
+      top: -100%;
+      left: -100%;
+      width: 300%;
+      height: 300%;
       background: linear-gradient(
-        45deg,
-        transparent 30%,
-        rgba(255, 0, 255, 0.3) 40%,
-        rgba(0, 255, 255, 0.3) 50%,
-        rgba(255, 215, 0, 0.3) 60%,
-        transparent 70%
+        115deg,
+        transparent 20%,
+        rgba(255, 255, 255, 0.04) 30%,
+        rgba(0, 255, 255, 0.06) 35%,
+        rgba(255, 20, 147, 0.06) 40%,
+        rgba(255, 215, 0, 0.07) 45%,
+        rgba(0, 255, 255, 0.06) 50%,
+        rgba(255, 255, 255, 0.04) 55%,
+        transparent 65%
       );
-      background-size: 200% 200%;
-      animation: holographicShine 3s linear infinite;
+      animation: subtleHolographic 5s linear infinite;
       mix-blend-mode: overlay;
       pointer-events: none;
+      opacity: 0.7;
     }
 
-    /* Бейдж легендарной карты */
-    .legendary-badge {
-      position: absolute;
-      top: -8px;
-      right: -8px;
-      background: linear-gradient(135deg, #FFD700, #FF1493);
-      color: white;
-      padding: 4px 8px;
-      border-radius: 12px;
-      font-size: 10px;
-      font-weight: bold;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-      box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
-      z-index: 10;
-      animation: legendaryPulse 2s ease-in-out infinite;
+    @keyframes subtleHolographic {
+      0% {
+        transform: translate(-33%, -33%) rotate(0deg);
+      }
+      100% {
+        transform: translate(33%, 33%) rotate(360deg);
+      }
     }
 
-    .legendary-badge .badge-icon {
-      margin-right: 4px;
+    .legendary-poster:hover {
+      box-shadow: 
+        0 0 12px rgba(255, 215, 0, 0.3),
+        0 0 24px rgba(0, 255, 255, 0.2),
+        inset 0 0 16px rgba(255, 255, 255, 0.12);
     }
 
-    /* Анимации для разных стадий */
-    .epic-stage-1 .epic-poster {
-      animation: epicShake 0.1s infinite;
-      transform: translate(-50%, -50%) scale(2.5);
+    /* Для темы Liquid Eye */
+    .liquid-eye .legendary-poster::before {
+      background: linear-gradient(
+        115deg,
+        transparent 20%,
+        rgba(255, 255, 255, 0.02) 30%,
+        rgba(255, 255, 255, 0.04) 45%,
+        rgba(255, 255, 255, 0.02) 55%,
+        transparent 65%
+      );
     }
 
-    .epic-stage-2 .epic-poster {
-      animation: epicShake 0.08s infinite;
-      transform: translate(-50%, -50%) scale(2.8);
+    /* Адаптивность */
+    @media (max-width: 768px) {
+      .epic-stage-1 .epic-poster { transform: scale(1.3); }
+      .epic-stage-2 .epic-poster { transform: scale(1.5); }
+      .epic-stage-3 .epic-poster { transform: scale(1.6); }
+      .epic-stage-4 .epic-poster { transform: scale(1.7); }
+      .epic-stage-5 .epic-poster { transform: scale(1.7); }
+      
+      .epic-star {
+        font-size: 48px;
+      }
     }
 
-    .epic-stage-3 .epic-poster {
-      animation: pulsateRotate 0.6s infinite;
-      transform: translate(-50%, -50%) scale(3.2);
-    }
-
-    .epic-stage-4 .epic-poster {
-      animation: glitchEffect 0.3s infinite;
-      transform: translate(-50%, -50%) scale(3.2);
-    }
-
-    .epic-stage-5 .epic-poster {
-      animation: epicShake 0.05s infinite;
-      transform: translate(-50%, -50%) scale(3.2);
-    }
-
-    /* Анимация возвращения */
-    .epic-poster.returning {
-      animation: none !important;
-      transform: translate(-50%, -50%) scale(1) !important;
-    }
-
-    /* Дополнительные эффекты для легендарных карт */
-    .legendary-card {
-      position: relative;
-      overflow: hidden;
-    }
-
-    .legendary-card::before {
-      content: '';
-      position: absolute;
-      top: -2px;
-      left: -2px;
-      right: -2px;
-      bottom: -2px;
-      background: linear-gradient(45deg, #FFD700, #FF1493, #00FFFF, #FFD700, #FFD700);
-      background-size: 400% 400%;
-      border-radius: 14px;
-      z-index: -1;
-      animation: holographicShine 3s linear infinite;
-    }
-
-    /* Поддержка prefers-reduced-motion */
+    /* Reduced motion */
     @media (prefers-reduced-motion: reduce) {
-      .epic-animation-overlay,
       .epic-poster,
       .epic-star,
-      .epic-particle,
       .energy-ring,
-      .flash-overlay,
-      .holographic-effect,
-      .legendary-card::before,
-      .legendary-card .media-poster::before {
-        animation: none !important;
+      .epic-particle {
+        animation-duration: 0.01s !important;
       }
       
-      .epic-poster {
-        transform: translate(-50%, -50%) scale(1) !important;
-      }
-      
-      .legendary-card {
-        border: 2px solid #FFD700 !important;
-        box-shadow: 0 0 20px rgba(255, 215, 0, 0.5) !important;
+      .legendary-poster::before {
+        animation: none;
       }
     }
+
 
     /* Эффект "магнитного притяжения" */
     .drag-over-column {

@@ -102,43 +102,78 @@ const FlashEffect = ({ isActive }) => {
 const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
   const [stage, setStage] = useState(0);
   const [particles, setParticles] = useState([]);
-  const [showFlash, setShowFlash] = useState(false);
+  const [showGlow, setShowGlow] = useState(false);
   const [showRings, setShowRings] = useState(false);
   const [stars, setStars] = useState([]);
   const [isReturning, setIsReturning] = useState(false);
+  const [cardPosition, setCardPosition] = useState({ x: 0, y: 0, width: 64, height: 96 });
   
-  // Генерация частиц
+  // Генерация частиц - вылетают из-за постера радиально
   const generateParticles = (centerX, centerY, count, colors, intensity = 1) => {
     const newParticles = [];
     for (let i = 0; i < count; i++) {
-      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
-      const speed = 50 + Math.random() * 150;
+      // Угол от 0 до 360 градусов для равномерного распределения
+      const angle = (Math.PI * 2 * i) / count;
+      const speed = 80 + Math.random() * 120; // Скорость разлета
       const color = colors[Math.floor(Math.random() * colors.length)];
       
       newParticles.push({
-        x: centerX,
-        y: centerY,
+        x: centerX, // Центр постера
+        y: centerY, // Центр постера
+        // Вылетают ИЗ-ЗА постера во все стороны радиально
         dx: Math.cos(angle) * speed * intensity,
         dy: Math.sin(angle) * speed * intensity,
         color: color,
-        size: 4 + Math.random() * 8,
-        opacity: 0.8 + Math.random() * 0.2,
-        duration: 1000 + Math.random() * 1000,
+        size: 6 + Math.random() * 8,
+        opacity: 0.9,
+        duration: 1500 + Math.random() * 1000,
       });
     }
     return newParticles;
   };
 
+  // Получение позиций звезд - выровнены в ряд под постером
+  const getStarPositions = (posterX, posterY, posterWidth, posterHeight) => {
+    const starSize = 60; // Размер одной звезды
+    const totalWidth = starSize * 5; // 5 звезд
+    const startX = posterX + (posterWidth / 2) - (totalWidth / 2); // Центрируем под постером
+    const starY = posterY + posterHeight + 20; // 20px под постером
+    
+    return [
+      { x: startX, y: starY },
+      { x: startX + starSize, y: starY },
+      { x: startX + starSize * 2, y: starY },
+      { x: startX + starSize * 3, y: starY },
+      { x: startX + starSize * 4, y: starY }
+    ];
+  };
+
   useEffect(() => {
-    const centerX = window.innerWidth / 2;
-    const centerY = window.innerHeight / 2;
+    // Находим карточку в DOM
+    const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+    if (cardElement) {
+      const rect = cardElement.getBoundingClientRect();
+      const posterImg = cardElement.querySelector('img');
+      const posterRect = posterImg ? posterImg.getBoundingClientRect() : rect;
+      
+      setCardPosition({
+        x: posterRect.left,
+        y: posterRect.top,
+        width: posterRect.width,
+        height: posterRect.height
+      });
+    }
+    
+    const centerX = cardPosition.x + cardPosition.width / 2;
+    const centerY = cardPosition.y + cardPosition.height / 2;
     
     const timeline = [
       { 
         time: 0, 
         action: () => {
           setStage(1);
-          setStars([{ index: 0, x: centerX, y: centerY - 100 }]);
+          const positions = getStarPositions(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height);
+          setStars([{ index: 0, position: positions[0] }]);
           setParticles(generateParticles(centerX, centerY, 7, ['#FFD700', '#FFA500'], 0.5));
         }
       },
@@ -146,7 +181,8 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
         time: 800, 
         action: () => {
           setStage(2);
-          setStars(prev => [...prev, { index: 1, x: centerX - 120, y: centerY - 100 }]);
+          const positions = getStarPositions(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height);
+          setStars(prev => [...prev, { index: 1, position: positions[1] }]);
           setParticles(generateParticles(centerX, centerY, 10, ['#a0d2eb', '#FFD700'], 0.7));
         }
       },
@@ -155,7 +191,8 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
         action: () => {
           setStage(3);
           setShowRings(true);
-          setStars(prev => [...prev, { index: 2, x: centerX + 120, y: centerY - 100 }]);
+          const positions = getStarPositions(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height);
+          setStars(prev => [...prev, { index: 2, position: positions[2] }]);
           setParticles(generateParticles(centerX, centerY, 15, ['#8458B3', '#d0bdf4', '#FFD700'], 1));
         }
       },
@@ -163,7 +200,8 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
         time: 2400, 
         action: () => {
           setStage(4);
-          setStars(prev => [...prev, { index: 3, x: centerX - 240, y: centerY - 100 }]);
+          const positions = getStarPositions(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height);
+          setStars(prev => [...prev, { index: 3, position: positions[3] }]);
           setParticles(generateParticles(centerX, centerY, 20, ['#FF00FF', '#00FFFF', '#FFD700', '#FF1493'], 1.2));
         }
       },
@@ -171,8 +209,9 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
         time: 3200, 
         action: () => {
           setStage(5);
-          setShowFlash(true);
-          setStars(prev => [...prev, { index: 4, x: centerX, y: centerY - 100 }]);
+          setShowGlow(true);
+          const positions = getStarPositions(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height);
+          setStars(prev => [...prev, { index: 4, position: positions[4] }]);
           setParticles(generateParticles(centerX, centerY, 30, ['#FFD700', '#FF1493', '#00FFFF', '#00FF00'], 1.5));
         }
       },
@@ -195,59 +234,62 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
       setTimeout(action, time);
     });
     
-    // Очистка flash эффекта
-    setTimeout(() => setShowFlash(false), 300);
+    // Очистка glow эффекта
+    setTimeout(() => setShowGlow(false), 800);
     
   }, [onComplete]);
 
   return (
     <div className={`epic-animation-overlay epic-stage-${stage}`}>
-      <FlashEffect isActive={showFlash} />
-      
-      {/* Постер */}
-      <div style={{ position: 'relative' }}>
-        <img 
-          src={posterUrl || 'https://placehold.co/96x128/1f2937/ffffff?text=?'} 
-          alt="Epic Poster"
-          className={`epic-poster ${isReturning ? 'returning' : ''}`}
+      {/* Мягкое золотое свечение вместо белой вспышки */}
+      {showGlow && (
+        <div 
+          className="soft-glow-overlay"
           style={{
-            width: isReturning ? '64px' : '192px',
-            height: isReturning ? '96px' : '256px',
-            transition: isReturning ? 'all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)' : 'none',
+            position: 'fixed',
+            inset: 0,
+            background: 'radial-gradient(circle at center, rgba(255, 215, 0, 0.25) 0%, rgba(255, 215, 0, 0.1) 40%, transparent 70%)',
+            pointerEvents: 'none',
+            animation: 'softGlow 0.8s ease-out',
+            zIndex: 9995
           }}
         />
-        {/* Голографический эффект на постер */}
-        {stage >= 4 && (
-          <div 
-            className="holographic-effect"
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              borderRadius: '12px',
-            }}
-          />
-        )}
-      </div>
+      )}
       
-      {/* Звезды */}
+      {/* Постер остается на месте, только увеличивается */}
+      <img 
+        src={posterUrl || 'https://placehold.co/96x128/1f2937/ffffff?text=?'} 
+        alt="Epic Poster"
+        className={`epic-poster ${isReturning ? 'returning' : ''}`}
+        style={{
+          position: 'fixed',
+          left: cardPosition.x,
+          top: cardPosition.y,
+          width: cardPosition.width,
+          height: cardPosition.height,
+          transform: 'scale(1)', // Начальное состояние
+          zIndex: 9999,
+          borderRadius: '8px',
+          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+        }}
+      />
+      
+      {/* Звезды выровнены в ряд под постером */}
       {stars.map((star, index) => (
         <AnimatedStar
           key={index}
           index={index}
           isActive={stage >= index + 1}
-          position={{ x: star.x, y: star.y }}
-          size={index === 4 ? 100 : 80}
+          position={{ x: star.position.x, y: star.position.y }}
+          size={60}
         />
       ))}
       
       {/* Энергетические кольца */}
       <EnergyRings 
         isActive={showRings} 
-        centerX={window.innerWidth / 2} 
-        centerY={window.innerHeight / 2} 
+        centerX={cardPosition.x + cardPosition.width / 2} 
+        centerY={cardPosition.y + cardPosition.height / 2} 
       />
       
       {/* Система частиц */}
@@ -1245,20 +1287,33 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
     
     // Если поставили 5 звезд и раньше было меньше 5
     if (rating === 5 && (item.rating || 0) < 5) {
-      // Небольшая задержка перед анимацией
-      setTimeout(() => {
-        if (onTriggerAnimation) {
-          onTriggerAnimation(item);
-        } else {
-          setTriggerAnimation(true);
-        }
-      }, 100);
+      // Установить флаг, что нужна анимация при закрытии
+      sessionStorage.setItem(`pending-animation-${item.id}`, 'true');
     }
   };
 
   // Обработка завершения анимации
   const handleAnimationComplete = () => {
     setTriggerAnimation(false);
+  };
+
+  // Обработка закрытия модального окна
+  const handleClose = () => {
+    const needsAnimation = sessionStorage.getItem(`pending-animation-${item.id}`) === 'true';
+    
+    if (needsAnimation) {
+      sessionStorage.removeItem(`pending-animation-${item.id}`);
+      
+      // Ждем 500ms ПОСЛЕ закрытия модалки
+      setTimeout(() => {
+        if (onTriggerAnimation) {
+          onTriggerAnimation(item);
+        } else {
+          setTriggerAnimation(true);
+        }
+      }, 500); // Полсекунды задержки после закрытия
+    }
+    
     onClose();
   };
 
@@ -1274,11 +1329,11 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
       )}
       
       {/* Модальное окно */}
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={handleClose}>
       <div className="bg-[#1a0f2e]/95 backdrop-blur-xl border border-[#8458B3]/50 modal-bg rounded-2xl p-6 w-full max-w-md border border-purple-500/30 max-h-[90vh] overflow-y-auto elevation-3" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-white">{item.title}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-lg"><Icon name="x" className="w-5 h-5 text-gray-400" /></button>
+          <button onClick={handleClose} className="p-2 hover:bg-gray-800 rounded-lg"><Icon name="x" className="w-5 h-5 text-gray-400" /></button>
         </div>
         <div className="space-y-4">
           {!isViewingFriend ? (
@@ -1619,19 +1674,15 @@ function MovieApp() {
     setSelectedMedia(prev => (prev && prev.id === item.id) ? { ...prev, ...updates } : prev);
   };
 
-  // Обновление карточки с классом легендарной
-  const updateCardClass = (cardId, className) => {
-    // Находим карточку в DOM и добавляем класс
+  // Обновление карточки с голографическим эффектом на постере
+  const updateCardClass = (cardId) => {
     setTimeout(() => {
       const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
       if (cardElement) {
-        cardElement.classList.add(className);
-        // Добавляем бейдж легендарной карты
-        if (!cardElement.querySelector('.legendary-badge')) {
-          const badge = document.createElement('div');
-          badge.className = 'legendary-badge';
-          badge.innerHTML = '<span class="badge-icon">★</span><span class="badge-text">ЛЕГЕНДАРНЫЙ</span>';
-          cardElement.appendChild(badge);
+        // Найти постер внутри карточки
+        const posterImg = cardElement.querySelector('img');
+        if (posterImg) {
+          posterImg.classList.add('legendary-poster');
         }
       }
     }, 100);
@@ -2216,7 +2267,7 @@ function MovieApp() {
           cardId={animatingCard.id}
           onComplete={() => {
             setAnimatingCard(null);
-            updateCardClass(animatingCard.id, 'legendary-card');
+            updateCardClass(animatingCard.id);
           }}
         />
       )}
