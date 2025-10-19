@@ -1463,38 +1463,38 @@ function MovieApp() {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/html', e.currentTarget.outerHTML);
     
-    // Определяем целевую колонку на основе mediaType и текущей board
-    // Целевая колонка = ПРОТИВОПОЛОЖНАЯ от той, где сейчас карточка
+    // Определяем колонку для анимации на основе mediaType и текущей board
+    // Колонка для анимации = ТА ЖЕ, где сейчас карточка (откуда взяли)
     console.log('Перетаскиваемая карточка:', item);
     console.log('mediaType:', item.mediaType, 'board:', item.board);
     console.log('Полная структура item:', JSON.stringify(item, null, 2));
     
-    let targetColumnKey = '';
+    let animationColumnKey = '';
     if (item.mediaType === 'movie') {
-      // Если карточка в wishlist, цель - watched, и наоборот
-      targetColumnKey = item.board === 'wishlist' ? 'movie:watched' : 'movie:wishlist';
+      // Анимируем колонку, откуда взяли карточку
+      animationColumnKey = item.board === 'wishlist' ? 'movie:wishlist' : 'movie:watched';
     } else if (item.mediaType === 'tv') {
-      // Если карточка в wishlist, цель - watched, и наоборот  
-      targetColumnKey = item.board === 'wishlist' ? 'tv:watched' : 'tv:wishlist';
+      // Анимируем колонку, откуда взяли карточку
+      animationColumnKey = item.board === 'wishlist' ? 'tv:wishlist' : 'tv:watched';
     }
     
-    console.log('Определена целевая колонка:', targetColumnKey);
-    console.log('Логика: карточка из', item.board, '→ цель', targetColumnKey);
+    console.log('Определена колонка для анимации:', animationColumnKey);
+    console.log('Логика: анимируем колонку, откуда взяли карточку из', item.board);
     
-    // Добавляем класс к ЦЕЛЕВОЙ колонке с небольшой задержкой
-    if (targetColumnKey) {
-      console.log('Ищем целевую колонку:', targetColumnKey);
+    // Добавляем класс к КОЛОНКЕ ДЛЯ АНИМАЦИИ с небольшой задержкой
+    if (animationColumnKey) {
+      console.log('Ищем колонку для анимации:', animationColumnKey);
       
       // Небольшая задержка чтобы DOM успел обновиться
       setTimeout(() => {
-        const targetColumn = document.querySelector(`[data-column-key="${targetColumnKey}"]`);
-        console.log('Найдена колонка:', targetColumn);
-        if (targetColumn) {
-          targetColumn.classList.add('drag-over-column');
-          setDragOverColumn(targetColumn);
-          console.log('Добавлен класс drag-over-column к:', targetColumn);
+        const animationColumn = document.querySelector(`[data-column-key="${animationColumnKey}"]`);
+        console.log('Найдена колонка для анимации:', animationColumn);
+        if (animationColumn) {
+          animationColumn.classList.add('drag-over-column');
+          setDragOverColumn(animationColumn);
+          console.log('Добавлен класс drag-over-column к:', animationColumn);
         } else {
-          console.error('Целевая колонка не найдена!');
+          console.error('Колонка для анимации не найдена!');
           // Попробуем найти все колонки для отладки
           const allColumns = document.querySelectorAll('[data-column-key]');
           console.log('Все найденные колонки:', allColumns);
@@ -1503,7 +1503,7 @@ function MovieApp() {
           });
           
           // Попробуем найти колонку по другому селектору
-          const alternativeColumn = document.querySelector(`[data-column-key="${targetColumnKey}"]`);
+          const alternativeColumn = document.querySelector(`[data-column-key="${animationColumnKey}"]`);
           console.log('Альтернативный поиск:', alternativeColumn);
         }
       }, 10);
