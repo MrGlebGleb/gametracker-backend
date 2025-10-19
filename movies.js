@@ -1464,20 +1464,43 @@ function MovieApp() {
     e.dataTransfer.setData('text/html', e.currentTarget.outerHTML);
     
     // Определяем целевую колонку на основе mediaType и текущей board
+    // Целевая колонка = ПРОТИВОПОЛОЖНАЯ от той, где сейчас карточка
+    console.log('Перетаскиваемая карточка:', item);
+    console.log('mediaType:', item.mediaType, 'board:', item.board);
+    
     let targetColumnKey = '';
     if (item.mediaType === 'movie') {
+      // Если карточка в wishlist, цель - watched, и наоборот
       targetColumnKey = item.board === 'wishlist' ? 'movie:watched' : 'movie:wishlist';
     } else if (item.mediaType === 'tv') {
+      // Если карточка в wishlist, цель - watched, и наоборот  
       targetColumnKey = item.board === 'wishlist' ? 'tv:watched' : 'tv:wishlist';
     }
     
-    // Добавляем класс к ЦЕЛЕВОЙ колонке
+    console.log('Определена целевая колонка:', targetColumnKey);
+    
+    // Добавляем класс к ЦЕЛЕВОЙ колонке с небольшой задержкой
     if (targetColumnKey) {
-      const targetColumn = document.querySelector(`[data-column-key="${targetColumnKey}"]`);
-      if (targetColumn) {
-        targetColumn.classList.add('drag-over-column');
-        setDragOverColumn(targetColumn);
-      }
+      console.log('Ищем целевую колонку:', targetColumnKey);
+      
+      // Небольшая задержка чтобы DOM успел обновиться
+      setTimeout(() => {
+        const targetColumn = document.querySelector(`[data-column-key="${targetColumnKey}"]`);
+        console.log('Найдена колонка:', targetColumn);
+        if (targetColumn) {
+          targetColumn.classList.add('drag-over-column');
+          setDragOverColumn(targetColumn);
+          console.log('Добавлен класс drag-over-column к:', targetColumn);
+        } else {
+          console.error('Целевая колонка не найдена!');
+          // Попробуем найти все колонки для отладки
+          const allColumns = document.querySelectorAll('[data-column-key]');
+          console.log('Все найденные колонки:', allColumns);
+          allColumns.forEach(col => {
+            console.log('Колонка:', col.getAttribute('data-column-key'));
+          });
+        }
+      }, 10);
     }
     
     setTimeout(() => {
@@ -1486,6 +1509,8 @@ function MovieApp() {
   };
 
   const onDragEnd = (e) => {
+    console.log('onDragEnd: очищаем все анимации');
+    
     // Убираем класс dragging-card с перетаскиваемой карточки
     document.querySelectorAll('.dragging-card').forEach(el => el.classList.remove('dragging-card'));
     dragItem.current = null;
@@ -1493,7 +1518,10 @@ function MovieApp() {
     setDragOverColumn(null);
     
     // Убираем все drag-over-column классы и data-атрибуты
-    document.querySelectorAll('.drag-over-column').forEach(el => el.classList.remove('drag-over-column'));
+    document.querySelectorAll('.drag-over-column').forEach(el => {
+      el.classList.remove('drag-over-column');
+      console.log('Удален класс drag-over-column с:', el);
+    });
     document.querySelectorAll('.board-column').forEach(col => {
       col.removeAttribute('data-position');
     });
@@ -1519,6 +1547,8 @@ function MovieApp() {
     e.preventDefault();
     if (!dragItem.current || viewingUser) return;
     
+    console.log('onDrop: карточка сброшена в колонку:', targetColumnKey);
+    
     // Очищаем состояние drag & drop
     setIsDragging(false);
     setDragOverColumn(null);
@@ -1532,7 +1562,10 @@ function MovieApp() {
     await updateItem(item, { board: targetBoard });
     
     // Очищаем все классы и атрибуты после успешного drop
-    document.querySelectorAll('.drag-over-column').forEach(el => el.classList.remove('drag-over-column'));
+    document.querySelectorAll('.drag-over-column').forEach(el => {
+      el.classList.remove('drag-over-column');
+      console.log('onDrop: удален класс drag-over-column с:', el);
+    });
     document.querySelectorAll('.board-column').forEach(col => {
       col.removeAttribute('data-position');
     });
