@@ -832,7 +832,7 @@ const MediaStatsContent = ({ stats }) => {
                   </div>
                   <div className="flex items-center gap-1">
                     {[...Array(5)].map((_, i) => (
-                      <Icon key={i} name="star" className={`w-4 h-4 ${i < (movie.rating || 0) ? 'text-[#a0d2eb]' : 'text-[#8458B3]/30'}`} style={i < (movie.rating || 0) ? {filter: 'drop-shadow(0 0 4px rgba(160, 210, 235, 0.5))'} : {}} />
+                      <Icon key={i} name="star" className={`w-4 h-4 ${i < (movie.rating || 0) ? 'text-[#a0d2eb] star-active' : 'text-[#8458B3]/30 star-inactive'}`} />
                     ))}
                     <span className="ml-2 text-white font-medium">{movie.rating || 0}</span>
                   </div>
@@ -864,7 +864,7 @@ const MediaStatsContent = ({ stats }) => {
                   </div>
                   <div className="flex items-center gap-1">
                     {[...Array(5)].map((_, i) => (
-                      <Icon key={i} name="star" className={`w-4 h-4 ${i < (series.rating || 0) ? 'text-[#a0d2eb]' : 'text-[#8458B3]/30'}`} style={i < (series.rating || 0) ? {filter: 'drop-shadow(0 0 4px rgba(160, 210, 235, 0.5))'} : {}} />
+                      <Icon key={i} name="star" className={`w-4 h-4 ${i < (series.rating || 0) ? 'text-[#a0d2eb] star-active' : 'text-[#8458B3]/30 star-inactive'}`} />
                     ))}
                     <span className="ml-2 text-white font-medium">{series.rating || 0}</span>
                   </div>
@@ -1154,8 +1154,8 @@ function StarRating({ value = 0, onChange }) {
   return (
     <div className="flex items-center gap-1 star-rating">
       {[1, 2, 3, 4, 5].map(star => (
-        <button key={star} onClick={() => onChange(star)} className="transition-transform hover:scale-110">
-          <Icon name="star" className={`w-8 h-8 ${star <= value ? 'text-[#a0d2eb]' : 'text-[#8458B3]/30'}`} style={star <= value ? {filter: 'drop-shadow(0 0 4px rgba(160, 210, 235, 0.5))'} : {}} />
+        <button key={star} onClick={() => onChange(star)} className="transition-all duration-200">
+          <Icon name="star" className={`w-8 h-8 ${star <= value ? 'text-[#a0d2eb] star-active' : 'text-[#8458B3]/30 star-inactive'}`} />
         </button>
       ))}
     </div>
@@ -1363,7 +1363,7 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
               </Fragment>
           ) : (
              <Fragment>
-                {item.rating && <div><p className="text-gray-400 text-sm mb-2">Рейтинг от {item.owner.username}:</p><div className="flex gap-1">{[...Array(5)].map((_, i) => (<Icon key={i} name="star" className={`w-6 h-6 ${i < item.rating ? 'text-[#a0d2eb]' : 'text-[#8458B3]/30'}`} style={i < item.rating ? {filter: 'drop-shadow(0 0 4px rgba(160, 210, 235, 0.5))'} : {}} />))}</div></div>}
+                {item.rating && <div><p className="text-gray-400 text-sm mb-2">Рейтинг от {item.owner.username}:</p><div className="flex gap-1">{[...Array(5)].map((_, i) => (<Icon key={i} name="star" className={`w-6 h-6 ${i < item.rating ? 'text-[#a0d2eb] star-active' : 'text-[#8458B3]/30 star-inactive'}`} />))}</div></div>}
                 {item.review && <div><p className="text-gray-400 text-sm mb-1">Отзыв от {item.owner.username}:</p><p className="text-white bg-gray-800 p-3 rounded-lg border border-gray-700">{item.review}</p></div>}
                 {!item.rating && !item.review && <p className="text-gray-400 italic">Пользователь не оставил отзыва.</p>}
              </Fragment>

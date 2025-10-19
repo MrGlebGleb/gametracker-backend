@@ -203,6 +203,21 @@
       background: transparent !important;
     }
 
+    /* Убираем границы у кнопок звезд */
+    .star-rating button {
+      border: none !important;
+      outline: none !important;
+      background: transparent !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+    }
+
+    .star-rating button:focus {
+      outline: none !important;
+      box-shadow: none !important;
+    }
+
     /* Волновой эффект при выборе рейтинга */
     @keyframes starWave {
       0%, 100% { transform: scale(1); }
@@ -944,6 +959,7 @@
     /* Рейтинги */
     .star-active {
       color: var(--purple-pain);
+      filter: drop-shadow(0 0 6px rgba(160, 210, 235, 0.6));
     }
     
     .star-inactive {
