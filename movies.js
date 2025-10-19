@@ -1467,6 +1467,7 @@ function MovieApp() {
     // Целевая колонка = ПРОТИВОПОЛОЖНАЯ от той, где сейчас карточка
     console.log('Перетаскиваемая карточка:', item);
     console.log('mediaType:', item.mediaType, 'board:', item.board);
+    console.log('Полная структура item:', JSON.stringify(item, null, 2));
     
     let targetColumnKey = '';
     if (item.mediaType === 'movie') {
@@ -1478,6 +1479,7 @@ function MovieApp() {
     }
     
     console.log('Определена целевая колонка:', targetColumnKey);
+    console.log('Логика: карточка из', item.board, '→ цель', targetColumnKey);
     
     // Добавляем класс к ЦЕЛЕВОЙ колонке с небольшой задержкой
     if (targetColumnKey) {
@@ -1497,8 +1499,12 @@ function MovieApp() {
           const allColumns = document.querySelectorAll('[data-column-key]');
           console.log('Все найденные колонки:', allColumns);
           allColumns.forEach(col => {
-            console.log('Колонка:', col.getAttribute('data-column-key'));
+            console.log('Колонка:', col.getAttribute('data-column-key'), col);
           });
+          
+          // Попробуем найти колонку по другому селектору
+          const alternativeColumn = document.querySelector(`[data-column-key="${targetColumnKey}"]`);
+          console.log('Альтернативный поиск:', alternativeColumn);
         }
       }, 10);
     }
