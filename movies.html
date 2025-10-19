@@ -433,67 +433,7 @@
 
     /* УДАЛЕНО: Визуальный индикатор "бросьте здесь" */
 
-    /* Стрелки указатели по краям */
-    .drag-over-column::after {
-      position: absolute;
-      top: 50%;
-      font-size: 32px;
-      color: rgba(160, 210, 235, 0.8);
-      transform: translateY(-50%);
-      animation: arrowBounce 0.6s ease-in-out infinite;
-      pointer-events: none;
-    }
-
-    /* Стрелка направлена направо (из wishlist в watched) */
-    .drag-over-column[data-arrow-direction="right"]::after {
-      content: '→';
-      right: -30px;
-      left: auto;
-    }
-
-    /* Стрелка направлена налево (из watched в wishlist) */
-    .drag-over-column[data-arrow-direction="left"]::after {
-      content: '←';
-      left: -30px;
-      right: auto;
-    }
-
-    @keyframes arrowBounce {
-      0%, 100% {
-        transform: translateY(-50%) translateX(0);
-      }
-      50% {
-        transform: translateY(-50%) translateX(-8px);
-      }
-    }
-
-    /* Анимация стрелки для левого направления */
-    .drag-over-column[data-arrow-direction="left"]::after {
-      animation: arrowBounceLeft 0.6s ease-in-out infinite;
-    }
-
-    /* Анимация стрелки для правого направления */
-    .drag-over-column[data-arrow-direction="right"]::after {
-      animation: arrowBounceRight 0.6s ease-in-out infinite;
-    }
-
-    @keyframes arrowBounceLeft {
-      0%, 100% {
-        transform: translateY(-50%) translateX(0);
-      }
-      50% {
-        transform: translateY(-50%) translateX(8px);
-      }
-    }
-
-    @keyframes arrowBounceRight {
-      0%, 100% {
-        transform: translateY(-50%) translateX(0);
-      }
-      50% {
-        transform: translateY(-50%) translateX(-8px);
-      }
-    }
+    /* Стрелки убраны по запросу пользователя */
 
     /* Эффект "магнитного притяжения" */
     .drag-over-column {
