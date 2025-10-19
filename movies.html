@@ -445,6 +445,20 @@
       animation: arrowBounce 0.6s ease-in-out infinite;
     }
 
+    /* Стрелка направлена направо (из wishlist в watched) */
+    .drag-over-column[data-arrow-direction="right"]::after {
+      content: '→';
+      right: -30px;
+      left: auto;
+    }
+
+    /* Стрелка направлена налево (из watched в wishlist) */
+    .drag-over-column[data-arrow-direction="left"]::after {
+      content: '←';
+      left: -30px;
+      right: auto;
+    }
+
     @keyframes arrowBounce {
       0%, 100% {
         transform: translateY(-50%) translateX(0);

@@ -1463,38 +1463,47 @@ function MovieApp() {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/html', e.currentTarget.outerHTML);
     
-    // Определяем колонку для анимации на основе mediaType и текущей board
-    // Колонка для анимации = ТА ЖЕ, где сейчас карточка (откуда взяли)
+    // Определяем целевую колонку для анимации на основе mediaType и текущей board
+    // Целевая колонка = ПРОТИВОПОЛОЖНАЯ от той, где сейчас карточка (куда можно перенести)
     console.log('Перетаскиваемая карточка:', item);
     console.log('mediaType:', item.mediaType, 'board:', item.board);
     console.log('Полная структура item:', JSON.stringify(item, null, 2));
     
-    let animationColumnKey = '';
+    let targetColumnKey = '';
     if (item.mediaType === 'movie') {
-      // Анимируем колонку, откуда взяли карточку
-      animationColumnKey = item.board === 'wishlist' ? 'movie:wishlist' : 'movie:watched';
+      // Если карточка в wishlist, цель - watched, и наоборот
+      targetColumnKey = item.board === 'wishlist' ? 'movie:watched' : 'movie:wishlist';
     } else if (item.mediaType === 'tv') {
-      // Анимируем колонку, откуда взяли карточку
-      animationColumnKey = item.board === 'wishlist' ? 'tv:wishlist' : 'tv:watched';
+      // Если карточка в wishlist, цель - watched, и наоборот
+      targetColumnKey = item.board === 'wishlist' ? 'tv:watched' : 'tv:wishlist';
     }
     
-    console.log('Определена колонка для анимации:', animationColumnKey);
-    console.log('Логика: анимируем колонку, откуда взяли карточку из', item.board);
+    console.log('Определена целевая колонка:', targetColumnKey);
+    console.log('Логика: карточка из', item.board, '→ цель', targetColumnKey);
     
-    // Добавляем класс к КОЛОНКЕ ДЛЯ АНИМАЦИИ с небольшой задержкой
-    if (animationColumnKey) {
-      console.log('Ищем колонку для анимации:', animationColumnKey);
+    // Добавляем класс к ЦЕЛЕВОЙ КОЛОНКЕ с небольшой задержкой
+    if (targetColumnKey) {
+      console.log('Ищем целевую колонку:', targetColumnKey);
       
       // Небольшая задержка чтобы DOM успел обновиться
       setTimeout(() => {
-        const animationColumn = document.querySelector(`[data-column-key="${animationColumnKey}"]`);
-        console.log('Найдена колонка для анимации:', animationColumn);
-        if (animationColumn) {
-          animationColumn.classList.add('drag-over-column');
-          setDragOverColumn(animationColumn);
-          console.log('Добавлен класс drag-over-column к:', animationColumn);
+        const targetColumn = document.querySelector(`[data-column-key="${targetColumnKey}"]`);
+        console.log('Найдена целевая колонка:', targetColumn);
+        if (targetColumn) {
+          targetColumn.classList.add('drag-over-column');
+          setDragOverColumn(targetColumn);
+          console.log('Добавлен класс drag-over-column к:', targetColumn);
+          
+          // Добавляем data-атрибут для направления стрелки
+          if (item.board === 'wishlist') {
+            targetColumn.setAttribute('data-arrow-direction', 'right');
+            console.log('Стрелка направлена направо (из wishlist в watched)');
+          } else {
+            targetColumn.setAttribute('data-arrow-direction', 'left');
+            console.log('Стрелка направлена налево (из watched в wishlist)');
+          }
         } else {
-          console.error('Колонка для анимации не найдена!');
+          console.error('Целевая колонка не найдена!');
           // Попробуем найти все колонки для отладки
           const allColumns = document.querySelectorAll('[data-column-key]');
           console.log('Все найденные колонки:', allColumns);
@@ -1503,7 +1512,7 @@ function MovieApp() {
           });
           
           // Попробуем найти колонку по другому селектору
-          const alternativeColumn = document.querySelector(`[data-column-key="${animationColumnKey}"]`);
+          const alternativeColumn = document.querySelector(`[data-column-key="${targetColumnKey}"]`);
           console.log('Альтернативный поиск:', alternativeColumn);
         }
       }, 10);
@@ -1526,6 +1535,7 @@ function MovieApp() {
     // Убираем все drag-over-column классы и data-атрибуты
     document.querySelectorAll('.drag-over-column').forEach(el => {
       el.classList.remove('drag-over-column');
+      el.removeAttribute('data-arrow-direction');
       console.log('Удален класс drag-over-column с:', el);
     });
     document.querySelectorAll('.board-column').forEach(col => {
@@ -1570,6 +1580,7 @@ function MovieApp() {
     // Очищаем все классы и атрибуты после успешного drop
     document.querySelectorAll('.drag-over-column').forEach(el => {
       el.classList.remove('drag-over-column');
+      el.removeAttribute('data-arrow-direction');
       console.log('onDrop: удален класс drag-over-column с:', el);
     });
     document.querySelectorAll('.board-column').forEach(col => {
