@@ -859,13 +859,13 @@ function StarRating({ value = 0, onChange }) {
   );
 }
 
-function MediaCard({ item, onSelect, onRemove, onDragStart, onDragEnd, isViewingFriend, boardId }) {
+function MediaCard({ item, onSelect, onRemove, onDragStart, onDragEnd, isViewingFriend, boardId, columnKey }) {
   const type = item.media_type || 'movie'; // Определяем тип медиа
   
   return (
     <div
       draggable={!isViewingFriend}
-      onDragStart={(e) => !isViewingFriend && onDragStart(e, item)}
+      onDragStart={(e) => !isViewingFriend && onDragStart(e, item, columnKey)}
       onDragEnd={onDragEnd}
       onClick={() => onSelect(item)}
           className="bg-[#1a0f2e]/70 rounded-xl border border-[#8458B3]/30 hover:border-[#a0d2eb] hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(160,210,235,0.4)] transition-all duration-200 cursor-pointer flex gap-3 p-2 group relative elevation-1 hover:elevation-2 shadow-transition media-card backdrop-blur-xl"
@@ -972,7 +972,7 @@ function Column({ title, emoji, items, columnKey, isExpanded, onToggleExpand, is
             </div>
         </div>
         <div className="space-y-2 flex-grow min-h-[150px]">
-            {visibleItems.map(it => <MediaCard key={it.id} item={it} isViewingFriend={isViewingFriend} boardId={boardId} {...handlers} />)}
+            {visibleItems.map(it => <MediaCard key={it.id} item={it} isViewingFriend={isViewingFriend} boardId={boardId} columnKey={columnKey} {...handlers} />)}
         </div>
         {items.length > MEDIA_PER_COLUMN && (
           <button onClick={() => onToggleExpand(columnKey)} className="w-full text-center mt-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-[#8458B3] to-[#a0d2eb] hover:bg-gradient-to-r hover:from-[#a0d2eb] hover:to-[#8458B3] rounded-lg flex items-center justify-center gap-1 transition-all hover:scale-105 shadow-lg" style={{boxShadow: '0 2px 8px rgba(132, 88, 179, 0.3)', fontWeight: '600'}}>
@@ -1456,31 +1456,38 @@ function MovieApp() {
     window.location.href = '/index.html';
   };
   
-  const onDragStart = (e, item) => {
+  const onDragStart = (e, item, sourceColumnKey) => {
     if(viewingUser) return;
-    dragItem.current = { item };
+    
+    // Добавляем информацию о текущей колонке к item
+    const itemWithBoard = {
+      ...item,
+      board: sourceColumnKey.includes('wishlist') ? 'wishlist' : 'watched'
+    };
+    
+    dragItem.current = { item: itemWithBoard };
     setIsDragging(true);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/html', e.currentTarget.outerHTML);
     
     // Определяем целевую колонку для анимации на основе mediaType и текущей board
     // Целевая колонка = ПРОТИВОПОЛОЖНАЯ от той, где сейчас карточка (куда можно перенести)
-    console.log('Перетаскиваемая карточка:', item);
-    console.log('mediaType:', item.media_type, 'board:', item.board);
-    console.log('Полная структура item:', JSON.stringify(item, null, 2));
+    console.log('Перетаскиваемая карточка:', itemWithBoard);
+    console.log('mediaType:', itemWithBoard.media_type, 'board:', itemWithBoard.board);
+    console.log('Полная структура item:', JSON.stringify(itemWithBoard, null, 2));
     
     let targetColumnKey = '';
     // Используем media_type вместо mediaType, так как в данных используется media_type
-    if (item.media_type === 'movie') {
+    if (itemWithBoard.media_type === 'movie') {
       // Если карточка в wishlist, цель - watched, и наоборот
-      targetColumnKey = item.board === 'wishlist' ? 'movie:watched' : 'movie:wishlist';
-    } else if (item.media_type === 'tv') {
+      targetColumnKey = itemWithBoard.board === 'wishlist' ? 'movie:watched' : 'movie:wishlist';
+    } else if (itemWithBoard.media_type === 'tv') {
       // Если карточка в wishlist, цель - watched, и наоборот
-      targetColumnKey = item.board === 'wishlist' ? 'tv:watched' : 'tv:wishlist';
+      targetColumnKey = itemWithBoard.board === 'wishlist' ? 'tv:watched' : 'tv:wishlist';
     }
     
     console.log('Определена целевая колонка:', targetColumnKey);
-    console.log('Логика: карточка из', item.board, '→ цель', targetColumnKey);
+    console.log('Логика: карточка из', itemWithBoard.board, '→ цель', targetColumnKey);
     
     // Добавляем класс к ЦЕЛЕВОЙ КОЛОНКЕ с небольшой задержкой
     if (targetColumnKey) {
