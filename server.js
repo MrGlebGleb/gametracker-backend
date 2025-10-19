@@ -44,6 +44,55 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
+// Tags table test endpoint
+app.get('/api/test-tags-table', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    
+    // Проверяем существование таблицы tags
+    const tableExists = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'tags'
+      );
+    `);
+    
+    // Если таблица существует, проверяем её структуру
+    let tableStructure = null;
+    if (tableExists.rows[0].exists) {
+      const structure = await client.query(`
+        SELECT column_name, data_type, is_nullable, column_default
+        FROM information_schema.columns 
+        WHERE table_name = 'tags'
+        ORDER BY ordinal_position;
+      `);
+      tableStructure = structure.rows;
+    }
+    
+    // Проверяем количество тегов
+    let tagsCount = 0;
+    if (tableExists.rows[0].exists) {
+      const count = await client.query('SELECT COUNT(*) as count FROM tags');
+      tagsCount = count.rows[0].count;
+    }
+    
+    client.release();
+    res.json({ 
+      status: 'OK',
+      tableExists: tableExists.rows[0].exists,
+      tableStructure: tableStructure,
+      tagsCount: tagsCount
+    });
+  } catch (error) {
+    console.error('Tags table test error:', error);
+    res.status(500).json({ 
+      status: 'Error',
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 // Database migration endpoint
 app.get('/api/migrate', async (req, res) => {
   try {
@@ -280,6 +329,7 @@ app.use('/api', generalLimiter);
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    console.log('Validation errors:', errors.array());
     return res.status(400).json({
       error: 'Ошибки валидации',
       details: errors.array().map(err => ({
@@ -398,6 +448,10 @@ const validateTag = [
     .optional()
     .matches(/^#[0-9A-Fa-f]{6}$/)
     .withMessage('Цвет должен быть в формате hex (#RRGGBB)'),
+  body('type')
+    .optional()
+    .isIn(['game', 'media'])
+    .withMessage('Тип тега должен быть "game" или "media"'),
   handleValidationErrors
 ];
 
@@ -451,6 +505,7 @@ async function initDatabase() {
   console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Present' : 'Missing');
   const client = await pool.connect();
   try {
+    console.log('Initializing database tables...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -616,8 +671,10 @@ async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_history_user_entity_created ON history_log(user_id, entity_type, created_at);
     `);
     console.log('✅ База данных инициализирована');
+    console.log('✅ Таблицы тегов созданы успешно');
   } catch (error) {
     console.error('❌ Ошибка инициализации БД:', error);
+    console.error('❌ Stack trace:', error.stack);
   } finally {
     client.release();
   }
@@ -1659,10 +1716,12 @@ app.get('/api/tags', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const { type = 'game' } = req.query; // По умолчанию 'game' для обратной совместимости
+    console.log('GET /api/tags - User ID:', req.user.id, 'Type:', type);
     const result = await client.query(
       'SELECT * FROM tags WHERE user_id = $1 AND type = $2 ORDER BY name ASC',
       [req.user.id, type]
     );
+    console.log('GET /api/tags - Found tags:', result.rows.length);
     res.json({ tags: result.rows });
   } catch (error) {
     console.error('Ошибка получения тегов:', error);
@@ -1677,12 +1736,15 @@ app.post('/api/tags', authenticateToken, validateTag, sanitizeInput, async (req,
   const client = await pool.connect();
   try {
     const { name, color = '#3B82F6', type = 'game' } = req.body;
+    console.log('POST /api/tags - User ID:', req.user.id, 'Name:', name, 'Color:', color, 'Type:', type);
     const result = await client.query(
       'INSERT INTO tags (user_id, name, color, type) VALUES ($1, $2, $3, $4) RETURNING *',
       [req.user.id, name, color, type]
     );
+    console.log('POST /api/tags - Created tag:', result.rows[0]);
     res.status(201).json({ message: 'Тег создан', tag: result.rows[0] });
   } catch (error) {
+    console.error('POST /api/tags - Error:', error);
     if (error.code === '23505') {
       return res.status(400).json({ error: 'Тег с таким названием уже существует' });
     }
