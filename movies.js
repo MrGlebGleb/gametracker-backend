@@ -132,36 +132,41 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
       });
     }
     
-    const centerX = cardPosition.x + cardPosition.width / 2;
-    const centerY = cardPosition.y + cardPosition.height / 2;
+    // Используем актуальные координаты постера для timeline
+    const posterRect = cardElement ? (() => {
+      const posterImg = cardElement.querySelector('img');
+      const rect = posterImg ? posterImg.getBoundingClientRect() : cardElement.getBoundingClientRect();
+      console.log('Poster coordinates:', rect); // Отладка
+      return rect;
+    })() : { left: 0, top: 0, width: 64, height: 96 };
     
     const timeline = [
       { 
         time: 0, 
         action: () => {
           setStage(1);
-          setParticles(generateParticles(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height, 15, 0.8));
+          setParticles(generateParticles(posterRect.left, posterRect.top, posterRect.width, posterRect.height, 15, 0.8));
         }
       },
       { 
         time: 800, 
         action: () => {
           setStage(2);
-          setParticles(generateParticles(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height, 20, 1.0));
+          setParticles(generateParticles(posterRect.left, posterRect.top, posterRect.width, posterRect.height, 20, 1.0));
         }
       },
       { 
         time: 1600, 
         action: () => {
           setStage(3);
-          setParticles(generateParticles(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height, 25, 1.2));
+          setParticles(generateParticles(posterRect.left, posterRect.top, posterRect.width, posterRect.height, 25, 1.2));
         }
       },
       { 
         time: 2400, 
         action: () => {
           setStage(4);
-          setParticles(generateParticles(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height, 30, 1.4));
+          setParticles(generateParticles(posterRect.left, posterRect.top, posterRect.width, posterRect.height, 30, 1.4));
         }
       },
       { 
@@ -169,7 +174,7 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
         action: () => {
           setStage(5);
           setShowGlow(true);
-          setParticles(generateParticles(cardPosition.x, cardPosition.y, cardPosition.width, cardPosition.height, 40, 1.6));
+          setParticles(generateParticles(posterRect.left, posterRect.top, posterRect.width, posterRect.height, 40, 1.6));
         }
       },
       { 
@@ -187,12 +192,15 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
       }
     ];
     
-    timeline.forEach(({ time, action }) => {
-      setTimeout(action, time);
-    });
-    
-    // Очистка glow эффекта
-    setTimeout(() => setShowGlow(false), 800);
+    // Небольшая задержка перед запуском анимации для обновления DOM
+    setTimeout(() => {
+      timeline.forEach(({ time, action }) => {
+        setTimeout(action, time);
+      });
+      
+      // Очистка glow эффекта
+      setTimeout(() => setShowGlow(false), 800);
+    }, 50); // 50ms задержка
     
   }, [onComplete]);
 
@@ -220,10 +228,10 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
         className={`epic-poster ${isReturning ? 'returning' : ''}`}
         style={{
           position: 'fixed',
-          left: cardPosition.x,
-          top: cardPosition.y,
-          width: cardPosition.width,
-          height: cardPosition.height,
+          left: cardPosition.x || 0,
+          top: cardPosition.y || 0,
+          width: cardPosition.width || 64,
+          height: cardPosition.height || 96,
           transform: 'scale(1)', // Начальное состояние
           zIndex: 9999,
           borderRadius: '8px',
