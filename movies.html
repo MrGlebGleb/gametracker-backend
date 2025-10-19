@@ -177,33 +177,13 @@
       animation: modalFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
 
-    /* Анимация звезд рейтинга */
-    .star-rating svg {
-      transition: all 0.2s ease-out;
-      display: inline-block;
-      box-sizing: content-box;
-      overflow: visible;
-    }
-
-    .star-rating svg:hover {
-      filter: drop-shadow(0 0 12px rgba(160, 210, 235, 1)) drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
-      transform: rotate(-5deg);
-    }
-
-    /* Убираем любые границы вокруг звезд */
+    /* Анимация звезд рейтинга - БЕЗ КВАДРАТНЫХ ЗОН */
     .star-rating {
       display: inline-flex;
       align-items: center;
       gap: 4px;
     }
 
-    .star-rating svg {
-      border: none !important;
-      outline: none !important;
-      background: transparent !important;
-    }
-
-    /* Убираем границы у кнопок звезд */
     .star-rating button {
       border: none !important;
       outline: none !important;
@@ -211,11 +191,82 @@
       padding: 0 !important;
       margin: 0 !important;
       box-shadow: none !important;
+      display: inline-block;
     }
 
     .star-rating button:focus {
       outline: none !important;
       box-shadow: none !important;
+    }
+
+    .star-rating svg {
+      transition: all 0.2s ease-out;
+      display: inline-block;
+      border: none !important;
+      outline: none !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+
+    .star-rating svg:hover {
+      /* Убираем drop-shadow, используем только цвет и поворот */
+      color: #a0d2eb !important;
+      transform: rotate(-5deg);
+      /* Добавляем тонкое свечение через box-shadow */
+      box-shadow: 0 0 8px rgba(160, 210, 235, 0.6);
+    }
+
+    /* Дополнительная защита от любых границ */
+    .star-rating * {
+      border: none !important;
+      outline: none !important;
+      background: transparent !important;
+      box-sizing: border-box !important;
+    }
+
+    .star-rating button:hover {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+
+    /* Убираем любые псевдоэлементы */
+    .star-rating button::before,
+    .star-rating button::after,
+    .star-rating svg::before,
+    .star-rating svg::after {
+      display: none !important;
+    }
+
+    /* КРИТИЧЕСКИ ВАЖНО: Убираем квадратную зону полностью */
+    .star-rating svg polygon {
+      vector-effect: non-scaling-stroke !important;
+      shape-rendering: geometricPrecision !important;
+    }
+
+    /* Убираем любые эффекты от fill */
+    .star-rating svg[fill="currentColor"] {
+      fill: currentColor !important;
+      stroke: none !important;
+      stroke-width: 0 !important;
+    }
+
+    /* Дополнительная защита от любых границ SVG */
+    .star-rating svg {
+      overflow: visible !important;
+      clip-path: none !important;
+      mask: none !important;
+      filter: none !important;
+    }
+
+    .star-rating svg:hover {
+      overflow: visible !important;
+      clip-path: none !important;
+      mask: none !important;
+      /* Только цвет и поворот, никаких других эффектов */
+      color: #a0d2eb !important;
+      transform: rotate(-5deg);
+      box-shadow: 0 0 8px rgba(160, 210, 235, 0.6) !important;
     }
 
     /* Волновой эффект при выборе рейтинга */
