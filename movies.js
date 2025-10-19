@@ -28,19 +28,24 @@ const ParticleSystem = ({ particles, onComplete }) => {
       {particles.map((particle, index) => (
         <div
           key={index}
-          className={`epic-particle ${particle.sparkClass || ''}`}
+          className="epic-particle"
           style={{
             left: particle.x,
             top: particle.y,
             backgroundColor: particle.color,
+            width: particle.size,
+            height: particle.size,
             transform: `translate(${particle.dx}px, ${particle.dy}px)`,
             opacity: particle.opacity,
-            width: particle.width || 2,
-            height: particle.height || 2,
-            boxShadow: `0 0 ${(particle.width || 2) * 2}px ${particle.color}`,
+            // Тройное свечение для премиум эффекта
+            boxShadow: `
+              0 0 ${particle.size * 2}px ${particle.color},
+              0 0 ${particle.size * 4}px ${particle.color},
+              0 0 ${particle.size * 6}px ${particle.color}
+            `,
+            filter: `blur(${particle.blur}px)`,
             transition: `all ${particle.duration}ms ease-out`,
-            // Простой цвет для микро частиц
-            background: particle.color,
+            pointerEvents: 'none',
           }}
         />
       ))}
@@ -57,17 +62,85 @@ const FlashEffect = ({ isActive }) => {
   return <div className="flash-overlay" />;
 };
 
+// Компонент световых лучей
+const LightRays = ({ posterRect, visible }) => {
+  if (!visible) return null;
+  
+  const rays = Array.from({ length: 8 }, (_, i) => {
+    const angle = (360 / 8) * i;
+    return {
+      angle,
+      delay: i * 0.1,
+    };
+  });
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        left: posterRect.x + posterRect.width / 2,
+        top: posterRect.y + posterRect.height / 2,
+        width: 0,
+        height: 0,
+        zIndex: 9994,
+        pointerEvents: 'none',
+      }}
+    >
+      {rays.map((ray, index) => (
+        <div
+          key={index}
+          style={{
+            position: 'absolute',
+            left: '-2px',
+            top: '-100px',
+            width: '4px',
+            height: '200px',
+            background: 'linear-gradient(to bottom, transparent, rgba(255, 215, 0, 0.3) 50%, transparent)',
+            transform: `rotate(${ray.angle}deg)`,
+            transformOrigin: 'center 100px',
+            animation: `rayPulse 1.5s ease-in-out ${ray.delay}s infinite`,
+            opacity: 0.4,
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes rayPulse {
+          0%, 100% {
+            opacity: 0.2;
+            transform: scaleY(1);
+          }
+          50% {
+            opacity: 0.4;
+            transform: scaleY(1.2);
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
+
 // Главный компонент эпической анимации
 const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
   const [stage, setStage] = useState(0);
   const [particles, setParticles] = useState([]);
+  const [showRays, setShowRays] = useState(false);
   const [showGlow, setShowGlow] = useState(false);
   const [isReturning, setIsReturning] = useState(false);
   const [cardPosition, setCardPosition] = useState({ x: 0, y: 0, width: 64, height: 96 });
   
-  // Генерация частиц - желто-оранжевые искры по периметру постера
+  // Генерация мелких светящихся частиц
   const generateParticles = (posterX, posterY, posterWidth, posterHeight, count, intensity = 1) => {
     const newParticles = [];
+    
+    // Премиальные цвета для частиц
+    const colors = [
+      '#FFFFFF',  // Чистый белый
+      '#FFD700',  // Золотой
+      '#87CEEB',  // Светло-голубой
+      '#F0E68C',  // Светлый золотистый
+      '#E0FFFF',  // Светлый циан
+      '#FFF8DC',  // Кремовый
+    ];
     
     for (let i = 0; i < count; i++) {
       // Выбираем случайную сторону постера (верх, низ, лево, право)
@@ -77,59 +150,45 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
       if (side === 0) { // Верх
         startX = posterX + Math.random() * posterWidth;
         startY = posterY;
-        directionX = (Math.random() - 0.5) * 2; // -1 до 1
-        directionY = -Math.random() - 0.5; // -1.5 до -0.5 (вверх)
+        directionX = (Math.random() - 0.5) * 40; // Небольшое отклонение по X
+        directionY = -Math.random() * 60 - 40; // Движение вверх
       } else if (side === 1) { // Низ
         startX = posterX + Math.random() * posterWidth;
         startY = posterY + posterHeight;
-        directionX = (Math.random() - 0.5) * 2; // -1 до 1
-        directionY = Math.random() + 0.5; // 0.5 до 1.5 (вниз)
+        directionX = (Math.random() - 0.5) * 40;
+        directionY = Math.random() * 60 + 40; // Движение вниз
       } else if (side === 2) { // Лево
         startX = posterX;
         startY = posterY + Math.random() * posterHeight;
-        directionX = -Math.random() - 0.5; // -1.5 до -0.5 (влево)
-        directionY = (Math.random() - 0.5) * 2; // -1 до 1
+        directionX = -Math.random() * 60 - 40; // Движение влево
+        directionY = (Math.random() - 0.5) * 40;
       } else { // Право
         startX = posterX + posterWidth;
         startY = posterY + Math.random() * posterHeight;
-        directionX = Math.random() + 0.5; // 0.5 до 1.5 (вправо)
-        directionY = (Math.random() - 0.5) * 2; // -1 до 1
+        directionX = Math.random() * 60 + 40; // Движение вправо
+        directionY = (Math.random() - 0.5) * 40;
       }
       
-      const speed = 40 + Math.random() * 60; // Скорость разлета
+      // Применяем интенсивность к направлению
+      directionX *= intensity;
+      directionY *= intensity;
       
-      // Деликатные цвета микро частиц
-      const colors = ['#FFFFFF', '#FFD700', '#87CEEB'];
+      // Случайный цвет из палитры
       const color = colors[Math.floor(Math.random() * colors.length)];
       
-      // Типы микро частиц
-      const particleType = Math.random();
-      let sparkClass, width, height;
-      
-      if (particleType < 0.6) { // 60% микро частиц
-        sparkClass = 'micro-particle';
-        width = 2;
-        height = 2;
-      } else { // 40% светящихся точек
-        sparkClass = 'glow-particle';
-        width = 3;
-        height = 3;
-      }
+      // Размер частицы: 2-4px (очень мелкие)
+      const size = 2 + Math.random() * 2;
       
       newParticles.push({
-        x: startX, // Начальная позиция на периметре постера
-        y: startY, // Начальная позиция на периметре постера
-        // Вылетают ОТ постера в направлении от него
-        // Медленное поднятие вверх
-        dx: (Math.random() - 0.5) * 20, // Случайное горизонтальное движение
-        dy: -Math.random() * 40 - 20, // Поднятие вверх
+        x: startX,
+        y: startY,
+        dx: directionX,
+        dy: directionY,
         color: color,
-        sparkClass: sparkClass,
-        width: width,
-        height: height,
-        opacity: 0.9 + Math.random() * 0.1,
-        duration: 1500 + Math.random() * 1000, // Более длительная анимация
-        rotation: 0, // Без вращения для микро частиц
+        size: size,
+        blur: 1 + Math.random(), // Легкое размытие 1-2px
+        opacity: 0.7 + Math.random() * 0.3, // Прозрачность 0.7-1.0
+        duration: 800 + Math.random() * 600, // Длительность анимации
       });
     }
     return newParticles;
@@ -178,28 +237,29 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
         time: 1600, 
         action: () => {
           setStage(3);
-          setParticles(generateParticles(posterRect.left, posterRect.top, posterRect.width, posterRect.height, 30, 0.7));
+          setShowRays(true);
+          setParticles(generateParticles(posterRect.left, posterRect.top, posterRect.width, posterRect.height, 35, 1.2));
         }
       },
       { 
         time: 2400, 
         action: () => {
           setStage(4);
-          setParticles(generateParticles(posterRect.left, posterRect.top, posterRect.width, posterRect.height, 35, 0.8));
+          setParticles(generateParticles(posterRect.left, posterRect.top, posterRect.width, posterRect.height, 40, 1.4));
         }
       },
       { 
         time: 3200, 
         action: () => {
           setStage(5);
-          setShowGlow(true);
-          setParticles(generateParticles(posterRect.left, posterRect.top, posterRect.width, posterRect.height, 40, 0.9));
+          setParticles(generateParticles(posterRect.left, posterRect.top, posterRect.width, posterRect.height, 50, 1.6));
         }
       },
       { 
         time: 3500, 
         action: () => {
           setIsReturning(true);
+          setShowRays(false);
           setStage(6);
         }
       },
@@ -225,20 +285,8 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
 
   return (
     <div className={`epic-animation-overlay epic-stage-${stage}`}>
-      {/* Мягкое золотое свечение вместо белой вспышки */}
-      {showGlow && (
-        <div 
-          className="soft-glow-overlay"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'radial-gradient(circle at center, rgba(255, 215, 0, 0.25) 0%, rgba(255, 215, 0, 0.1) 40%, transparent 70%)',
-            pointerEvents: 'none',
-            animation: 'softGlow 0.8s ease-out',
-            zIndex: 9995
-          }}
-        />
-      )}
+      {/* Световые лучи */}
+      <LightRays posterRect={cardPosition} visible={showRays} />
       
       {/* Постер остается на месте, только увеличивается */}
       <img 
@@ -251,60 +299,12 @@ const EpicFiveStarAnimation = ({ posterUrl, cardId, onComplete }) => {
           top: cardPosition.y || 0,
           width: cardPosition.width || 64,
           height: cardPosition.height || 96,
-          transform: 'scale(1)', // Начальное состояние
-          zIndex: 9999,
+          transform: 'scale(1)',
+          zIndex: 9990,
           borderRadius: '8px',
           boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
         }}
       />
-      
-      
-      
-      {/* Тонкие световые лучи */}
-      {stage >= 2 && (
-        <>
-          <div 
-            className="light-ray"
-            style={{
-              left: cardPosition.x + cardPosition.width / 2 - 30,
-              top: cardPosition.y - 20,
-              width: 60,
-              height: 2,
-              background: 'linear-gradient(90deg, transparent 0%, rgba(255, 215, 0, 0.3) 50%, transparent 100%)',
-            }}
-          />
-          <div 
-            className="light-ray"
-            style={{
-              left: cardPosition.x + cardPosition.width / 2 - 30,
-              top: cardPosition.y + cardPosition.height + 18,
-              width: 60,
-              height: 2,
-              background: 'linear-gradient(90deg, transparent 0%, rgba(0, 255, 255, 0.3) 50%, transparent 100%)',
-            }}
-          />
-          <div 
-            className="light-ray"
-            style={{
-              left: cardPosition.x - 18,
-              top: cardPosition.y + cardPosition.height / 2 - 30,
-              width: 2,
-              height: 60,
-              background: 'linear-gradient(0deg, transparent 0%, rgba(255, 20, 147, 0.3) 50%, transparent 100%)',
-            }}
-          />
-          <div 
-            className="light-ray"
-            style={{
-              left: cardPosition.x + cardPosition.width + 16,
-              top: cardPosition.y + cardPosition.height / 2 - 30,
-              width: 2,
-              height: 60,
-              background: 'linear-gradient(0deg, transparent 0%, rgba(255, 215, 0, 0.3) 50%, transparent 100%)',
-            }}
-          />
-        </>
-      )}
       
       {/* Система частиц */}
       <ParticleSystem 
