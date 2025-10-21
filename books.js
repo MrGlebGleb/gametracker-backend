@@ -189,142 +189,169 @@ const BookSearchModal = ({ isOpen, onClose, onAddBook, status = 'want_to_read' }
   );
 };
 
-// Компонент карточки книги
-const BookCard = ({ book, onEdit, onDelete, onRate, onReact, onMove }) => {
-  const [showDetails, setShowDetails] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-
-  const handleDragStart = (e) => {
-    setIsDragging(true);
-    e.dataTransfer.setData('text/plain', JSON.stringify(book));
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragEnd = () => {
-    setIsDragging(false);
-  };
+// Компонент модального окна для деталей книги
+function BookDetailsModal({ book, onClose, onUpdate, onReact, user }) {
+  if (!book) return null;
+  const userReaction = (book.reactions || []).find(r => r.user_id === user?.id);
 
   return (
-    <div
-      className={`book-card bg-white rounded-lg shadow-md border-2 border-gray-200 hover:shadow-lg transition-all duration-300 cursor-move ${
-        isDragging ? 'dragging-card' : ''
-      }`}
-      draggable
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      data-card-id={book.id}
-    >
-      <div className="relative">
-        <img
-          src={book.coverUrl}
-          alt={book.title}
-          className="w-full h-48 object-cover rounded-t-lg"
-          onError={(e) => {
-            e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="192" viewBox="0 0 200 192"><rect width="200" height="192" fill="%23f3f4f6"/><text x="100" y="100" text-anchor="middle" fill="%236b7280" font-size="48">📚</text></svg>';
-          }}
-        />
-        
-        {/* Кнопки действий */}
-        <div className="absolute top-2 right-2 flex gap-1">
-          <button
-            onClick={() => setShowDetails(!showDetails)}
-            className="p-1 bg-white/80 rounded-full hover:bg-white transition-colors"
-            title="Подробнее"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </button>
-          <button
-            onClick={() => onEdit(book)}
-            className="p-1 bg-white/80 rounded-full hover:bg-white transition-colors"
-            title="Редактировать"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </button>
-          <button
-            onClick={() => onDelete(book.id)}
-            className="p-1 bg-white/80 rounded-full hover:bg-red-100 transition-colors"
-            title="Удалить"
-          >
-            <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={onClose}>
+      <div className="bg-[#1a0f2e]/95 backdrop-blur-xl border border-[#8458B3]/50 modal-bg rounded-2xl p-6 w-full max-w-md border border-purple-500/30 max-h-[90vh] overflow-y-auto elevation-3" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-white">{book.title}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-lg"><Icon name="x" className="w-5 h-5 text-gray-400" /></button>
         </div>
-      </div>
+        <div className="space-y-4">
+          <div>
+            <p className="text-gray-400 text-sm mb-2">Рейтинг:</p>
+            <StarRating value={book.user_rating || 0} onChange={(rating) => onUpdate(book, { rating })} />
+          </div>
+          <div>
+            <label className="text-gray-400 text-sm">Отзыв:</label>
+            <textarea 
+              defaultValue={book.review || ''} 
+              onBlur={(e) => onUpdate(book, { review: e.target.value })} 
+              className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white mt-1" 
+              rows="4" 
+              placeholder="Ваши впечатления..."
+            />
+          </div>
 
-      <div className="p-4">
-        <h3 className="font-semibold text-gray-900 line-clamp-2 mb-1">{book.title}</h3>
-        <p className="text-sm text-gray-600 mb-2">{book.author}</p>
-        
-        {book.year && (
-          <p className="text-xs text-gray-500 mb-2">{book.year}</p>
-        )}
-
-        {/* Рейтинг */}
-        <div className="flex items-center gap-1 mb-2">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <button
-              key={star}
-              onClick={() => onRate(book.id, star)}
-              className="text-yellow-400 hover:text-yellow-500 transition-colors"
-            >
-              <svg
-                className={`w-4 h-4 ${star <= (book.rating || 0) ? 'fill-current' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-              </svg>
-            </button>
-          ))}
-        </div>
-
-        {/* Реакции */}
-        <div className="flex items-center gap-1 mb-2">
-          {REACTION_EMOJIS.slice(0, 5).map((emoji) => (
-            <button
-              key={emoji}
-              onClick={() => onReact(book.id, emoji)}
-              className="text-lg hover:scale-110 transition-transform"
-              title="Добавить реакцию"
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
-
-        {/* Детали книги */}
-        {showDetails && (
-          <div className="mt-3 pt-3 border-t border-gray-200">
-            {book.description && (
-              <p className="text-xs text-gray-600 mb-2 line-clamp-3">{book.description}</p>
-            )}
-            {book.pages && (
-              <p className="text-xs text-gray-500">{book.pages} страниц</p>
-            )}
-            {book.subjects && book.subjects.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {book.subjects.slice(0, 3).map((subject, index) => (
-                  <span
-                    key={index}
-                    className="px-2 py-1 bg-gray-100 text-xs rounded-full"
-                  >
-                    {subject}
+          <div>
+            <p className="text-gray-400 text-sm mb-2">Ваша реакция:</p>
+            <div className="flex flex-wrap gap-2">
+              {REACTION_EMOJIS.map(emoji => (
+                <button 
+                  key={emoji} 
+                  data-reaction-emoji={emoji}
+                  onClick={() => onReact(book, emoji)} 
+                  className={`text-2xl reaction-button p-1 rounded-full ${userReaction?.emoji === emoji ? 'bg-purple-500/30' : 'hover:bg-gray-700/50'}`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+          {book.reactions && book.reactions.length > 0 && (
+            <div>
+              <p className="text-gray-400 text-sm mb-2">Все реакции:</p>
+              <div className="flex flex-wrap gap-2">
+                {book.reactions.map((reaction, index) => (
+                  <span key={index} className="text-sm text-gray-300">
+                    {reaction.emoji} {reaction.username}
                   </span>
                 ))}
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
-};
+}
+
+// Компонент карточки книги (скопирован с MediaCard из movies.js)
+function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove }) {
+  return (
+    <div
+      draggable={true}
+      onDragStart={(e) => {
+        e.dataTransfer.setData('text/plain', JSON.stringify(book));
+      }}
+      onClick={() => {
+        // Открываем модальное окно для редактирования/оценки
+        setSelectedBook(book);
+      }}
+      data-card-id={book.id}
+      className="bg-[#1a0f2e]/70 rounded-xl border border-[#8458B3]/30 hover:border-[#a0d2eb] hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(160,210,235,0.4)] transition-all duration-200 cursor-pointer flex gap-3 p-2 group relative elevation-1 hover:elevation-2 shadow-transition media-card backdrop-blur-xl"
+    >
+      {/* Цветная полоска слева */}
+      <div 
+        className="w-1 rounded-l-xl flex-shrink-0" 
+        style={{ backgroundColor: '#10b981', opacity: 0.8, boxShadow: '0 0 10px currentColor' }}
+      ></div>
+      <div className="relative flex-shrink-0">
+        <img 
+          src={book.coverUrl || 'https://placehold.co/96x128/1f2937/ffffff?text=📚'} 
+          alt={book.title} 
+          className="w-16 h-24 object-cover rounded-lg flex-shrink-0" 
+          onError={(e) => {
+            e.target.src = 'https://placehold.co/96x128/1f2937/ffffff?text=📚';
+          }}
+        />
+      </div>
+      <div className="flex flex-col justify-between flex-grow min-w-0 py-1">
+        <div>
+          <h3 className="text-white font-semibold text-sm line-clamp-2 mb-1" style={{fontWeight: '600'}}>{book.title}</h3>
+          {book.year && <p className="text-xs" style={{color: 'rgba(208, 189, 244, 0.8)'}}>{book.year}</p>}
+          <p className="text-xs text-gray-400 mb-1">{book.author}</p>
+          {/* Рейтинг под названием */}
+          {book.user_rating && (
+            <div className="flex gap-0.5 mt-1">
+              {[...Array(5)].map((_, i) => (
+                <Icon 
+                  key={i} 
+                  name="star" 
+                  className={`w-3 h-3 ${i < book.user_rating ? 'text-[#a0d2eb]' : 'text-[#8458B3]/30'}`} 
+                  style={i < book.user_rating ? {filter: 'drop-shadow(0 0 4px rgba(160, 210, 235, 0.5))'} : {}} 
+                />
+              ))}
+            </div>
+          )}
+        </div>
+        {book.reactions && book.reactions.length > 0 && (
+          <div className="flex gap-1.5 mt-1 flex-wrap items-center">
+            {(() => {
+              // Группируем реакции по emoji
+              const groupedReactions = {};
+              book.reactions.forEach(r => {
+                if (!groupedReactions[r.emoji]) {
+                  groupedReactions[r.emoji] = [];
+                }
+                groupedReactions[r.emoji].push(r);
+              });
+              
+              // Показываем максимум 4 группы реакций
+              const reactionGroups = Object.entries(groupedReactions).slice(0, 4);
+              const totalGroups = Object.keys(groupedReactions).length;
+              
+               return reactionGroups.map(([emoji, reactions]) => (
+                 <span 
+                   key={emoji} 
+                   className="text-[8px] hover:scale-110 transition-transform cursor-help relative group reaction-group"
+                   title={reactions.map(r => r.username).join(', ')}
+                 >
+                   {emoji}
+                   {reactions.length > 1 && <span className="ml-0.5 text-[7px] text-gray-400">×{reactions.length}</span>}
+                 </span>
+               ));
+            })()}
+            {(() => {
+              const groupedReactions = {};
+              book.reactions.forEach(r => {
+                if (!groupedReactions[r.emoji]) {
+                  groupedReactions[r.emoji] = [];
+                }
+                groupedReactions[r.emoji].push(r);
+              });
+              const totalGroups = Object.keys(groupedReactions).length;
+               return totalGroups > 4 && <span className="text-[7px] text-gray-400 self-center">+{totalGroups - 4}</span>;
+            })()}
+          </div>
+        )}
+      </div>
+      <button 
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete(book.id);
+        }} 
+        className="absolute top-1 right-1 p-1.5 bg-red-600/80 hover:bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity self-start flex-shrink-0 z-10"
+      >
+        <Icon name="x" className="w-3 h-3 text-white" />
+      </button>
+    </div>
+  );
+}
 
 // Компонент колонки
 const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, onReact, onMove, onAddBook }) => {
@@ -461,6 +488,7 @@ const BookTrackerApp = () => {
   const [showMyBooksSearch, setShowMyBooksSearch] = useState(false);
   const [activities, setActivities] = useState([]);
   const [selectedStatus, setSelectedStatus] = useState('want_to_read');
+  const [selectedBook, setSelectedBook] = useState(null);
 
   // Загрузка данных при монтировании
   useEffect(() => {
@@ -741,6 +769,31 @@ const BookTrackerApp = () => {
     } catch (error) {
       console.error('Error reacting to book:', error);
       showToast('Ошибка при добавлении реакции', 'error');
+    }
+  };
+
+  const updateBook = async (book, updates) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/books/${book.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updates)
+      });
+
+      if (response.ok) {
+        const updatedBook = await response.json();
+        setBooks(prev => prev.map(b => b.id === book.id ? updatedBook : b));
+        showToast('Книга обновлена!', 'success');
+      }
+    } catch (error) {
+      console.error('Error updating book:', error);
+      showToast('Ошибка при обновлении книги', 'error');
     }
   };
 
@@ -1046,6 +1099,14 @@ const BookTrackerApp = () => {
         onClose={() => setShowSearchModal(false)}
         onAddBook={addBook}
         status={selectedStatus}
+      />
+      
+      <BookDetailsModal
+        book={selectedBook}
+        onClose={() => setSelectedBook(null)}
+        onUpdate={updateBook}
+        onReact={reactToBook}
+        user={user}
       />
     </div>
   );
