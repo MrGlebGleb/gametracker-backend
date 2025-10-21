@@ -67,7 +67,10 @@ const BookSearchModal = ({ isOpen, onClose, onAddBook, status = 'want_to_read' }
   const [selectedBook, setSelectedBook] = useState(null);
 
   const searchBooks = async () => {
-    if (!query.trim()) return;
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
     
     setLoading(true);
     try {
@@ -80,6 +83,20 @@ const BookSearchModal = ({ isOpen, onClose, onAddBook, status = 'want_to_read' }
       setLoading(false);
     }
   };
+
+  // Автопоиск с debounce
+  useEffect(() => {
+    if (!query.trim() || query.length < 3) {
+      setResults([]);
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      searchBooks();
+    }, 300); // Задержка 300мс
+
+    return () => clearTimeout(timeoutId);
+  }, [query]);
 
   const handleAddBook = () => {
     if (selectedBook) {
@@ -109,27 +126,29 @@ const BookSearchModal = ({ isOpen, onClose, onAddBook, status = 'want_to_read' }
             </button>
           </div>
           
-          <div className="flex gap-2">
+          <div className="relative">
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && searchBooks()}
-              placeholder="Введите название книги или автора..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Введите название книги или автора... (поиск автоматический)"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
             />
-            <button
-              onClick={searchBooks}
-              disabled={loading || !query.trim()}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Поиск...' : 'Найти'}
-            </button>
+            {loading && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="p-6 max-h-96 overflow-y-auto">
-          {results.length > 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-3 text-gray-600">Поиск книг...</span>
+            </div>
+          ) : results.length > 0 ? (
             <div className="grid gap-4">
               {results.map((book) => (
                 <div
@@ -276,11 +295,20 @@ function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect })
           alt={book.title} 
           className="w-16 h-24 object-cover rounded-lg flex-shrink-0" 
           onError={(e) => {
-            console.log('Image failed to load:', book.coverUrl);
+            console.log('❌ Image failed to load:', {
+              coverUrl: book.coverUrl,
+              title: book.title,
+              error: e.target.error,
+              currentSrc: e.target.currentSrc
+            });
             e.target.src = 'https://placehold.co/96x128/1f2937/ffffff?text=📚';
           }}
           onLoad={() => {
-            console.log('Image loaded successfully:', book.coverUrl);
+            console.log('✅ Image loaded successfully:', {
+              coverUrl: book.coverUrl,
+              title: book.title,
+              currentSrc: book.coverUrl
+            });
           }}
         />
       </div>
@@ -290,7 +318,7 @@ function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect })
           {book.year && <p className="text-xs" style={{color: 'rgba(208, 189, 244, 0.8)'}}>{book.year}</p>}
           <p className="text-xs text-gray-400 mb-1">{book.author}</p>
           {/* Рейтинг под названием */}
-          {book.user_rating && (
+          {book.user_rating && book.user_rating > 0 && (
             <div className="flex gap-0.5 mt-1">
               {[...Array(5)].map((_, i) => (
                 <Icon 
@@ -456,7 +484,7 @@ const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, on
             onRate={onRate}
             onReact={onReact}
             onMove={onMove}
-            onSelect={(book) => setSelectedBook(book)}
+            onSelect={setSelectedBook}
           />
         ))}
         {books.length === 0 && (
@@ -490,7 +518,6 @@ const BookTrackerApp = () => {
   const [myBooksSearchQuery, setMyBooksSearchQuery] = useState('');
   const [myBooksSearchResults, setMyBooksSearchResults] = useState([]);
   const [myBooksSearching, setMyBooksSearching] = useState(false);
-  const [showMyBooksSearch, setShowMyBooksSearch] = useState(false);
   const [activities, setActivities] = useState([]);
   const [selectedStatus, setSelectedStatus] = useState('want_to_read');
   const [selectedBook, setSelectedBook] = useState(null);
@@ -553,6 +580,7 @@ const BookTrackerApp = () => {
       if (response.ok) {
         const booksData = await response.json();
         console.log('Loaded books:', booksData.length);
+        console.log('Books data:', booksData);
         setBooks(booksData);
       } else if (response.status === 401) {
         console.log('Token invalid, redirecting to login');
@@ -834,6 +862,23 @@ const BookTrackerApp = () => {
     }
   };
 
+  // Функции для кнопок в шапке
+  const handleStatistics = () => {
+    setShowStatistics(true);
+  };
+
+  const handleProfile = () => {
+    setShowProfile(true);
+  };
+
+  const handleUserHub = () => {
+    setShowUserHub(true);
+  };
+
+  const handleNotifications = () => {
+    setShowNotifications(!showNotifications);
+  };
+
   // Группировка книг по статусам
   const booksByStatus = {
     want_to_read: books.filter(book => book.status === 'want_to_read'),
@@ -873,21 +918,21 @@ const BookTrackerApp = () => {
               <a href="/index.html" className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#d0bdf4] via-[#a0d2eb] to-[#8458B3] active:scale-95 transition-transform cursor-pointer">🎮 GameTracker</a>
               
               {/* Кнопки навигации */}
-              <div className="flex gap-2">
+              <div className="flex gap-6">
                 <a
                   href="/index.html"
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 hover:scale-105 transition-transform cursor-pointer"
                 >
-                  🎮 Game
+                  🎮 GameTracker
                 </a>
                 <a
                   href="/movies.html"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 hover:scale-105 transition-transform cursor-pointer"
                 >
-                  🎬 Movie
+                  🎬 MovieTracker
                 </a>
-                <span className="px-4 py-2 bg-green-600 text-white rounded-lg">
-                  📚 Book
+                <span className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400">
+                  📚 BookTracker
                 </span>
               </div>
               
@@ -911,18 +956,18 @@ const BookTrackerApp = () => {
                         <button onClick={() => setShowSearchModal(true)} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Найти книгу">
                             <Icon name="search" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
                         </button>
-                        <button onClick={() => setShowStatistics(true)} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Статистика книг">
+                        <button onClick={handleStatistics} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Статистика книг">
                             <Icon name="barChart" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
                         </button>
-                        <button onClick={() => setShowProfile(true)} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30">
+                        <button onClick={handleProfile} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30">
                             <Icon name="settings" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
                         </button>
-                        <button onClick={() => { setShowUserHub(true); }} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30 relative">
+                        <button onClick={handleUserHub} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30 relative">
                             <Icon name="users" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
                             {friendRequests.length > 0 && <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white badge-notification"></span>}
                         </button>
                     </Fragment>
-                    <button onClick={() => setShowNotifications(!showNotifications)} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30 relative">
+                    <button onClick={handleNotifications} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30 relative">
                         <Icon name="bell" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
                     </button>
                 </div>
@@ -934,31 +979,20 @@ const BookTrackerApp = () => {
       <main className="flex-grow container mx-auto px-4 py-6 space-y-8">
         {/* Поиск по своим книгам */}
         <div className="relative">
-          <div className="flex items-center gap-4 mb-4">
-            <h2 className="text-xl font-semibold text-white">Найти в моих книгах</h2>
-            <button
-              onClick={() => setShowMyBooksSearch(!showMyBooksSearch)}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              {showMyBooksSearch ? 'Скрыть' : 'Показать'}
-            </button>
-          </div>
-          
-          {showMyBooksSearch && (
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4 border border-green-500/30">
-              <div className="flex gap-2 mb-4">
-                <input
-                  type="text"
-                  value={myBooksSearchQuery}
-                  onChange={(e) => {
-                    setMyBooksSearchQuery(e.target.value);
-                    searchMyBooks(e.target.value);
-                  }}
-                  placeholder="Поиск по названию или автору..."
-                  className="flex-1 px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-green-500 focus:outline-none"
-                />
-                {myBooksSearching && <Icon name="loader" className="w-6 h-6 text-green-500 animate-spin" />}
-              </div>
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4 border border-green-500/30">
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={myBooksSearchQuery}
+                onChange={(e) => {
+                  setMyBooksSearchQuery(e.target.value);
+                  searchMyBooks(e.target.value);
+                }}
+                placeholder="Найти в моих книгах..."
+                className="flex-1 px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-green-500 focus:outline-none"
+              />
+              {myBooksSearching && <Icon name="loader" className="w-6 h-6 text-green-500 animate-spin" />}
+            </div>
               
               {myBooksSearchResults.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -988,8 +1022,7 @@ const BookTrackerApp = () => {
                   ))}
                 </div>
               )}
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Доска книг */}
