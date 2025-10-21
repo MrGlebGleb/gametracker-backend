@@ -513,9 +513,13 @@ const BookTrackerApp = () => {
       if (response.ok) {
         const data = await response.json();
         setActivities(data.activities || []);
+      } else {
+        // Если endpoint не существует, просто не показываем активность
+        setActivities([]);
       }
     } catch (error) {
       console.error('Error loading activities:', error);
+      setActivities([]);
     }
   };
 
@@ -707,10 +711,10 @@ const BookTrackerApp = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1625] to-[#2d1b4e]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Загрузка...</p>
+          <p className="text-white">Загрузка...</p>
         </div>
       </div>
     );
@@ -718,10 +722,10 @@ const BookTrackerApp = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1625] to-[#2d1b4e]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Перенаправление...</p>
+          <p className="text-white">Перенаправление...</p>
         </div>
       </div>
     );
@@ -857,6 +861,19 @@ const BookTrackerApp = () => {
 
         {/* Доска книг */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {books.length === 0 && (
+            <div className="col-span-full text-center py-12">
+              <div className="text-6xl mb-4">📚</div>
+              <h3 className="text-xl font-semibold text-white mb-2">У вас пока нет книг</h3>
+              <p className="text-gray-400 mb-4">Добавьте книги, чтобы начать отслеживать свой прогресс чтения</p>
+              <button
+                onClick={() => setShowSearchModal(true)}
+                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Найти книгу
+              </button>
+            </div>
+          )}
           <BookColumn
             title="Хочу прочитать"
             books={booksByStatus.want_to_read}
@@ -921,16 +938,16 @@ const BookTrackerApp = () => {
             <div className="space-y-3">
               {activities.slice(0, 12).map((activity, index) => (
                 <div key={index} className="flex items-center gap-3 p-3 bg-gray-700/30 rounded-lg">
-                  <Avatar src={activity.user.avatar} size="sm" />
+                  <Avatar src={activity.user?.avatar} size="sm" />
                   <div className="flex-1">
                     <p className="text-white text-sm">
-                      <span className="font-semibold">{activity.user.username}</span>
+                      <span className="font-semibold">{activity.user?.username || 'Неизвестный пользователь'}</span>
                       {' '}
                       {activity.action === 'added' && 'добавил книгу'}
                       {activity.action === 'moved' && 'переместил книгу'}
                       {activity.action === 'rated' && 'оценил книгу'}
                       {' '}
-                      <span className="text-green-400">{activity.book.title}</span>
+                      <span className="text-green-400">{activity.book?.title || 'Неизвестная книга'}</span>
                     </p>
                     <p className="text-gray-400 text-xs">{new Date(activity.created_at).toLocaleString('ru-RU')}</p>
                   </div>

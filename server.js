@@ -3378,6 +3378,61 @@ app.post('/api/books/:id/react', authenticateToken, [
   }
 });
 
+// Получить активность друзей по книгам
+app.get('/api/friends/activity', authenticateToken, async (req, res) => {
+  let client;
+  try {
+    client = await pool.connect();
+    
+    const { type = 'book' } = req.query;
+    
+    // Получаем активность друзей по книгам
+    const result = await client.query(`
+      SELECT 
+        a.id,
+        a.action,
+        a.created_at,
+        u.username,
+        u.avatar,
+        b.title as book_title,
+        b.cover_url as book_cover
+      FROM book_activities a
+      JOIN users u ON a.user_id = u.id
+      JOIN books b ON a.book_id = b.id
+      WHERE a.user_id IN (
+        SELECT friend_id FROM friendships 
+        WHERE user_id = $1 AND status = 'accepted'
+        UNION
+        SELECT user_id FROM friendships 
+        WHERE friend_id = $1 AND status = 'accepted'
+      )
+      ORDER BY a.created_at DESC
+      LIMIT 12
+    `, [req.user.id]);
+    
+    const activities = result.rows.map(row => ({
+      id: row.id,
+      action: row.action,
+      created_at: row.created_at,
+      user: {
+        username: row.username,
+        avatar: row.avatar
+      },
+      book: {
+        title: row.book_title,
+        cover_url: row.book_cover
+      }
+    }));
+    
+    res.json({ activities });
+  } catch (error) {
+    console.error('Ошибка получения активности друзей:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
 // Создать таблицы для книг (миграция)
 app.post('/api/books/migrate', async (req, res) => {
   let client;
@@ -3430,13 +3485,26 @@ app.post('/api/books/migrate', async (req, res) => {
       )
     `);
     
-    // Создаем индексы для производительности
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_books_user_id ON books(user_id);
-      CREATE INDEX IF NOT EXISTS idx_books_status ON books(status);
-      CREATE INDEX IF NOT EXISTS idx_book_ratings_book_id ON book_ratings(book_id);
-      CREATE INDEX IF NOT EXISTS idx_book_reactions_book_id ON book_reactions(book_id);
-    `);
+        // Создаем таблицу активности по книгам
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS book_activities (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+            action VARCHAR(20) NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+          )
+        `);
+        
+        // Создаем индексы для производительности
+        await client.query(`
+          CREATE INDEX IF NOT EXISTS idx_books_user_id ON books(user_id);
+          CREATE INDEX IF NOT EXISTS idx_books_status ON books(status);
+          CREATE INDEX IF NOT EXISTS idx_book_ratings_book_id ON book_ratings(book_id);
+          CREATE INDEX IF NOT EXISTS idx_book_reactions_book_id ON book_reactions(book_id);
+          CREATE INDEX IF NOT EXISTS idx_book_activities_user_id ON book_activities(user_id);
+          CREATE INDEX IF NOT EXISTS idx_book_activities_created_at ON book_activities(created_at);
+        `);
     
     client.release();
     res.json({ 
