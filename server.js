@@ -3135,6 +3135,7 @@ app.get('/api/books/search-my', authenticateToken, async (req, res) => {
 
     const result = await client.query(`
       SELECT b.*, 
+             b.cover_url as "coverUrl",
              COALESCE(
                (SELECT AVG(rating) FROM book_ratings WHERE book_id = b.id), 
                0
@@ -3166,6 +3167,7 @@ app.get('/api/books', authenticateToken, async (req, res) => {
     
     const result = await client.query(`
       SELECT b.*, 
+             b.cover_url as "coverUrl",
              COALESCE(
                (SELECT AVG(rating) FROM book_ratings WHERE book_id = b.id), 
                0
