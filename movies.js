@@ -2074,15 +2074,6 @@ function MovieApp() {
       </header>
       
       <main className="flex-grow container mx-auto px-4 py-6 space-y-8">
-        {!viewingUser && (
-            <div className="bg-gray-900/50 backdrop-blur-xl rounded-xl border border-purple-500/30 p-4">
-                <button onClick={() => setShowSearch(true)} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#8458B3] to-[#a0d2eb] hover:from-[#a0d2eb] hover:to-[#8458B3] rounded-lg transition-all border border-[#a0d2eb]/30 shadow-lg hover:scale-105" style={{boxShadow: '0 4px 12px rgba(132, 88, 179, 0.3)'}}>
-                    <Icon name="search" className="w-4 h-4 text-purple-400" />
-                    <span className="text-white font-semibold text-sm md:text-base" style={{textShadow: 'none'}}>Поиск фильмов/сериалов</span>
-                </button>
-            </div>
-        )}
-
         {/* Поиск по своим фильмам/сериалам */}
         {!viewingUser && (
           <div className="relative">
