@@ -76,6 +76,16 @@
       padding: 0 40px;
     }
 
+    .header-left {
+      margin-left: 60px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
     .logo {
       height: 45px;
       width: auto;
@@ -106,6 +116,129 @@
       color: #0a0a0a;
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+    }
+
+    /* ========================================
+       ABOUT BUTTON & DROPDOWN
+       ======================================== */
+    .btn-about {
+      padding: 12px 24px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+
+    .btn-about:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .dropdown {
+      position: relative;
+      display: inline-block;
+    }
+
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: rgba(20, 20, 20, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      min-width: 500px;
+      max-width: 600px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      z-index: 1001;
+      margin-top: 8px;
+      opacity: 0;
+      transform: translateY(-10px);
+      transition: all 0.3s ease;
+    }
+
+    .dropdown-content.show {
+      display: block;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .dropdown-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .dropdown-header h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 0;
+      background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .dropdown-body {
+      padding: 20px 24px 24px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .dropdown-body h4 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+      margin: 20px 0 8px 0;
+    }
+
+    .dropdown-body h4:first-child {
+      margin-top: 0;
+    }
+
+    .dropdown-body p {
+      font-size: 14px;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.8);
+      margin: 0 0 16px 0;
+    }
+
+    .dropdown-body ul {
+      margin: 8px 0 16px 0;
+      padding-left: 20px;
+    }
+
+    .dropdown-body li {
+      font-size: 14px;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.8);
+      margin: 4px 0;
+    }
+
+    /* Custom scrollbar for dropdown */
+    .dropdown-body::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .dropdown-body::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+    }
+
+    .dropdown-body::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 3px;
+    }
+
+    .dropdown-body::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.5);
     }
 
     /* ========================================
@@ -529,13 +662,58 @@
         padding: 0 20px;
       }
 
+      .header-left {
+        margin-left: 20px;
+      }
+
+      .header-right {
+        gap: 12px;
+      }
+
       .logo {
         height: 35px;
       }
 
       .btn-login {
-        padding: 10px 24px;
+        padding: 10px 20px;
         font-size: 14px;
+      }
+
+      .btn-about {
+        padding: 10px 16px;
+        font-size: 14px;
+      }
+
+      .dropdown-content {
+        min-width: 300px;
+        max-width: 90vw;
+        right: -20px;
+      }
+
+      .dropdown-header {
+        padding: 16px 20px 12px;
+      }
+
+      .dropdown-header h3 {
+        font-size: 16px;
+      }
+
+      .dropdown-body {
+        padding: 16px 20px 20px;
+        max-height: 300px;
+      }
+
+      .dropdown-body h4 {
+        font-size: 15px;
+        margin: 16px 0 6px 0;
+      }
+
+      .dropdown-body p {
+        font-size: 13px;
+      }
+
+      .dropdown-body li {
+        font-size: 13px;
       }
 
       .hero {
@@ -624,8 +802,48 @@
   <!-- HEADER -->
   <header class="header" id="header">
     <div class="header-container">
-      <a href="/"><img src="images/logo.png" alt="Omnilogue" class="logo"></a>
-      <a href="/index.html" class="btn-login">Войти</a>
+      <div class="header-left">
+        <a href="/"><img src="images/logo.png" alt="Omnilogue" class="logo"></a>
+      </div>
+      <div class="header-right">
+        <div class="dropdown">
+          <button class="btn-about" id="aboutBtn">О проекте</button>
+          <div class="dropdown-content" id="aboutDropdown">
+            <div class="dropdown-header">
+              <h3>Omnilogue - Твоя медиа-вселенная в одном месте</h3>
+            </div>
+            <div class="dropdown-body">
+              <h4>Что такое Omnilogue?</h4>
+              <p>Omnilogue - это персональный трекер и социальная платформа для всех видов развлекательного контента. Здесь ты можешь собирать, отслеживать и делиться всем, что смотришь, читаешь и во что играешь.</p>
+              
+              <h4>Проблема, которую мы решаем:</h4>
+              <p>Современный человек потребляет контент из десятков источников: смотрит сериалы на разных стримингах, играет в игры на разных платформах, читает книги и мангу. Информация о просмотренном разбросана по заметкам, скриншотам и памяти. Сложно вспомнить, что ты уже смотрел, что хочешь посмотреть, и что советовали друзья.</p>
+              
+              <h4>Наше решение:</h4>
+              <p>Единая платформа, где ты можешь:</p>
+              <ul>
+                <li>Создавать персональные доски с играми, фильмами, сериалами, книгами, мангой и комиксами</li>
+                <li>Отмечать статус: смотрю, прочитал, хочу посмотреть, брошено</li>
+                <li>Отслеживать прогресс: сколько серий просмотрено, на какой главе остановился</li>
+                <li>Ставить оценки и писать рецензии</li>
+                <li>Следить за активностью друзей и их рекомендациями</li>
+                <li>Планировать будущие просмотры и чтение</li>
+                <li>Находить новый контент через сообщество</li>
+              </ul>
+              
+              <h4>Для кого Omnilogue?</h4>
+              <ul>
+                <li>Киноманы, которые хотят помнить все просмотренные фильмы и сериалы</li>
+                <li>Геймеры, отслеживающие свою игровую библиотеку</li>
+                <li>Читатели, собирающие коллекцию прочитанных книг и манги</li>
+                <li>Социальные пользователи, которым важно делиться впечатлениями с друзьями</li>
+                <li>Все, кто любит организованность и хочет держать свои увлечения под контролем</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <a href="/index.html" class="btn-login">Войти</a>
+      </div>
     </div>
   </header>
 
@@ -877,6 +1095,35 @@
         header.classList.add('scrolled');
       } else {
         header.classList.remove('scrolled');
+      }
+    });
+
+    // ========================================
+    // DROPDOWN FUNCTIONALITY
+    // ========================================
+    document.addEventListener('DOMContentLoaded', () => {
+      const aboutBtn = document.getElementById('aboutBtn');
+      const aboutDropdown = document.getElementById('aboutDropdown');
+
+      if (aboutBtn && aboutDropdown) {
+        aboutBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          aboutDropdown.classList.toggle('show');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+          if (!aboutBtn.contains(e.target) && !aboutDropdown.contains(e.target)) {
+            aboutDropdown.classList.remove('show');
+          }
+        });
+
+        // Close dropdown on escape key
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            aboutDropdown.classList.remove('show');
+          }
+        });
       }
     });
 
