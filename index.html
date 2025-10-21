@@ -42,12 +42,454 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
   <style>
+    /* ПРОФЕССИОНАЛЬНЫЕ МИКРОАНИМАЦИИ ДЛЯ GAME TRACKER */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-    body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-attachment: fixed;
+      background-size: 200% 200%;
+      animation: gradientShift 15s ease infinite;
+    }
+
+    @keyframes gradientShift {
+      0%, 100% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+    }
+
     .avatar-circle { border-radius: 50%; object-fit: cover; }
-    .dragging { opacity: 0.5; border: 2px dashed #8b5cf6; transform: rotate(2deg); }
-    .drag-over-column { background-color: rgba(139, 92, 246, 0.1); }
+
+    /* УЛУЧШЕННЫЕ АНИМАЦИИ ПОЯВЛЕНИЯ КАРТОЧЕК */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .game-card {
+      animation: fadeInUp 0.4s ease-out forwards;
+    }
+
+    /* Задержка для последовательного появления */
+    .game-card:nth-child(1) { animation-delay: 0.05s; }
+    .game-card:nth-child(2) { animation-delay: 0.1s; }
+    .game-card:nth-child(3) { animation-delay: 0.15s; }
+    .game-card:nth-child(4) { animation-delay: 0.2s; }
+    .game-card:nth-child(5) { animation-delay: 0.25s; }
+
+    /* Улучшенные hover эффекты для карточек */
+    .game-card {
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .game-card:hover {
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3), 0 0 0 1px rgba(139, 92, 246, 0.2);
+    }
+
+    /* Пульсация для иконок в header */
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .header-icon:hover {
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    /* Вращение иконки настроек */
+    @keyframes rotate360 {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .header-icon:has([name="settings"]):hover svg {
+      animation: rotate360 0.6s ease-in-out;
+    }
+
+    /* Ripple эффект при клике на кнопках */
+    @keyframes ripple {
+      0% {
+        transform: scale(0);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(4);
+        opacity: 0;
+      }
+    }
+
+    button {
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    button::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 5px;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    button:active::after {
+      animation: ripple 0.6s ease-out;
+    }
+
+    /* Плавное увеличение кнопок */
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    /* Анимация модальных окон */
+    @keyframes modalFadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-20px);
+        filter: blur(10px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+        filter: blur(0);
+      }
+    }
+
+    .fixed.inset-0.bg-black\/80 > div {
+      animation: modalFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    /* Анимация звезд рейтинга */
+    .star-rating {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .star-rating button {
+      border: none !important;
+      outline: none !important;
+      background: transparent !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+      display: inline-block;
+      -webkit-tap-highlight-color: transparent !important;
+    }
+
+    .star-rating svg {
+      transition: all 0.2s ease-out;
+      display: block;
+      border: none !important;
+      outline: none !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      pointer-events: none;
+    }
+
+    .star-rating button:hover svg {
+      color: #8b5cf6 !important;
+      transform: rotate(-5deg) scale(1.1);
+      filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.8)) !important;
+    }
+
+    /* Волновой эффект при выборе рейтинга */
+    @keyframes starWave {
+      0%, 100% { transform: scale(1); }
+      25% { transform: scale(1.3); }
+      50% { transform: scale(0.9); }
+      75% { transform: scale(1.1); }
+    }
+
+    .star-rating svg:active {
+      animation: starWave 0.6s ease-in-out;
+    }
+
+    /* Улучшенный loader */
+    @keyframes spinPulse {
+      0%, 100% {
+        transform: rotate(0deg) scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: rotate(180deg) scale(1.1);
+        opacity: 0.8;
+      }
+    }
+
+    .animate-spin {
+      animation: spinPulse 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    /* Skeleton loading */
+    @keyframes shimmer {
+      0% {
+        background-position: -1000px 0;
+      }
+      100% {
+        background-position: 1000px 0;
+      }
+    }
+
+    .skeleton {
+      background: linear-gradient(
+        90deg,
+        rgba(139, 92, 246, 0.1) 0%,
+        rgba(139, 92, 246, 0.2) 50%,
+        rgba(139, 92, 246, 0.1) 100%
+      );
+      background-size: 1000px 100%;
+      animation: shimmer 2s infinite linear;
+    }
+
+    /* Toast notifications с slideInRight */
+    @keyframes slideInRight {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .toast {
+      animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Bounce эффект для badge уведомлений */
+    @keyframes badgeBounce {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+
+    .badge-notification {
+      animation: badgeBounce 0.5s ease-in-out 3;
+    }
+
+    /* Bounce эффект при добавлении реакции */
+    @keyframes reactionPop {
+      0% {
+        transform: scale(0) rotate(0deg);
+        opacity: 0;
+      }
+      50% {
+        transform: scale(1.3) rotate(10deg);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+      }
+    }
+
+    .reaction-button:active {
+      animation: reactionPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Плавная прокрутка */
+    * {
+      scroll-behavior: smooth;
+    }
+
+    /* Custom scrollbar с анимацией */
+    ::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(26, 15, 46, 0.3);
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #8b5cf6 0%, #a78bfa 100%);
+      border-radius: 10px;
+      transition: all 0.3s ease;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #a78bfa 0%, #8b5cf6 100%);
+      box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+    }
+
+    /* ПРОДВИНУТАЯ АНИМАЦИЯ DRAG & DROP С ЭФФЕКТОМ "МАГНИТНОГО ФОКУСА" */
+
+    /* Базовое состояние доски */
+    .board-column {
+      min-height: 200px;
+      transform: scale(1) translateZ(0);
+      transform-origin: center center;
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Состояние при наведении карточки (drag over) */
+    .drag-over-column {
+      /* Увеличение размера на 6% */
+      transform: scale(1.06) translateZ(20px) !important;
+
+      /* Визуальное "выдвижение вперед" */
+      z-index: 10 !important;
+
+      /* Светящаяся граница с пульсацией */
+      border-color: rgba(139, 92, 246, 0.8) !important;
+      box-shadow:
+        0 0 0 3px rgba(139, 92, 246, 0.3),
+        0 0 30px rgba(139, 92, 246, 0.4) inset,
+        0 20px 60px rgba(139, 92, 246, 0.3) !important;
+
+      /* Подсветка фона */
+      background: linear-gradient(
+        135deg,
+        rgba(139, 92, 246, 0.2) 0%,
+        rgba(167, 139, 250, 0.25) 100%
+      ) !important;
+
+      /* Плавная анимация */
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Эффект "дыхания" для целевой доски */
+    @keyframes breathe {
+      0%, 100% {
+        transform: scale(1.06);
+      }
+      50% {
+        transform: scale(1.08);
+      }
+    }
+
+    .drag-over-column {
+      animation: breathe 2s ease-in-out infinite !important;
+    }
+
+    /* Улучшенная анимация перетаскиваемой карточки */
+    .dragging-card {
+      opacity: 0.9 !important;
+      transform: rotate(5deg) scale(1.15) translateZ(50px) !important;
+      box-shadow:
+        0 30px 80px rgba(139, 92, 246, 0.5),
+        0 0 0 2px rgba(139, 92, 246, 0.6) !important;
+      cursor: grabbing !important;
+      z-index: 9999 !important;
+      filter: brightness(1.1);
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Трейл эффект за карточкой */
+    @keyframes trail {
+      0% {
+        opacity: 0.5;
+        transform: scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+    }
+
+    .dragging-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: inherit;
+      border-radius: inherit;
+      z-index: -1;
+      animation: trail 0.6s ease-out infinite;
+    }
+
+    .dragging {
+      opacity: 0.5;
+      border: 2px dashed #8b5cf6;
+      transform: rotate(2deg);
+    }
+
     .drag-over-card { transform: scale(1.05); }
+
+    /* Пульсация цветной полоски */
+    @keyframes glowPulse {
+      0%, 100% {
+        opacity: 0.8;
+        box-shadow: 0 0 10px currentColor;
+      }
+      50% {
+        opacity: 1;
+        box-shadow: 0 0 20px currentColor;
+      }
+    }
+
+    .game-card:hover > div[style*="backgroundColor"] {
+      animation: glowPulse 2s ease-in-out infinite;
+    }
+
+    /* Focus states для accessibility */
+    button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible {
+      outline: 2px solid #8b5cf6;
+      outline-offset: 2px;
+      transition: outline-offset 0.2s ease;
+    }
+
+    /* Текст selection */
+    ::selection {
+      background: rgba(139, 92, 246, 0.3);
+      color: #ffffff;
+      text-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
+    }
+
+    /* Reduce motion для accessibility */
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* GPU acceleration для плавности */
+    .game-card,
+    .board-column,
+    button,
+    .modal-bg {
+      will-change: transform;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Оптимизация transitions */
+    * {
+      transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    }
     
     /* Line clamp utilities */
     .line-clamp-2 {
