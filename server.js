@@ -953,6 +953,86 @@ app.put('/api/profile', authenticateToken, validateProfile, sanitizeInput, async
   }
 });
 
+// === PUBLIC ENDPOINTS FOR LANDING PAGE ===
+// Получить популярные игры для landing page (без аутентификации)
+app.get('/api/public/popular-games', async (req, res) => {
+  try {
+    const token = await getTwitchToken();
+    const response = await axios.post(
+      'https://api.igdb.com/v4/games',
+      `fields name, cover.url, rating;
+       where rating != null & cover != null & rating > 70;
+       sort rating desc;
+       limit 200;`,
+      {
+        headers: {
+          'Client-ID': TWITCH_CLIENT_ID,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'text/plain'
+        }
+      }
+    );
+
+    const games = response.data.map(game => ({
+      id: game.id,
+      title: game.name,
+      poster: game.cover ? `https:${game.cover.url.replace('t_thumb', 't_cover_big')}` : null,
+      type: 'game',
+      rating: game.rating
+    })).filter(game => game.poster);
+
+    res.json({ games });
+  } catch (error) {
+    console.error('Ошибка получения популярных игр:', error.message);
+    res.status(500).json({ error: 'Ошибка получения игр', games: [] });
+  }
+});
+
+// Получить популярные фильмы/сериалы для landing page (без аутентификации)
+app.get('/api/public/popular-movies', async (req, res) => {
+  try {
+    const [moviesResponse, tvResponse] = await Promise.all([
+      axios.get(`https://api.themoviedb.org/3/movie/popular`, {
+        params: {
+          api_key: TMDB_API_KEY,
+          language: 'ru-RU',
+          page: 1
+        }
+      }),
+      axios.get(`https://api.themoviedb.org/3/tv/popular`, {
+        params: {
+          api_key: TMDB_API_KEY,
+          language: 'ru-RU',
+          page: 1
+        }
+      })
+    ]);
+
+    const movies = moviesResponse.data.results.map(movie => ({
+      id: movie.id,
+      title: movie.title || movie.name,
+      poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,
+      type: 'movie',
+      rating: movie.vote_average
+    }));
+
+    const series = tvResponse.data.results.map(show => ({
+      id: show.id,
+      title: show.title || show.name,
+      poster: show.poster_path ? `https://image.tmdb.org/t/p/w500${show.poster_path}` : null,
+      type: 'series',
+      rating: show.vote_average
+    }));
+
+    const allMovies = [...movies, ...series].filter(item => item.poster);
+
+    res.json({ movies: allMovies });
+  } catch (error) {
+    console.error('Ошибка получения популярных фильмов:', error.message);
+    res.status(500).json({ error: 'Ошибка получения фильмов', movies: [] });
+  }
+});
+
 // === GAMES (С ИЗМЕНЕНИЯМИ ДЛЯ ЛОГИРОВАНИЯ) ===
 app.get('/api/games/search', searchLimiter, authenticateToken, async (req, res) => {
   try {
