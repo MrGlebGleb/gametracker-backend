@@ -732,7 +732,18 @@ const FriendActivitySection = ({ token, onNavigateToUser, onNavigateToBook }) =>
                 });
                 if (response.ok) {
                     const data = await response.json();
-                    setActivities(data.activities || []);
+                    // Фильтруем только активности связанные с книгами
+                    const bookActivities = (data.activities || []).filter(activity =>
+                        activity.action_type && (
+                            activity.action_type.includes('book') ||
+                            activity.action_type === 'add_book' ||
+                            activity.action_type === 'complete_book' ||
+                            activity.action_type === 'move_book' ||
+                            activity.action_type === 'remove_book' ||
+                            activity.action_type === 'rate_book'
+                        )
+                    );
+                    setActivities(bookActivities);
                 }
             } catch (err) {
                 console.error("Failed to fetch activities", err);
@@ -1296,7 +1307,7 @@ const BookTrackerApp = () => {
     document.body.className = theme;
   }, [theme]);
 
-  const loadBooks = async () => {
+  const loadBooks = async (userId = null) => {
     const token = localStorage.getItem('token');
     if (!token) {
       console.log('No token found, skipping books load');
@@ -1304,20 +1315,30 @@ const BookTrackerApp = () => {
       return;
     }
 
-    console.log('Loading books with token:', token.substring(0, 10) + '...');
-    
+    console.log('Loading books with token:', token.substring(0, 10) + '...', userId ? `for user ${userId}` : 'for current user');
+
     try {
-      const response = await fetch(`${API_URL}/api/books`, {
+      const url = userId ? `${API_URL}/api/user/${userId}/books` : `${API_URL}/api/books`;
+      const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      
+
       console.log('Books API response status:', response.status);
-      
+
       if (response.ok) {
-        const booksData = await response.json();
-        console.log('Loaded books:', booksData.length);
-        console.log('Books data:', booksData);
-        setBooks(booksData);
+        const data = await response.json();
+
+        if (userId) {
+          // Загрузка книг другого пользователя
+          setViewingUser(data.user || null);
+          setBooks(data.books || []);
+          console.log('Loaded books for user:', data.user?.username, 'books count:', data.books?.length);
+        } else {
+          // Загрузка своих книг
+          setViewingUser(null);
+          setBooks(data);
+          console.log('Loaded books:', data.length);
+        }
       } else if (response.status === 401) {
         console.log('Token invalid, redirecting to login');
         localStorage.removeItem('token');
@@ -1673,30 +1694,39 @@ const BookTrackerApp = () => {
             {user && (
                 <div className="flex items-center gap-2 md:gap-3">
                     <div className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-[#10b981]/25 to-[#3b82f6]/20 rounded-lg border border-[#3b82f6]/40">
-                        <Avatar src={user.avatar} size="sm" />
-                        <span className="text-white font-semibold text-sm md:text-base block">{user.username}</span>
+                        <Avatar src={viewingUser ? viewingUser.avatar : user.avatar} size="sm" />
+                        <span className="text-white font-semibold text-sm md:text-base block">{viewingUser ? viewingUser.username : user.username}</span>
                     </div>
-                    <Fragment>
-                        <button onClick={handleStatistics} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Статистика книг">
-                            <Icon name="barChart" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
-                        </button>
-                        <button onClick={handleUserHub} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30 relative" title="Друзья">
-                            <Icon name="users" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
-                            {friendRequests.length > 0 && <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white badge-notification"></span>}
-                        </button>
-                        <button onClick={handleProfile} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Настройки">
-                            <Icon name="settings" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
-                        </button>
-                        <NotificationsPanel
-                          token={localStorage.getItem('token')}
-                          onNavigateToUser={(userId) => {
-                            console.log('Navigate to user:', userId);
-                          }}
-                          onNavigateToBook={(bookId) => {
-                            console.log('Navigate to book:', bookId);
-                          }}
-                        />
-                    </Fragment>
+                    {viewingUser ? (
+                        <Fragment>
+                            <button onClick={() => { setViewingUser(null); loadBooks(); }} className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700" title="Вернуться к своей доске">
+                                <Icon name="x" className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
+                            </button>
+                        </Fragment>
+                    ) : (
+                        <Fragment>
+                            <button onClick={handleStatistics} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Статистика книг">
+                                <Icon name="barChart" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
+                            </button>
+                            <button onClick={handleUserHub} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30 relative" title="Друзья">
+                                <Icon name="users" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
+                                {friendRequests.length > 0 && <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white badge-notification"></span>}
+                            </button>
+                            <button onClick={handleProfile} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Настройки">
+                                <Icon name="settings" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
+                            </button>
+                            <NotificationsPanel
+                              token={localStorage.getItem('token')}
+                              onNavigateToUser={(userId) => {
+                                loadBooks(userId);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
+                              onNavigateToBook={(bookId) => {
+                                console.log('Navigate to book:', bookId);
+                              }}
+                            />
+                        </Fragment>
+                    )}
                 </div>
             )}
           </div>
@@ -1840,7 +1870,8 @@ const BookTrackerApp = () => {
         <FriendActivitySection
           token={localStorage.getItem('token')}
           onNavigateToUser={(userId) => {
-            console.log('Navigate to user:', userId);
+            loadBooks(userId);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
           onNavigateToBook={(bookId) => {
             console.log('Navigate to book:', bookId);
@@ -2017,7 +2048,7 @@ const BookTrackerApp = () => {
                         </div>
                         <button
                           onClick={() => {
-                            setViewingUser(friend);
+                            loadBooks(friend.id);
                             setShowUserHub(false);
                           }}
                           className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
