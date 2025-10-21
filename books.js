@@ -33,7 +33,7 @@ const Icon = ({ name, className = 'w-6 h-6' }) => {
   const icons = {
     user: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>,
     settings: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
-    users: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" /></svg>,
+    users: <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
     bell: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>,
     barChart: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
     star: <svg className={className} fill="currentColor" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>,
@@ -716,6 +716,91 @@ const NotificationsPanel = ({ token, onNavigateToUser, onNavigateToBook }) => {
   );
 };
 
+// === КОМПОНЕНТ АКТИВНОСТИ ДРУЗЕЙ ===
+
+const FriendActivitySection = ({ token, onNavigateToUser, onNavigateToBook }) => {
+    const [activities, setActivities] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchActivities = async () => {
+            if (!token) return;
+            setLoading(true);
+            try {
+                const response = await fetch(`${API_URL}/api/friends/activity?type=book`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setActivities(data.activities || []);
+                }
+            } catch (err) {
+                console.error("Failed to fetch activities", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchActivities();
+        const interval = setInterval(fetchActivities, 60000);
+        return () => clearInterval(interval);
+    }, [token]);
+
+    const boardTitles = {
+        want_to_read: 'Хочу прочитать',
+        reading: 'Читаю',
+        read: 'Прочитал',
+        dropped: 'Бросил'
+    };
+
+    const formatActivity = (act) => {
+        const { username, action_type, details, user_id } = act;
+        const bookName = <span className="font-bold text-green-300">{details.title}</span>;
+        const clickableUsername = (
+            <button
+                onClick={() => onNavigateToUser && onNavigateToUser(user_id)}
+                className="text-blue-400 hover:text-blue-300 underline cursor-pointer font-semibold"
+            >
+                {username}
+            </button>
+        );
+
+        switch (action_type) {
+            case 'add_book':
+                return <>{clickableUsername} добавил книгу {bookName} в <span className="italic">{boardTitles[details.board]}</span></>;
+            case 'complete_book':
+                return <><span className="text-green-400 font-semibold">{clickableUsername}</span> прочитал книгу {bookName}! 🎉</>;
+            case 'move_book':
+                return <>{clickableUsername} переместил книгу {bookName} в <span className="italic">"{boardTitles[details.board]}"</span></>;
+            case 'remove_book':
+                return <>{clickableUsername} удалил {bookName}</>;
+            case 'rate_book':
+                return <>{clickableUsername} оценил книгу {bookName} на {details.rating} ⭐</>;
+            default:
+                return <>{clickableUsername} {action_type}</>;
+        }
+    };
+
+    return (
+        <div className="bg-gradient-to-br from-[#10b981]/30 to-[#059669]/25 backdrop-blur-xl rounded-xl border border-[#10b981]/40 p-6">
+            <h3 className="text-xl font-bold text-white mb-4">Активность друзей</h3>
+            {loading ? (
+                <div className="w-full flex items-center justify-center p-10"><Icon name="loader" className="w-8 h-8 text-green-400"/></div>
+            ) : activities.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {activities.map(act => (
+                        <div key={act.id} className="text-sm text-gray-300 p-4 bg-[#1a0f2e]/60 rounded-lg border border-[#10b981]/30 hover:border-[#10b981] hover:-translate-y-1 transition-all">
+                            <p>{formatActivity(act)}</p>
+                            <div className="text-xs text-gray-500 mt-2 text-right">{new Date(act.created_at).toLocaleString('ru-RU')}</div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <p className="text-gray-400 text-center">Пока нет активности от ваших друзей.</p>
+            )}
+        </div>
+    );
+};
+
 // === КОМПОНЕНТЫ СТАТИСТИКИ ===
 
 // Компонент страницы статистики
@@ -723,14 +808,36 @@ const StatisticsPage = ({ isOpen, onClose, token, books, showBooksTab = true }) 
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState(null);
 
-  // Создание статистики из локальных данных
-  const createFallbackStats = useCallback(() => {
+  // Загрузка статистики из API или создание из локальных данных
+  const fetchStats = useCallback(async () => {
+    if (!token || !books) return;
+
+    setLoading(true);
+    try {
+      // Пытаемся загрузить реальную статистику с сервера
+      const response = await fetch(`${API_URL}/api/books/statistics`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+        setLoading(false);
+        return;
+      }
+    } catch (error) {
+      console.log('Could not fetch stats from API, using local data');
+    }
+
+    // Если API не доступен, используем локальные данные
     if (!books || !Array.isArray(books)) {
-      return {
+      setStats({
         summary: { totalBooks: 0, readBooks: 0, readingBooks: 0, wantToReadBooks: 0, averageRating: 0 },
         topBooks: [],
         monthlyStats: []
-      };
+      });
+      setLoading(false);
+      return;
     }
 
     const readBooks = books.filter(b => b.status === 'read').length;
@@ -752,23 +859,43 @@ const StatisticsPage = ({ isOpen, onClose, token, books, showBooksTab = true }) 
       .sort((a, b) => (b.rating || 0) - (a.rating || 0))
       .slice(0, 10);
 
-    // Создаем месячную статистику (последние 6 месяцев)
+    // Создаем месячную статистику на основе реальных данных
     const monthlyStats = [];
+    const now = new Date();
+
     for (let i = 5; i >= 0; i--) {
       const date = new Date();
       date.setMonth(date.getMonth() - i);
+      const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+      const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
       const month = date.toLocaleDateString('ru-RU', { month: 'short', year: 'numeric' });
 
-      const allBooks = books.length;
-      const readBooksCount = books.filter(b => b.status === 'read').length;
+      // Подсчитываем книги, добавленные и прочитанные в этом месяце
+      let booksAdded = 0;
+      let booksRead = 0;
 
-      const booksAdded = Math.floor((allBooks / 6) + Math.random() * 2);
-      const booksRead = Math.floor((readBooksCount / 6) + Math.random() * 3);
+      books.forEach(book => {
+        const createdAt = book.created_at ? new Date(book.created_at) : null;
+        const completedAt = book.completed_at ? new Date(book.completed_at) : null;
+
+        // Считаем добавленные книги
+        if (createdAt && createdAt >= monthStart && createdAt <= monthEnd) {
+          booksAdded++;
+        }
+
+        // Считаем прочитанные книги
+        if (completedAt && completedAt >= monthStart && completedAt <= monthEnd) {
+          booksRead++;
+        } else if (!completedAt && book.status === 'read' && createdAt && createdAt >= monthStart && createdAt <= monthEnd) {
+          // Если нет completed_at, но статус "прочитано", используем created_at как приближение
+          booksRead++;
+        }
+      });
 
       monthlyStats.push({
         month: month,
-        booksAdded: Math.max(0, booksAdded),
-        booksRead: Math.max(0, booksRead)
+        booksAdded: booksAdded,
+        booksRead: booksRead
       });
     }
 
@@ -778,7 +905,7 @@ const StatisticsPage = ({ isOpen, onClose, token, books, showBooksTab = true }) 
       ? parseFloat((ratedBooks.reduce((sum, book) => sum + (book.user_rating || 0), 0) / ratedBooks.length).toFixed(1))
       : 0;
 
-    return {
+    setStats({
       summary: {
         totalBooks: books.length,
         readBooks,
@@ -789,17 +916,15 @@ const StatisticsPage = ({ isOpen, onClose, token, books, showBooksTab = true }) 
       },
       topBooks,
       monthlyStats
-    };
-  }, [books]);
+    });
+    setLoading(false);
+  }, [token, books]);
 
   useEffect(() => {
-    if (isOpen && books) {
-      setLoading(true);
-      const fallbackStats = createFallbackStats();
-      setStats(fallbackStats);
-      setLoading(false);
+    if (isOpen) {
+      fetchStats();
     }
-  }, [isOpen, books, createFallbackStats]);
+  }, [isOpen, fetchStats]);
 
   if (!isOpen) return null;
 
@@ -1559,6 +1684,9 @@ const BookTrackerApp = () => {
                             <Icon name="users" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
                             {friendRequests.length > 0 && <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white badge-notification"></span>}
                         </button>
+                        <button onClick={handleProfile} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Настройки">
+                            <Icon name="settings" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
+                        </button>
                         <NotificationsPanel
                           token={localStorage.getItem('token')}
                           onNavigateToUser={(userId) => {
@@ -1568,9 +1696,6 @@ const BookTrackerApp = () => {
                             console.log('Navigate to book:', bookId);
                           }}
                         />
-                        <button onClick={handleProfile} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Настройки">
-                            <Icon name="settings" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
-                        </button>
                     </Fragment>
                 </div>
             )}
@@ -1712,30 +1837,15 @@ const BookTrackerApp = () => {
         </div>
 
         {/* Активность друзей */}
-        {activities.length > 0 && (
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-green-500/30">
-            <h2 className="text-xl font-semibold text-white mb-4">Активность друзей по книгам</h2>
-            <div className="space-y-3">
-              {activities.slice(0, 12).map((activity, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 bg-gray-700/30 rounded-lg">
-                  <Avatar src={activity.user?.avatar} size="sm" />
-                  <div className="flex-1">
-                    <p className="text-white text-sm">
-                      <span className="font-semibold">{activity.user?.username || 'Неизвестный пользователь'}</span>
-                      {' '}
-                      {activity.action === 'added' && 'добавил книгу'}
-                      {activity.action === 'moved' && 'переместил книгу'}
-                      {activity.action === 'rated' && 'оценил книгу'}
-                      {' '}
-                      <span className="text-green-400">{activity.book?.title || 'Неизвестная книга'}</span>
-                    </p>
-                    <p className="text-gray-400 text-xs">{new Date(activity.created_at).toLocaleString('ru-RU')}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <FriendActivitySection
+          token={localStorage.getItem('token')}
+          onNavigateToUser={(userId) => {
+            console.log('Navigate to user:', userId);
+          }}
+          onNavigateToBook={(bookId) => {
+            console.log('Navigate to book:', bookId);
+          }}
+        />
       </main>
 
       {/* Модальные окна */}
