@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Omnilogue - Отслеживание книг</title>
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Omnilogue - современное приложение для отслеживания книг. Управляйте своей библиотекой, делитесь с друзьями и следите за прогрессом чтения.">
+  <meta name="keywords" content="книги, библиотека, трекер, коллекция, друзья, рейтинги, отзывы, чтение">
+  <meta name="author" content="Omnilogue">
+  <meta name="robots" content="index, follow">
+  
+  <!-- Security Headers -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: http:; connect-src 'self' https://gametracker-backend-production.up.railway.app https://openlibrary.org https://covers.openlibrary.org https://unpkg.com; frame-src 'none'; object-src 'none'; base-uri 'self';">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+  <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+  
+  <!-- Open Graph Meta Tags -->
+  <meta property="og:title" content="Omnilogue - Отслеживание книг">
+  <meta property="og:description" content="Современное приложение для отслеживания книг. Управляйте библиотекой, делитесь с друзьями.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://gametracker-backend-production.up.railway.app/books.html">
+  <meta property="og:image" content="https://gametracker-backend-production.up.railway.app/favicon.ico">
+  <meta property="og:site_name" content="Omnilogue">
+  <meta property="og:locale" content="ru_RU">
+  
+  <!-- Twitter Card Meta Tags -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Omnilogue - Отслеживание книг">
+  <meta name="twitter:description" content="Современное приложение для отслеживания книг.">
+  <meta name="twitter:image" content="https://gametracker-backend-production.up.railway.app/favicon.ico">
+  
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
+  
+  <!-- Подключаем те же стили и скрипты, что и на странице с играми -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+  <style>
+    /* Новая цветовая палитра для BookTracker - МЯТНАЯ ТЕМА */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    
+    /* CSS переменные для мятной цветовой палитры */
+    :root {
+      --mint-fresh: #a8e6cf;
+      --mint-light: #d4f1d4;
+      --mint-medium: #7dd3fc;
+      --mint-deep: #0ea5e9;
+      --mint-dark: #0369a1;
+      --mint-accent: #10b981;
+      --mint-purple: #8b5cf6;
+      --mint-gray: #64748b;
+    }
+
+    /* ПРОФЕССИОНАЛЬНЫЕ МИКРОАНИМАЦИИ */
+    
+    /* Анимация появления карточек */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .book-card {
+      animation: fadeInUp 0.4s ease-out forwards;
+    }
+
+    /* Задержка для последовательного появления */
+    .book-card:nth-child(1) { animation-delay: 0.05s; }
+    .book-card:nth-child(2) { animation-delay: 0.1s; }
+    .book-card:nth-child(3) { animation-delay: 0.15s; }
+    .book-card:nth-child(4) { animation-delay: 0.2s; }
+    .book-card:nth-child(5) { animation-delay: 0.25s; }
+
+    /* Улучшенные hover эффекты */
+    .book-card {
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .book-card:hover {
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 8px 32px rgba(168, 230, 207, 0.3), 0 0 0 1px rgba(168, 230, 207, 0.2);
+    }
+
+    /* Пульсация для иконок */
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .header-icon:hover {
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    /* Вращение иконки настроек */
+    @keyframes rotate360 {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .header-icon:has([name="settings"]):hover svg {
+      animation: rotate360 0.6s ease-in-out;
+    }
+
+    /* Ripple эффект при клике */
+    @keyframes ripple {
+      0% {
+        transform: scale(0);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(4);
+        opacity: 0;
+      }
+    }
+
+    button {
+      position: relative;
+      overflow: hidden;
+    }
+
+    button::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 5px;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    button:active::after {
+      animation: ripple 0.6s ease-out;
+    }
+
+    /* Плавное увеличение кнопок */
+    button {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    /* Анимация модальных окон */
+    @keyframes modalFadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-20px);
+        filter: blur(10px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+        filter: blur(0);
+      }
+    }
+
+    .fixed.inset-0.bg-black\/80 > div {
+      animation: modalFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    /* Анимация звезд рейтинга */
+    .star-rating {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .star-rating button {
+      border: none !important;
+      outline: none !important;
+      background: transparent !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+      display: inline-block;
+      -webkit-tap-highlight-color: transparent !important;
+    }
+
+    .star-rating button:focus,
+    .star-rating button:focus-visible,
+    .star-rating button:active {
+      outline: none !important;
+      box-shadow: none !important;
+      border: none !important;
+    }
+
+    .star-rating svg {
+      transition: all 0.2s ease-out;
+      display: block;
+      border: none !important;
+      outline: none !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      pointer-events: none;
+    }
+
+    .star-rating svg:hover {
+      color: #a8e6cf !important;
+      transform: rotate(-5deg) scale(1.1);
+      filter: drop-shadow(0 0 8px rgba(168, 230, 207, 0.8)) !important;
+    }
+
+    /* Убираем любые границы */
+    .star-rating *,
+    .star-rating *:hover,
+    .star-rating *:focus,
+    .star-rating *:active {
+      border: none !important;
+      outline: none !important;
+      box-sizing: border-box !important;
+      -webkit-tap-highlight-color: transparent !important;
+    }
+
+    .star-rating button:hover,
+    .star-rating button:focus,
+    .star-rating button:active {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      outline: none !important;
+      outline-offset: 0 !important;
+    }
+
+    /* Убираем любые псевдоэлементы */
+    .star-rating button::before,
+    .star-rating button::after,
+    .star-rating svg::before,
+    .star-rating svg::after {
+      display: none !important;
+      content: none !important;
+    }
+
+    /* Убираем квадратную зону полностью */
+    .star-rating svg polygon {
+      vector-effect: non-scaling-stroke !important;
+      shape-rendering: geometricPrecision !important;
+      stroke: none !important;
+      stroke-width: 0 !important;
+      outline: none !important;
+    }
+
+    .star-rating svg[fill="currentColor"] {
+      fill: currentColor !important;
+      stroke: none !important;
+      stroke-width: 0 !important;
+    }
+
+    .star-rating svg *,
+    .star-rating svg *:hover {
+      stroke: none !important;
+      stroke-width: 0 !important;
+      outline: none !important;
+    }
+
+    .star-rating svg {
+      overflow: visible !important;
+      clip-path: none !important;
+      mask: none !important;
+    }
+
+    .star-rating svg:hover {
+      overflow: visible !important;
+      clip-path: none !important;
+      mask: none !important;
+    }
+
+    /* Волновой эффект при выборе рейтинга */
+    @keyframes starWave {
+      0%, 100% { transform: scale(1); }
+      25% { transform: scale(1.3); }
+      50% { transform: scale(0.9); }
+      75% { transform: scale(1.1); }
+    }
+
+    .star-rating svg:active {
+      animation: starWave 0.6s ease-in-out;
+    }
+
+    /* Улучшенный loader */
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes spinPulse {
+      0%, 100% {
+        transform: rotate(0deg) scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: rotate(180deg) scale(1.1);
+        opacity: 0.8;
+      }
+    }
+
+    .animate-spin {
+      animation: spinPulse 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    /* Skeleton loading */
+    @keyframes shimmer {
+      0% {
+        background-position: -1000px 0;
+      }
+      100% {
+        background-position: 1000px 0;
+      }
+    }
+
+    .skeleton {
+      background: linear-gradient(
+        90deg,
+        rgba(16, 185, 129, 0.1) 0%,
+        rgba(168, 230, 207, 0.2) 50%,
+        rgba(16, 185, 129, 0.1) 100%
+      );
+      background-size: 1000px 100%;
+      animation: shimmer 2s infinite linear;
+    }
+
+    /* Toast notifications */
+    @keyframes slideInRight {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .toast {
+      animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Bounce эффект для badge уведомлений */
+    @keyframes bounce {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+
+    .badge-notification {
+      animation: bounce 0.5s ease-in-out 3;
+    }
+
+    /* Параллакс эффект для фона */
+    body {
+      background-attachment: fixed;
+      background-size: 200% 200%;
+      animation: gradientShift 15s ease infinite;
+    }
+
+    @keyframes gradientShift {
+      0%, 100% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+    }
+
+    /* Bounce эффект при добавлении реакции */
+    @keyframes reactionPop {
+      0% {
+        transform: scale(0) rotate(0deg);
+        opacity: 0;
+      }
+      50% {
+        transform: scale(1.3) rotate(10deg);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+      }
+    }
+
+    .reaction-button:active {
+      animation: reactionPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Плавная прокрутка */
+    * {
+      scroll-behavior: smooth;
+    }
+
+    /* Custom scrollbar с анимацией */
+    ::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(16, 185, 129, 0.3);
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #10b981 0%, #a8e6cf 100%);
+      border-radius: 10px;
+      transition: all 0.3s ease;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #a8e6cf 0%, #10b981 100%);
+      box-shadow: 0 0 10px rgba(168, 230, 207, 0.5);
+    }
+
+    /* ПРОДВИНУТАЯ АНИМАЦИЯ DRAG & DROP С ЭФФЕКТОМ "МАГНИТНОГО ФОКУСА" */
+    
+    /* Базовое состояние доски */
+    .board-column {
+      min-height: 200px;
+      transform: scale(1) translateZ(0);
+      transform-origin: center center;
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Состояние при наведении карточки (drag over) */
+    .drag-over-column {
+      /* Увеличение размера на 6% */
+      transform: scale(1.06) translateZ(20px);
+      
+      /* Визуальное "выдвижение вперед" */
+      z-index: 10;
+      
+      /* Светящаяся граница с пульсацией */
+      border-color: rgba(168, 230, 207, 0.8) !important;
+      box-shadow: 
+        0 0 0 3px rgba(168, 230, 207, 0.3),
+        0 0 30px rgba(168, 230, 207, 0.4) inset,
+        0 20px 60px rgba(168, 230, 207, 0.3);
+      
+      /* Подсветка фона */
+      background: linear-gradient(
+        135deg,
+        rgba(168, 230, 207, 0.2) 0%,
+        rgba(16, 185, 129, 0.25) 100%
+      ) !important;
+      
+      /* Плавная анимация */
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Эффект "дыхания" для целевой доски */
+    @keyframes breathe {
+      0%, 100% {
+        transform: scale(1.06);
+      }
+      50% {
+        transform: scale(1.08);
+      }
+    }
+
+    /* Плавный возврат всех досок */
+    .board-column:not(.drag-over-column) {
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Когда drag заканчивается, все доски возвращаются */
+    .board-column {
+      transform: scale(1) translateX(0) translateZ(0);
+      opacity: 1;
+      filter: blur(0);
+      z-index: 1;
+    }
+
+    /* Улучшенная анимация перетаскиваемой карточки */
+    .dragging-card {
+      opacity: 0.9;
+      transform: rotate(5deg) scale(1.15) translateZ(50px);
+      box-shadow: 
+        0 30px 80px rgba(168, 230, 207, 0.5),
+        0 0 0 2px rgba(168, 230, 207, 0.6);
+      cursor: grabbing !important;
+      z-index: 9999;
+      filter: brightness(1.1);
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Трейл эффект за карточкой */
+    @keyframes trail {
+      0% {
+        opacity: 0.5;
+        transform: scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+    }
+
+    .dragging-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: inherit;
+      border-radius: inherit;
+      z-index: -1;
+      animation: trail 0.6s ease-out infinite;
+    }
+
+    /* УПРОЩЕННАЯ АНИМАЦИЯ ЦЕЛЕВОЙ КОЛОНКИ */
+    .drag-over-column {
+      /* Увеличение с легким bounce */
+      transform: scale(1.06) !important;
+      z-index: 10 !important;
+      
+      /* Подсветка границы */
+      border-color: rgba(168, 230, 207, 0.8) !important;
+      box-shadow: 
+        0 0 0 2px rgba(168, 230, 207, 0.3),
+        0 0 20px rgba(168, 230, 207, 0.4) !important;
+      
+      /* Легкая анимация дыхания */
+      animation: breathe 2s ease-in-out infinite !important;
+    }
+
+    /* Responsive поведение */
+    @media (max-width: 768px) {
+      .drag-over-column {
+        transform: scale(1.03) translateZ(10px);
+      }
+      
+      .board-column[data-position="before-target"],
+      .board-column[data-position="after-target"] {
+        transform: translateY(10px) scale(0.98);
+        opacity: 0.8;
+      }
+      
+      /* Вертикальное смещение вместо горизонтального */
+      .board-column[data-position="far-left"],
+      .board-column[data-position="far-right"] {
+        transform: translateY(15px) scale(0.96);
+      }
+    }
+
+    /* Пульсация цветной полоски */
+    @keyframes glowPulse {
+      0%, 100% {
+        opacity: 0.8;
+        box-shadow: 0 0 10px currentColor;
+      }
+      50% {
+        opacity: 1;
+        box-shadow: 0 0 20px currentColor;
+      }
+    }
+
+    .book-card:hover > div[style*="backgroundColor"] {
+      animation: glowPulse 2s ease-in-out infinite;
+    }
+
+    /* Focus states для accessibility */
+    button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible {
+      outline: 2px solid #a8e6cf;
+      outline-offset: 2px;
+      transition: outline-offset 0.2s ease;
+    }
+
+    /* Текст selection */
+    ::selection {
+      background: rgba(168, 230, 207, 0.3);
+      color: #ffffff;
+      text-shadow: 0 0 8px rgba(168, 230, 207, 0.5);
+    }
+
+    /* Reduce motion для accessibility */
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* GPU acceleration для плавности */
+    .book-card,
+    .board-column,
+    button,
+    .modal-bg {
+      will-change: transform;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Оптимизация transitions */
+    * {
+      transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    body { 
+      font-family: 'Inter', sans-serif; 
+      margin: 0; 
+      padding: 0; 
+      background: linear-gradient(135deg, var(--mint-light) 0%, var(--mint-medium) 100%);
+      min-height: 100vh;
+    }
+    
+    .avatar-circle { border-radius: 50%; object-fit: cover; }
+    .dragging { opacity: 0.5; border: 2px dashed var(--mint-deep); transform: rotate(2deg); }
+    .drag-over-column { background-color: rgba(16, 185, 129, 0.1); }
+    .drag-over-card { transform: scale(1.05); }
+    
+    /* Стили для новой цветовой палитры BookTracker */
+    
+    /* Основной фон страницы */
+    .book-tracker-bg {
+      background: linear-gradient(135deg, var(--mint-light) 0%, var(--mint-medium) 100%);
+    }
+    
+    /* Фон модальных окон и панелей */
+    .modal-bg {
+      background-color: rgba(212, 241, 212, 0.95);
+      backdrop-filter: blur(10px);
+    }
+    
+    /* Темные секции */
+    .dark-section {
+      background: linear-gradient(135deg, var(--mint-deep) 0%, var(--mint-dark) 100%);
+    }
+    
+    /* Карточки книг */
+    .card-want-to-read {
+      background: linear-gradient(135deg, var(--mint-fresh) 0%, var(--mint-light) 100%);
+      border: 2px solid var(--mint-deep);
+    }
+    
+    .card-reading {
+      background: linear-gradient(135deg, var(--mint-medium) 0%, var(--mint-deep) 100%);
+      border: 2px solid var(--mint-deep);
+    }
+    
+    .card-read {
+      background: linear-gradient(135deg, var(--mint-accent) 0%, var(--mint-deep) 100%);
+      border: 2px solid var(--mint-deep);
+    }
+    
+    .card-dropped {
+      background: linear-gradient(135deg, var(--mint-gray) 0%, var(--mint-dark) 100%);
+      border: 2px solid var(--mint-deep);
+    }
+    
+    .card-hover {
+      box-shadow: 0 0 20px var(--mint-fresh);
+      transform: translateY(-2px);
+    }
+    
+    /* Кнопки */
+    .btn-add {
+      background: linear-gradient(135deg, var(--mint-deep) 0%, var(--mint-dark) 100%);
+    }
+    
+    .btn-add:hover {
+      background: var(--mint-fresh);
+    }
+    
+    .btn-search {
+      background: #10b981;
+      border: 2px solid var(--mint-deep);
+    }
+    
+    .btn-save {
+      background: linear-gradient(135deg, var(--mint-deep) 0%, var(--mint-medium) 100%);
+    }
+    
+    .btn-logout {
+      background: #dc2626;
+      border: 2px solid var(--mint-dark);
+    }
+    
+    .btn-upload {
+      background: linear-gradient(135deg, var(--mint-medium) 0%, var(--mint-deep) 100%);
+    }
+    
+    /* Заголовки */
+    .title-books {
+      color: var(--mint-deep);
+      text-shadow: 0 0 10px var(--mint-fresh);
+    }
+    
+    /* Разделители */
+    .divider {
+      background: linear-gradient(90deg, var(--mint-fresh) 0%, var(--mint-medium) 50%, var(--mint-deep) 100%);
+      height: 2px;
+    }
+    
+    /* Статистика */
+    .stat-books-read {
+      background: linear-gradient(135deg, var(--mint-fresh) 0%, var(--mint-light) 100%);
+    }
+    
+    .stat-books-reading {
+      background: linear-gradient(135deg, var(--mint-deep) 0%, var(--mint-dark) 100%);
+    }
+    
+    .stat-books-want {
+      background: linear-gradient(135deg, var(--mint-medium) 0%, var(--mint-dark) 100%);
+    }
+    
+    .stat-books-dropped {
+      background: linear-gradient(135deg, var(--mint-deep) 0%, var(--mint-medium) 100%);
+    }
+    
+    /* Навигация и поиск */
+    .search-input {
+      background-color: var(--mint-light);
+      border: 2px solid var(--mint-deep);
+    }
+    
+    .search-input:focus {
+      box-shadow: 0 0 15px var(--mint-fresh);
+    }
+    
+    .header-icon {
+      color: var(--mint-deep);
+    }
+    
+    .header-icon:hover {
+      color: var(--mint-fresh);
+    }
+    
+    /* Аватар пользователя */
+    .avatar-border {
+      border: 3px solid;
+      border-image: linear-gradient(45deg, var(--mint-fresh), var(--mint-deep)) 1;
+    }
+    
+    /* Рейтинги */
+    .star-active {
+      color: var(--mint-deep);
+      filter: drop-shadow(0 0 6px rgba(168, 230, 207, 0.6));
+    }
+    
+    .star-inactive {
+      color: var(--mint-light);
+    }
+    
+    /* Эмодзи реакции */
+    .reaction-bg {
+      background-color: var(--mint-light);
+    }
+    
+    /* Текст */
+    .text-primary {
+      color: var(--mint-dark);
+    }
+    
+    .text-heading {
+      color: var(--mint-deep);
+    }
+    
+    .text-secondary {
+      color: rgba(100, 116, 139, 0.8);
+    }
+    
+    /* Line clamp utilities */
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    
+    /* Elevation system */
+    .elevation-0 { box-shadow: none; }
+    .elevation-1 { box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+    .elevation-2 { box-shadow: 0 4px 6px rgba(0,0,0,0.16); }
+    .elevation-3 { box-shadow: 0 10px 20px rgba(0,0,0,0.24); }
+    .elevation-4 { box-shadow: 0 15px 30px rgba(0,0,0,0.32); }
+    
+    /* Shadow transitions */
+    .shadow-transition { transition: box-shadow 200ms ease; }
+    
+    /* Drag & Drop optimizations */
+    .dragging-card {
+      opacity: 0.8;
+      transform: rotate(2deg) scale(1.05);
+      z-index: 1000;
+      pointer-events: none;
+      transition: all 200ms ease;
+    }
+    
+    .drag-ghost {
+      opacity: 0.3;
+      transform: scale(0.95);
+      transition: none;
+    }
+    
+    .drag-over-column {
+      background-color: rgba(16, 185, 129, 0.1);
+      transform: scale(1.02);
+      transition: all 200ms ease;
+    }
+    
+    /* Prevent layout shifts during drag */
+    .board-column {
+      min-height: 200px;
+      transition: all 200ms ease;
+    }
+    
+    .book-card {
+      will-change: transform, opacity;
+      backface-visibility: hidden;
+      transform-style: preserve-3d;
+    }
+    
+    /* Tooltip styles */
+    .tooltip {
+      position: absolute;
+      z-index: 1000;
+      background: rgba(17, 24, 39, 0.95);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      max-width: 300px;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.2s ease;
+    }
+    
+    .tooltip.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    .tooltip::after {
+      content: '';
+      position: absolute;
+      top: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-bottom: 6px solid rgba(16, 185, 129, 0.3);
+    }
+    .cropper-container { max-width: 100%; }
+    .img-container { max-height: 50vh; margin-bottom: 1rem; }
+    .img-container > img { max-width: 100%; }
+    
+    /* Modal Transitions */
+    .modal-enter {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    .modal-enter-active {
+        opacity: 1;
+        transform: scale(1);
+        transition: opacity 200ms ease-out, transform 200ms ease-out;
+    }
+    .modal-exit {
+        opacity: 1;
+        transform: scale(1);
+    }
+    .modal-exit-active {
+        opacity: 0;
+        transform: scale(0.9);
+        transition: opacity 200ms ease-in, transform 200ms ease-in;
+    }
+    
+    /* Toast Notifications */
+    .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        padding: 12px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: translateX(100%);
+        transition: transform 300ms ease-out;
+    }
+    .toast.show {
+        transform: translateX(0);
+    }
+    .toast.success {
+        background: linear-gradient(135deg, #10b981, #059669);
+    }
+    .toast.error {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+    }
+    .toast.info {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+    }
+    
+    /* Loading Button States */
+    .btn-loading {
+        position: relative;
+        pointer-events: none;
+        opacity: 0.7;
+    }
+    .btn-loading::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 16px;
+        height: 16px;
+        margin: -8px 0 0 -8px;
+        border: 2px solid transparent;
+        border-top: 2px solid currentColor;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* Mobile Responsive Styles */
+    @media (max-width: 768px) {
+      .mobile-fullscreen-modal {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+      }
+      
+      .accordion-column {
+        border-bottom: 1px solid rgba(16, 185, 129, 0.3);
+      }
+      
+      .accordion-column.collapsed .accordion-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+      }
+      
+      .accordion-column.expanded .accordion-content {
+        max-height: 5000px;
+        transition: max-height 0.5s ease-in;
+      }
+      
+      .accordion-header {
+        cursor: pointer;
+        user-select: none;
+      }
+    }
+    
+    /* Swipe gesture styles */
+    .swipe-indicator {
+      width: 40px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 2px;
+      margin: 8px auto;
+    }
+    
+    /* Тема Liquid Eye */
+    .liquid-eye {
+        --bg-color: #000000;
+        --text-color: #ffffff;
+        --primary-color: #ffffff;
+        --secondary-color: #a0a0a0;
+        --border-color: #444444;
+        --card-bg: #101010;
+        --header-bg: rgba(0, 0, 0, 0.7);
+        --modal-bg: #111111;
+        --button-bg: #ffffff;
+        --button-text: #000000;
+        --button-hover-bg: #e0e0e0;
+        --input-bg: #222222;
+    }
+    .liquid-eye .bg-gradient-to-br, .liquid-eye .bg-gradient-to-r { background: var(--bg-color); }
+    .liquid-eye body, .liquid-eye #root { background-color: var(--bg-color); color: var(--text-color); }
+    .liquid-eye header { background-color: var(--header-bg) !important; border-bottom-color: var(--border-color) !important; }
+    .liquid-eye .text-transparent { color: var(--text-color) !important; }
+    .liquid-eye .bg-clip-text { -webkit-background-clip: unset !important; background-clip: unset !important; background: none !important; }
+    .liquid-eye .border-purple-500\/30, .liquid-eye .border-blue-500\/30, .liquid-eye .border-green-500\/30, .liquid-eye .border-red-500\/30, .liquid-eye .border-orange-500\/30 { border-color: var(--border-color) !important; }
+    .liquid-eye .bg-gray-900\/90, .liquid-eye .bg-gray-900, .liquid-eye .bg-gray-800, .liquid-eye .bg-gray-800\/90 { background-color: var(--card-bg) !important; }
+    .liquid-eye .bg-gray-800\/95 { background-color: var(--modal-bg) !important; }
+    .liquid-eye .from-purple-500\/20, .liquid-eye .to-pink-500\/20, .liquid-eye .from-blue-500\/20, .liquid-eye .from-green-500\/20, .liquid-eye .from-red-500\/20 { background: var(--card-bg) !important; }
+    .liquid-eye input, .liquid-eye textarea, .liquid-eye select { background-color: var(--input-bg) !important; border-color: var(--border-color) !important; color: var(--text-color) !important; }
+    .liquid-eye .text-purple-400, .liquid-eye .text-red-400, .liquid-eye .text-blue-400, .liquid-eye .text-green-400 { color: var(--primary-color) !important; }
+    .liquid-eye .text-gray-300, .liquid-eye .text-gray-400 { color: var(--secondary-color) !important; }
+    .liquid-eye button.bg-gradient-to-r { background: var(--button-bg) !important; color: var(--button-text) !important; }
+    .liquid-eye button.bg-gradient-to-r:hover { background: var(--button-hover-bg) !important; }
+    .liquid-eye .hover\:border-purple-500:hover { border-color: var(--primary-color) !important; }
+  </style>
+</head>
+<body>
+  <!-- Структура body теперь такая же простая, как на главной странице -->
+  <div id="root"></div>
+  
+  <!-- Подключаем обновленный books.js как babel-скрипт -->
+  <script type="text/babel" src="books.js"></script>
+</body>
+</html>
