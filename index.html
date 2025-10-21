@@ -3610,9 +3610,14 @@
         }
       };
       
+      // Хранение информации о перетаскиваемом элементе
+      const draggedElement = React.useRef(null);
+      const lastHighlightedColumn = React.useRef(null);
+
       const handleDragStart = (e, card, boardId, index) => {
         console.log('Drag start:', card.name, boardId, index);
         dragItem.current = { card, sourceBoardId: boardId, sourceIndex: index };
+        draggedElement.current = e.currentTarget;
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/html', e.currentTarget.outerHTML);
         setTimeout(() => {
@@ -3620,10 +3625,64 @@
         }, 0);
       };
 
-      const handleDragOver = (e) => e.preventDefault();
-      
-      const handleDragEnterColumn = (e) => e.currentTarget.classList.add('drag-over-column');
-      const handleDragLeaveColumn = (e) => e.currentTarget.classList.remove('drag-over-column');
+      // Функция для вычисления площади пересечения двух прямоугольников
+      const getIntersectionArea = (rect1, rect2) => {
+        const xOverlap = Math.max(0, Math.min(rect1.right, rect2.right) - Math.max(rect1.left, rect2.left));
+        const yOverlap = Math.max(0, Math.min(rect1.bottom, rect2.bottom) - Math.max(rect1.top, rect2.top));
+        return xOverlap * yOverlap;
+      };
+
+      const handleDragOver = (e) => {
+        e.preventDefault();
+
+        if (!draggedElement.current) return;
+
+        // Получаем размеры перетаскиваемой карточки
+        const draggedRect = draggedElement.current.getBoundingClientRect();
+        const draggedArea = draggedRect.width * draggedRect.height;
+
+        // Находим все столбцы
+        const columns = document.querySelectorAll('.board-column');
+        let maxIntersectionColumn = null;
+        let maxIntersectionPercentage = 0;
+
+        // Вычисляем пересечение карточки с каждым столбцом
+        columns.forEach(column => {
+          const columnRect = column.getBoundingClientRect();
+          const intersectionArea = getIntersectionArea(draggedRect, columnRect);
+          const intersectionPercentage = (intersectionArea / draggedArea) * 100;
+
+          if (intersectionPercentage > maxIntersectionPercentage) {
+            maxIntersectionPercentage = intersectionPercentage;
+            maxIntersectionColumn = column;
+          }
+        });
+
+        // Применяем анимацию только к столбцу с максимальным пересечением (> 50%)
+        if (maxIntersectionPercentage > 50 && maxIntersectionColumn !== lastHighlightedColumn.current) {
+          // Убираем подсветку с предыдущего столбца
+          if (lastHighlightedColumn.current) {
+            lastHighlightedColumn.current.classList.remove('drag-over-column');
+          }
+
+          // Добавляем подсветку новому столбцу
+          maxIntersectionColumn.classList.add('drag-over-column');
+          lastHighlightedColumn.current = maxIntersectionColumn;
+        } else if (maxIntersectionPercentage <= 50 && lastHighlightedColumn.current) {
+          // Убираем подсветку если пересечение меньше 50%
+          lastHighlightedColumn.current.classList.remove('drag-over-column');
+          lastHighlightedColumn.current = null;
+        }
+      };
+
+      const handleDragEnterColumn = (e) => {
+        // Оставляем пустым, т.к. логика теперь в handleDragOver
+      };
+
+      const handleDragLeaveColumn = (e) => {
+        // Оставляем пустым, т.к. логика теперь в handleDragOver
+      };
+
       const handleDragEnterCard = (e) => e.currentTarget.classList.add('drag-over-card');
       const handleDragLeaveCard = (e) => e.currentTarget.classList.remove('drag-over-card');
 
@@ -3663,6 +3722,8 @@
         document.querySelectorAll('.drag-over-column').forEach(el => el.classList.remove('drag-over-column'));
         document.querySelectorAll('.drag-over-card').forEach(el => el.classList.remove('drag-over-card'));
         dragItem.current = null;
+        draggedElement.current = null;
+        lastHighlightedColumn.current = null;
       };
 
       const handleLogout = () => {
