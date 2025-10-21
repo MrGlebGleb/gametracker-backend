@@ -2002,37 +2002,25 @@ function MovieApp() {
       <header className="bg-[#1a0f2e]/85 backdrop-blur-xl border-b border-[#8458B3]/30 sticky top-0 z-50 flex-shrink-0">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4 flex-wrap">
-              <a href="/index.html" className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#d0bdf4] via-[#a0d2eb] to-[#8458B3] active:scale-95 transition-transform cursor-pointer">🎮 GameTracker</a>
-              
+            <div className="flex items-center gap-4">
               {/* Кнопки навигации */}
-              <div className="flex gap-2">
+              <div className="flex gap-4">
                 <a
                   href="/index.html"
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 hover:scale-105 transition-transform cursor-pointer"
                 >
-                  🎮 Game
+                  🎮 GameTracker
                 </a>
-                <span className="px-4 py-2 bg-blue-600 text-white rounded-lg">
-                  🎬 Movie
+                <span className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400">
+                  🎬 MovieTracker
                 </span>
                 <a
                   href="/books.html"
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 hover:scale-105 transition-transform cursor-pointer"
                 >
-                  📚 Book
+                  📚 BookTracker
                 </a>
               </div>
-              
-              {/* Красивая разделительная линия */}
-              <div className="h-8 w-px bg-gradient-to-b from-transparent via-[#a0d2eb]/80 to-transparent opacity-80 ml-2"></div>
-              <a href="./movies.html" className="inline-flex items-center gap-2 active:scale-95 transition-transform">
-                <svg className="w-7 h-7" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <defs><linearGradient id="camGradHeaderReact" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#d0bdf4"/><stop offset="100%" stopColor="#8458B3"/></linearGradient></defs>
-                  <path fill="url(#camGradHeaderReact)" d="M4 7a3 3 0 0 0-3 3v4a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-.764l3.553 2.132A1 1 0 0 0 22 14.5v-5a1 1 0 0 0-1.447-.868L17 10.764V10a3 3 0 0 0-3-3H11l-.553-1.106A2 2 0 0 0 8.658 5H6a2 2 0 0 0-1.789 1.106L4 7Zm7 9a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-2.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/>
-                </svg>
-                <span className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#d0bdf4] via-[#a0d2eb] to-[#8458B3]">MovieTracker</span>
-              </a>
             </div>
             {user && (
                 <div className="flex items-center gap-2 md:gap-3">

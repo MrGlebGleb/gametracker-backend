@@ -112,13 +112,13 @@ const BookSearchModal = ({ isOpen, onClose, onAddBook, status = 'want_to_read' }
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
+      <div className="bg-[#1a0f2e] rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-[#8458B3]/30">
+        <div className="p-6 border-b border-[#8458B3]/30">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-gray-900">Поиск книг</h2>
+            <h2 className="text-2xl font-bold text-white">Поиск книг</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-gray-400 hover:text-gray-200 transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -131,8 +131,8 @@ const BookSearchModal = ({ isOpen, onClose, onAddBook, status = 'want_to_read' }
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Введите название книги или автора... (поиск автоматический)"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
+              placeholder="Введите название книги или автора..."
+              className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-transparent pr-10"
             />
             {loading && (
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -223,7 +223,21 @@ function BookDetailsModal({ book, onClose, onUpdate, onReact, user }) {
         <div className="space-y-4">
           <div>
             <p className="text-gray-400 text-sm mb-2">Рейтинг:</p>
-            <StarRating value={book.user_rating || 0} onChange={(rating) => onUpdate(book, { rating })} />
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => onUpdate(book, { rating: star })}
+                  className={`w-6 h-6 transition-colors ${
+                    star <= (book.user_rating || 0)
+                      ? 'text-yellow-400 hover:text-yellow-300'
+                      : 'text-gray-400 hover:text-gray-300'
+                  }`}
+                >
+                  <Icon name="star" className="w-full h-full" />
+                </button>
+              ))}
+            </div>
           </div>
           <div>
             <label className="text-gray-400 text-sm">Отзыв:</label>
@@ -914,37 +928,25 @@ const BookTrackerApp = () => {
       <header className="bg-[#1a0f2e]/85 backdrop-blur-xl border-b border-[#8458B3]/30 sticky top-0 z-50 flex-shrink-0">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4 flex-wrap">
-              <a href="/index.html" className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#d0bdf4] via-[#a0d2eb] to-[#8458B3] active:scale-95 transition-transform cursor-pointer">🎮 GameTracker</a>
-              
+            <div className="flex items-center gap-4">
               {/* Кнопки навигации */}
-              <div className="flex gap-6">
+              <div className="flex gap-4">
                 <a
                   href="/index.html"
-                  className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 hover:scale-105 transition-transform cursor-pointer"
+                  className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 hover:scale-105 transition-transform cursor-pointer"
                 >
                   🎮 GameTracker
                 </a>
                 <a
                   href="/movies.html"
-                  className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 hover:scale-105 transition-transform cursor-pointer"
+                  className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 hover:scale-105 transition-transform cursor-pointer"
                 >
                   🎬 MovieTracker
                 </a>
-                <span className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400">
+                <span className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400">
                   📚 BookTracker
                 </span>
               </div>
-              
-              {/* Красивая разделительная линия */}
-              <div className="h-8 w-px bg-gradient-to-b from-transparent via-[#a0d2eb]/80 to-transparent opacity-80 ml-2"></div>
-              <a href="./books.html" className="inline-flex items-center gap-2 active:scale-95 transition-transform">
-                <svg className="w-7 h-7" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <defs><linearGradient id="bookGradHeaderReact" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#10b981"/><stop offset="100%" stopColor="#3b82f6"/></linearGradient></defs>
-                  <path fill="url(#bookGradHeaderReact)" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm2 0v12h12V6H6zm2 2h8v2H8V8zm0 4h8v2H8v-2zm0 4h4v2H8v-2z"/>
-                </svg>
-                <span className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#10b981] via-[#3b82f6] to-[#0ea5e9]">BookTracker</span>
-              </a>
             </div>
             {user && (
                 <div className="flex items-center gap-2 md:gap-3">
@@ -978,9 +980,9 @@ const BookTrackerApp = () => {
 
       <main className="flex-grow container mx-auto px-4 py-6 space-y-8">
         {/* Поиск по своим книгам */}
-        <div className="relative">
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4 border border-green-500/30">
-            <div className="flex gap-2 mb-4">
+        <div className="relative max-w-md">
+          <div className="bg-gray-800/25 backdrop-blur-sm rounded-lg p-3 border border-green-500/15">
+            <div className="flex gap-2">
               <input
                 type="text"
                 value={myBooksSearchQuery}
@@ -989,9 +991,9 @@ const BookTrackerApp = () => {
                   searchMyBooks(e.target.value);
                 }}
                 placeholder="Найти в моих книгах..."
-                className="flex-1 px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-green-500 focus:outline-none"
+                className="flex-1 px-3 py-2 bg-gray-700/30 border border-gray-600/50 rounded-lg text-white/80 placeholder-gray-500 focus:border-green-500/50 focus:outline-none text-sm"
               />
-              {myBooksSearching && <Icon name="loader" className="w-6 h-6 text-green-500 animate-spin" />}
+              {myBooksSearching && <Icon name="loader" className="w-5 h-5 text-green-500 animate-spin" />}
             </div>
               
               {myBooksSearchResults.length > 0 && (
