@@ -1557,6 +1557,10 @@ function MovieApp() {
   const [showProfile, setShowProfile] = useState(false);
   const [showUserHub, setShowUserHub] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
+  const [myMediaSearchQuery, setMyMediaSearchQuery] = useState('');
+  const [myMediaSearchResults, setMyMediaSearchResults] = useState([]);
+  const [myMediaSearching, setMyMediaSearching] = useState(false);
+  const [showMyMediaSearch, setShowMyMediaSearch] = useState(false);
   const dragItem = useRef(null);
   const [expandedColumns, setExpandedColumns] = useState({});
   const [friends, setFriends] = useState([]);
@@ -1659,6 +1663,53 @@ function MovieApp() {
       setSearching(false);
     }
   };
+
+  // Debounce функция
+  const debounce = (func, wait) => {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  };
+
+  // Поиск по своим фильмам/сериалам
+  const searchMyMedia = useCallback(async (query) => {
+    if (query.length < 2) {
+      setMyMediaSearchResults([]);
+      setShowMyMediaSearch(false);
+      return;
+    }
+
+    setMyMediaSearching(true);
+    setShowMyMediaSearch(true);
+
+    try {
+      const response = await fetch(`${API_URL}/api/user/media/search?q=${encodeURIComponent(query)}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setMyMediaSearchResults(data.media || []);
+      }
+    } catch (error) {
+      console.error('Ошибка поиска по своим фильмам/сериалам:', error);
+    } finally {
+      setMyMediaSearching(false);
+    }
+  }, [token]);
+
+  // Debounce для поиска по своим фильмам/сериалам
+  const debouncedSearchMyMedia = useCallback(
+    debounce((query) => {
+      searchMyMedia(query);
+    }, 300),
+    [searchMyMedia]
+  );
 
   const addItem = async (item, board = 'wishlist') => {
     await fetch(`${API_URL}/api/user/media`, {
@@ -2031,8 +2082,81 @@ function MovieApp() {
                 </button>
             </div>
         )}
-        
-        <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-8">
+
+        {/* Поиск по своим фильмам/сериалам */}
+        {!viewingUser && (
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Найти в моих фильмах/сериалах..."
+              value={myMediaSearchQuery}
+              onChange={(e) => {
+                setMyMediaSearchQuery(e.target.value);
+                debouncedSearchMyMedia(e.target.value);
+              }}
+              className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white placeholder-gray-500 backdrop-blur-xl"
+            />
+          </div>
+        )}
+
+        {showMyMediaSearch ? (
+          // Показываем результаты поиска по своим фильмам/сериалам
+          <div className="col-span-full">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">
+                Результаты поиска
+                {myMediaSearching && <span className="ml-2 text-sm text-gray-400">Поиск...</span>}
+                {!myMediaSearching && myMediaSearchResults.length > 0 && (
+                  <span className="ml-2 text-sm text-gray-400">({myMediaSearchResults.length})</span>
+                )}
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              {myMediaSearchResults.map((item) => (
+                <div
+                  key={item.id}
+                  data-card-id={item.id}
+                  className="bg-gradient-to-br from-[#8458B3]/25 to-[#d0bdf4]/15 border-2 border-[#8458B3]/50 backdrop-blur-xl rounded-xl p-3 cursor-pointer hover:scale-105 transition-all elevation-2"
+                  onClick={() => setSelectedMedia(item)}
+                >
+                  <div className="relative aspect-[2/3] mb-2 rounded-lg overflow-hidden">
+                    {item.poster ? (
+                      <img
+                        src={item.poster}
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-800 flex items-center justify-center text-4xl">
+                        {item.mediaType === 'movie' ? '🎬' : '📺'}
+                      </div>
+                    )}
+                    {item.rating > 0 && (
+                      <div className="absolute top-1 right-1 bg-black/70 rounded px-2 py-0.5 text-xs text-yellow-400 flex items-center gap-1">
+                        <span>⭐</span>
+                        <span>{item.rating}</span>
+                      </div>
+                    )}
+                  </div>
+                  <h4 className="text-sm font-semibold text-white truncate">{item.title}</h4>
+                  <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
+                    <span>{item.mediaType === 'movie' ? '🎬' : '📺'}</span>
+                    <span>{item.board === 'wishlist' ? 'Хочу посмотреть' : 'Посмотрел'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {myMediaSearchResults.length === 0 && !myMediaSearching && (
+              <div className="col-span-full text-center py-8">
+                <div className="text-4xl mb-2">🔍</div>
+                <p className="text-gray-400">Фильмы/сериалы не найдены</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-8">
             <div className="hidden lg:block absolute left-1/2 -ml-px top-0 h-full bg-gradient-to-b from-transparent via-[#a0d2eb]/30 to-transparent w-px"></div>
             <div className="space-y-4">
                 <h2 className="text-center text-3xl font-semibold tracking-wider text-white mb-4" style={{textShadow: '0 0 15px rgba(160, 210, 235, 0.3), 0 0 30px rgba(132, 88, 179, 0.2)', fontWeight: '700', letterSpacing: '0.05em'}}>Фильмы</h2>
@@ -2056,8 +2180,9 @@ function MovieApp() {
                     </div>
                 </div>
             </div>
-        </div>
-        
+          </div>
+        )}
+
         {!viewingUser && <ActivityFeed 
           token={token} 
           boardType="media" 
