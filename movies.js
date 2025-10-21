@@ -2004,6 +2004,26 @@ function MovieApp() {
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4 flex-wrap">
               <a href="/index.html" className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#d0bdf4] via-[#a0d2eb] to-[#8458B3] active:scale-95 transition-transform cursor-pointer">🎮 GameTracker</a>
+              
+              {/* Кнопки навигации */}
+              <div className="flex gap-2">
+                <a
+                  href="/index.html"
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  🎮 Game
+                </a>
+                <span className="px-4 py-2 bg-blue-600 text-white rounded-lg">
+                  🎬 Movie
+                </span>
+                <a
+                  href="/books.html"
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  📚 Book
+                </a>
+              </div>
+              
               {/* Красивая разделительная линия */}
               <div className="h-8 w-px bg-gradient-to-b from-transparent via-[#a0d2eb]/80 to-transparent opacity-80 ml-2"></div>
               <a href="./movies.html" className="inline-flex items-center gap-2 active:scale-95 transition-transform">
