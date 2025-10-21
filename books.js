@@ -535,6 +535,7 @@ const BookTrackerApp = () => {
   const [activities, setActivities] = useState([]);
   const [selectedStatus, setSelectedStatus] = useState('want_to_read');
   const [selectedBook, setSelectedBook] = useState(null);
+  const [viewingUser, setViewingUser] = useState(null);
 
   // Загрузка данных при монтировании
   useEffect(() => {
@@ -930,20 +931,20 @@ const BookTrackerApp = () => {
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
               {/* Кнопки навигации */}
-              <div className="flex gap-4">
+              <div className="flex gap-6">
                 <a
                   href="/index.html"
-                  className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 hover:scale-105 transition-transform cursor-pointer"
+                  className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 hover:scale-105 transition-transform cursor-pointer"
                 >
                   🎮 GameTracker
                 </a>
                 <a
                   href="/movies.html"
-                  className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 hover:scale-105 transition-transform cursor-pointer"
+                  className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 hover:scale-105 transition-transform cursor-pointer"
                 >
                   🎬 MovieTracker
                 </a>
-                <span className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400">
+                <span className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400">
                   📚 BookTracker
                 </span>
               </div>
@@ -955,9 +956,6 @@ const BookTrackerApp = () => {
                         <span className="text-white font-semibold text-sm md:text-base block">{user.username}</span>
                     </div>
                     <Fragment>
-                        <button onClick={() => setShowSearchModal(true)} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Найти книгу">
-                            <Icon name="search" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
-                        </button>
                         <button onClick={handleStatistics} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Статистика книг">
                             <Icon name="barChart" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
                         </button>
@@ -979,53 +977,6 @@ const BookTrackerApp = () => {
       </header>
 
       <main className="flex-grow container mx-auto px-4 py-6 space-y-8">
-        {/* Поиск по своим книгам */}
-        <div className="relative max-w-md">
-          <div className="bg-gray-800/25 backdrop-blur-sm rounded-lg p-3 border border-green-500/15">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={myBooksSearchQuery}
-                onChange={(e) => {
-                  setMyBooksSearchQuery(e.target.value);
-                  searchMyBooks(e.target.value);
-                }}
-                placeholder="Найти в моих книгах..."
-                className="flex-1 px-3 py-2 bg-gray-700/30 border border-gray-600/50 rounded-lg text-white/80 placeholder-gray-500 focus:border-green-500/50 focus:outline-none text-sm"
-              />
-              {myBooksSearching && <Icon name="loader" className="w-5 h-5 text-green-500 animate-spin" />}
-            </div>
-              
-              {myBooksSearchResults.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {myBooksSearchResults.map((book) => (
-                    <div key={book.id} className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
-                      <div className="flex gap-3">
-                        <img
-                          src={book.coverUrl}
-                          alt={book.title}
-                          className="w-12 h-16 object-cover rounded"
-                          onError={(e) => {
-                            e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="64" viewBox="0 0 48 64"><rect width="48" height="64" fill="%23374151"/><text x="24" y="35" text-anchor="middle" fill="%239ca3af" font-size="12">📚</text></svg>';
-                          }}
-                        />
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-white text-sm line-clamp-2">{book.title}</h3>
-                          <p className="text-gray-400 text-xs">{book.author}</p>
-                          <span className="inline-block px-2 py-1 bg-green-600 text-white text-xs rounded mt-1">
-                            {book.status === 'want_to_read' && 'Хочу прочитать'}
-                            {book.status === 'reading' && 'Читаю'}
-                            {book.status === 'read' && 'Прочитал'}
-                            {book.status === 'dropped' && 'Бросил'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-          </div>
-        </div>
 
         {/* Доска книг */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1110,6 +1061,54 @@ const BookTrackerApp = () => {
           />
         </div>
 
+        {/* Поиск по своим книгам */}
+        <div className="w-full">
+          <div className="bg-gray-800/25 backdrop-blur-sm rounded-lg p-4 border border-green-500/15">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={myBooksSearchQuery}
+                onChange={(e) => {
+                  setMyBooksSearchQuery(e.target.value);
+                  searchMyBooks(e.target.value);
+                }}
+                placeholder="Найти в моих книгах..."
+                className="flex-1 px-4 py-3 bg-gray-700/30 border border-gray-600/50 rounded-lg text-white/80 placeholder-gray-500 focus:border-green-500/50 focus:outline-none"
+              />
+              {myBooksSearching && <Icon name="loader" className="w-6 h-6 text-green-500 animate-spin" />}
+            </div>
+              
+            {myBooksSearchResults.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                {myBooksSearchResults.map((book) => (
+                  <div key={book.id} className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
+                    <div className="flex gap-3">
+                      <img
+                        src={book.coverUrl}
+                        alt={book.title}
+                        className="w-12 h-16 object-cover rounded"
+                        onError={(e) => {
+                          e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="64" viewBox="0 0 48 64"><rect width="48" height="64" fill="%23374151"/><text x="24" y="35" text-anchor="middle" fill="%239ca3af" font-size="12">📚</text></svg>';
+                        }}
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-white text-sm line-clamp-2">{book.title}</h3>
+                        <p className="text-gray-400 text-xs">{book.author}</p>
+                        <span className="inline-block px-2 py-1 bg-green-600 text-white text-xs rounded mt-1">
+                          {book.status === 'want_to_read' && 'Хочу прочитать'}
+                          {book.status === 'reading' && 'Читаю'}
+                          {book.status === 'read' && 'Прочитал'}
+                          {book.status === 'dropped' && 'Бросил'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Активность друзей */}
         {activities.length > 0 && (
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-green-500/30">
@@ -1152,6 +1151,127 @@ const BookTrackerApp = () => {
         onReact={reactToBook}
         user={user}
       />
+
+      {/* Модальное окно статистики */}
+      {showStatistics && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={() => setShowStatistics(false)}>
+          <div className="bg-[#1a0f2e]/95 backdrop-blur-xl border border-[#8458B3]/50 modal-bg rounded-2xl p-6 w-full max-w-2xl border border-purple-500/30 max-h-[90vh] overflow-y-auto elevation-3" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-white">Статистика книг</h2>
+              <button onClick={() => setShowStatistics(false)} className="p-2 hover:bg-gray-800 rounded-lg">
+                <Icon name="x" className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-800/50 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-white mb-2">Всего книг</h3>
+                  <p className="text-3xl font-bold text-green-400">{books.length}</p>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-white mb-2">Прочитано</h3>
+                  <p className="text-3xl font-bold text-blue-400">{books.filter(b => b.status === 'read').length}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-800/50 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-white mb-2">Читаю</h3>
+                  <p className="text-3xl font-bold text-yellow-400">{books.filter(b => b.status === 'reading').length}</p>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-white mb-2">Хочу прочитать</h3>
+                  <p className="text-3xl font-bold text-purple-400">{books.filter(b => b.status === 'want_to_read').length}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно настроек */}
+      {showProfile && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={() => setShowProfile(false)}>
+          <div className="bg-[#1a0f2e]/95 backdrop-blur-xl border border-[#8458B3]/50 modal-bg rounded-2xl p-6 w-full max-w-md border border-purple-500/30 max-h-[90vh] overflow-y-auto elevation-3" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-white">Настройки профиля</h2>
+              <button onClick={() => setShowProfile(false)} className="p-2 hover:bg-gray-800 rounded-lg">
+                <Icon name="x" className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Тема</label>
+                <select 
+                  value={theme} 
+                  onChange={(e) => {
+                    const newTheme = e.target.value;
+                    setTheme(newTheme);
+                    if (user) {
+                      const updatedUser = { ...user, theme: newTheme };
+                      localStorage.setItem('user', JSON.stringify(updatedUser));
+                      setUser(updatedUser);
+                    }
+                  }}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-green-500 focus:outline-none"
+                >
+                  <option value="default">По умолчанию</option>
+                  <option value="liquid-eye">Liquid Eye</option>
+                </select>
+              </div>
+              <div className="pt-4 border-t border-gray-700">
+                <button 
+                  onClick={handleLogout}
+                  className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Выйти из аккаунта
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно друзей */}
+      {showUserHub && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={() => setShowUserHub(false)}>
+          <div className="bg-[#1a0f2e]/95 backdrop-blur-xl border border-[#8458B3]/50 modal-bg rounded-2xl p-6 w-full max-w-3xl border border-purple-500/30 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4 flex-shrink-0">
+              <h2 className="text-2xl font-bold text-white">Друзья</h2>
+              <button onClick={() => setShowUserHub(false)} className="p-2 hover:bg-gray-800 rounded-lg">
+                <Icon name="x" className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <div className="space-y-4">
+                {friends.length > 0 ? (
+                  friends.map((friend) => (
+                    <div key={friend.id} className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg">
+                      <Avatar src={friend.avatar} size="sm" />
+                      <div className="flex-1">
+                        <h3 className="text-white font-semibold">{friend.username}</h3>
+                        <p className="text-gray-400 text-sm">{friend.email}</p>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          setViewingUser(friend);
+                          setShowUserHub(false);
+                        }}
+                        className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                      >
+                        Посмотреть
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-gray-400 py-8">
+                    <p>У вас пока нет друзей</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

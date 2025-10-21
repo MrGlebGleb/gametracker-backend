@@ -3883,19 +3883,19 @@
               <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-4">
                 {/* Кнопки навигации */}
-                <div className="flex gap-4">
-                  <span className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400">
+                <div className="flex gap-6">
+                  <span className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400">
                     🎮 GameTracker
                   </span>
                   <a
                     href="/movies.html"
-                    className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 hover:scale-105 transition-transform cursor-pointer"
+                    className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 hover:scale-105 transition-transform cursor-pointer"
                   >
                     🎬 MovieTracker
                   </a>
                   <a
                     href="/books.html"
-                    className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 hover:scale-105 transition-transform cursor-pointer"
+                    className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 hover:scale-105 transition-transform cursor-pointer"
                   >
                     📚 BookTracker
                   </a>
@@ -3917,21 +3917,6 @@
                     </div>
                   )}
                   {!viewingUser && (
-                    <div className="relative flex items-center gap-2">
-                      {/* Красивая разделительная линия */}
-                      <div className="h-8 w-px bg-gradient-to-b from-transparent via-purple-400/80 to-transparent opacity-80"></div>
-                      <a href="./movies.html" className="inline-flex items-center gap-2 active:scale-95 transition-transform">
-                        <svg className="w-7 h-7" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                          <defs>
-                            <linearGradient id="camGradHeaderReact" x1="0" y1="0" x2="1" y2="1">
-                              <stop offset="0%" stopColor="#a78bfa"/>
-                              <stop offset="100%" stopColor="#8b5cf6"/>
-                            </linearGradient>
-                          </defs>
-                          <path fill="url(#camGradHeaderReact)" d="M4 7a3 3 0 0 0-3 3v4a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-.764l3.553 2.132A1 1 0 0 0 22 14.5v-5a1 1 0 0 0-1.447-.868L17 10.764V10a3 3 0 0 0-3-3H11l-.553-1.106A2 2 0 0 0 8.658 5H6a2 2 0 0 0-1.789 1.106L4 7Zm7 9a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-2.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/>
-                        </svg>
-                        <span className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400">MovieTracker</span>
-                      </a>
                       {showSearch && (
                         <div className="absolute top-full mt-2 left-0 w-80 md:w-96 bg-gray-800/95 backdrop-blur-xl rounded-lg border border-purple-500/30 p-4 z-50 elevation-4">
                           <div className="flex items-center gap-2 mb-3">
@@ -4035,10 +4020,10 @@
                 >
                   <Icon name="menu" className="w-6 h-6 text-white" />
                 </button>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400">🎮 GameTracker</span>
-                <a href="/movies.html" className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400">🎬 MovieTracker</a>
-                <a href="/books.html" className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400">📚 BookTracker</a>
+              <div className="flex items-center gap-4">
+                <span className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400">🎮 GameTracker</span>
+                <a href="/movies.html" className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400">🎬 MovieTracker</a>
+                <a href="/books.html" className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400">📚 BookTracker</a>
               </div>
               </div>
 

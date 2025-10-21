@@ -2004,19 +2004,19 @@ function MovieApp() {
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
               {/* Кнопки навигации */}
-              <div className="flex gap-4">
+              <div className="flex gap-6">
                 <a
                   href="/index.html"
-                  className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 hover:scale-105 transition-transform cursor-pointer"
+                  className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 hover:scale-105 transition-transform cursor-pointer"
                 >
                   🎮 GameTracker
                 </a>
-                <span className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400">
+                <span className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400">
                   🎬 MovieTracker
                 </span>
                 <a
                   href="/books.html"
-                  className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 hover:scale-105 transition-transform cursor-pointer"
+                  className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 hover:scale-105 transition-transform cursor-pointer"
                 >
                   📚 BookTracker
                 </a>
