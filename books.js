@@ -251,7 +251,7 @@ function BookDetailsModal({ book, onClose, onUpdate, onReact, user }) {
 }
 
 // Компонент карточки книги (скопирован с MediaCard из movies.js)
-function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove }) {
+function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect }) {
   return (
     <div
       draggable={true}
@@ -260,7 +260,7 @@ function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove }) {
       }}
       onClick={() => {
         // Открываем модальное окно для редактирования/оценки
-        setSelectedBook(book);
+        onSelect(book);
       }}
       data-card-id={book.id}
       className="bg-[#1a0f2e]/70 rounded-xl border border-[#8458B3]/30 hover:border-[#a0d2eb] hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(160,210,235,0.4)] transition-all duration-200 cursor-pointer flex gap-3 p-2 group relative elevation-1 hover:elevation-2 shadow-transition media-card backdrop-blur-xl"
@@ -276,7 +276,11 @@ function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove }) {
           alt={book.title} 
           className="w-16 h-24 object-cover rounded-lg flex-shrink-0" 
           onError={(e) => {
+            console.log('Image failed to load:', book.coverUrl);
             e.target.src = 'https://placehold.co/96x128/1f2937/ffffff?text=📚';
+          }}
+          onLoad={() => {
+            console.log('Image loaded successfully:', book.coverUrl);
           }}
         />
       </div>
@@ -452,6 +456,7 @@ const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, on
             onRate={onRate}
             onReact={onReact}
             onMove={onMove}
+            onSelect={(book) => setSelectedBook(book)}
           />
         ))}
         {books.length === 0 && (

@@ -3083,24 +3083,43 @@ function getBookCoverUrl(book) {
     book.olid
   ].filter(Boolean);
 
+  console.log('Generating cover URL for book:', book.title, 'identifiers:', identifiers);
+
   for (const id of identifiers) {
     if (id.startsWith('978') || id.startsWith('979')) {
       // ISBN
-      return `https://covers.openlibrary.org/b/isbn/${id}-M.jpg`;
+      const url = `https://covers.openlibrary.org/b/isbn/${id}-M.jpg`;
+      console.log('Using ISBN cover URL:', url);
+      return url;
     } else if (id.startsWith('OL')) {
       // OLID
-      return `https://covers.openlibrary.org/b/olid/${id}-M.jpg`;
+      const url = `https://covers.openlibrary.org/b/olid/${id}-M.jpg`;
+      console.log('Using OLID cover URL:', url);
+      return url;
     } else if (id.startsWith('OCLC')) {
       // OCLC
-      return `https://covers.openlibrary.org/b/oclc/${id}-M.jpg`;
+      const url = `https://covers.openlibrary.org/b/oclc/${id}-M.jpg`;
+      console.log('Using OCLC cover URL:', url);
+      return url;
     } else if (id.startsWith('LCCN')) {
       // LCCN
-      return `https://covers.openlibrary.org/b/lccn/${id}-M.jpg`;
+      const url = `https://covers.openlibrary.org/b/lccn/${id}-M.jpg`;
+      console.log('Using LCCN cover URL:', url);
+      return url;
     }
   }
 
+  // Если ничего не найдено, пробуем cover_i
+  if (book.cover_i) {
+    const url = `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg`;
+    console.log('Using cover_i URL:', url);
+    return url;
+  }
+
   // Если ничего не найдено, возвращаем дефолтную обложку
-  return `https://covers.openlibrary.org/b/id/${book.cover_i || 'default'}-M.jpg`;
+  const defaultUrl = 'https://placehold.co/96x128/1f2937/ffffff?text=📚';
+  console.log('Using placeholder cover URL:', defaultUrl);
+  return defaultUrl;
 }
 
 // Поиск по своим книгам
