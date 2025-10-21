@@ -77,13 +77,14 @@
     }
 
     .header-left {
-      margin-left: 60px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
     }
 
     .header-right {
       display: flex;
       align-items: center;
-      gap: 20px;
     }
 
     .logo {
@@ -149,7 +150,7 @@
       display: none;
       position: absolute;
       top: 100%;
-      right: 0;
+      left: 0;
       background: rgba(20, 20, 20, 0.95);
       backdrop-filter: blur(20px);
       border: 1px solid rgba(255, 255, 255, 0.1);
@@ -663,10 +664,6 @@
       }
 
       .header-left {
-        margin-left: 20px;
-      }
-
-      .header-right {
         gap: 12px;
       }
 
@@ -687,7 +684,7 @@
       .dropdown-content {
         min-width: 300px;
         max-width: 90vw;
-        right: -20px;
+        left: -20px;
       }
 
       .dropdown-header {
@@ -804,8 +801,6 @@
     <div class="header-container">
       <div class="header-left">
         <a href="/"><img src="images/logo.png" alt="Omnilogue" class="logo"></a>
-      </div>
-      <div class="header-right">
         <div class="dropdown">
           <button class="btn-about" id="aboutBtn">О проекте</button>
           <div class="dropdown-content" id="aboutDropdown">
@@ -842,6 +837,8 @@
             </div>
           </div>
         </div>
+      </div>
+      <div class="header-right">
         <a href="/index.html" class="btn-login">Войти</a>
       </div>
     </div>
