@@ -386,7 +386,7 @@ function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect })
 }
 
 // Компонент колонки
-const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, onReact, onMove, onAddBook }) => {
+const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, onReact, onMove, onAddBook, onSelect }) => {
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDragOver = (e) => {
@@ -484,7 +484,7 @@ const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, on
             onRate={onRate}
             onReact={onReact}
             onMove={onMove}
-            onSelect={setSelectedBook}
+            onSelect={onSelect}
           />
         ))}
         {books.length === 0 && (
@@ -1044,6 +1044,7 @@ const BookTrackerApp = () => {
               setSelectedStatus('want_to_read');
               setShowSearchModal(true);
             }}
+            onSelect={setSelectedBook}
           />
           
           <BookColumn
@@ -1063,6 +1064,7 @@ const BookTrackerApp = () => {
               setSelectedStatus('reading');
               setShowSearchModal(true);
             }}
+            onSelect={setSelectedBook}
           />
           
           <BookColumn
@@ -1082,6 +1084,7 @@ const BookTrackerApp = () => {
               setSelectedStatus('read');
               setShowSearchModal(true);
             }}
+            onSelect={setSelectedBook}
           />
           
           <BookColumn
@@ -1101,6 +1104,7 @@ const BookTrackerApp = () => {
               setSelectedStatus('dropped');
               setShowSearchModal(true);
             }}
+            onSelect={setSelectedBook}
           />
         </div>
 
