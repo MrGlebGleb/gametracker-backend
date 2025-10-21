@@ -156,7 +156,7 @@
     .hero-title {
       font-size: clamp(48px, 10vw, 96px);
       font-weight: 900;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #ffd140 100%);
+      background: linear-gradient(135deg, #a855f7 0%, #ec4899 25%, #d946ef 50%, #8b5cf6 75%, #c084fc 100%);
       background-size: 200% 200%;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -185,7 +185,7 @@
 
     .btn-register {
       padding: 18px 56px;
-      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+      background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
       color: #ffffff;
       border: none;
       border-radius: 10px;
@@ -193,15 +193,15 @@
       font-weight: 700;
       cursor: pointer;
       transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-      box-shadow: 0 8px 24px rgba(255, 107, 107, 0.4);
+      box-shadow: 0 8px 24px rgba(168, 85, 247, 0.4);
       text-decoration: none;
       display: inline-block;
     }
 
     .btn-register:hover {
       transform: translateY(-4px);
-      box-shadow: 0 12px 32px rgba(255, 107, 107, 0.6);
-      background: linear-gradient(135deg, #ff7b7b 0%, #ff5a6f 100%);
+      box-shadow: 0 12px 32px rgba(168, 85, 247, 0.6);
+      background: linear-gradient(135deg, #9333ea 0%, #db2777 100%);
     }
 
     .btn-register:active {
@@ -351,7 +351,7 @@
 
     .universe-title .italic {
       font-style: italic;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -400,7 +400,7 @@
       font-size: 22px;
       font-weight: 700;
       margin-bottom: 16px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -455,7 +455,7 @@
       width: 40px;
       height: 40px;
       border: 4px solid rgba(255, 255, 255, 0.1);
-      border-top-color: #667eea;
+      border-top-color: #a855f7;
       border-radius: 50%;
       animation: spin 1s linear infinite;
       margin: 40px auto;
@@ -672,12 +672,8 @@
     // ========================================
     // CONFIGURATION & CONSTANTS
     // ========================================
-    const TMDB_API_KEY = '171d62fe46bc8a635b1ad100bc06a8e8';
-    const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-    const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
-
-    const TWITCH_CLIENT_ID = 'ndbvwi0fw9vdohxfqwkdmvqbnz2oqp';
-    const IGDB_BASE_URL = 'https://api.igdb.com/v4';
+    // Use server endpoints instead of direct API calls
+    const API_BASE = window.location.origin;
 
     // ========================================
     // UTILITY FUNCTIONS
@@ -704,71 +700,18 @@
     }
 
     /**
-     * Get Twitch OAuth token for IGDB
-     */
-    async function getTwitchToken() {
-      try {
-        const response = await fetch('https://id.twitch.tv/oauth2/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            client_id: TWITCH_CLIENT_ID,
-            client_secret: 'q0j1o43zx8kztq5gg89dj5y0qnbx00',
-            grant_type: 'client_credentials'
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to get Twitch token');
-        }
-
-        const data = await response.json();
-        return data.access_token;
-      } catch (error) {
-        console.error('Error getting Twitch token:', error);
-        return null;
-      }
-    }
-
-    /**
-     * Fetch top 200 popular games from IGDB
+     * Fetch top 200 popular games from server
      */
     async function fetchTopGames() {
       try {
-        const token = await getTwitchToken();
-        if (!token) {
-          throw new Error('No Twitch token available');
-        }
-
-        const response = await fetch(`${IGDB_BASE_URL}/games`, {
-          method: 'POST',
-          headers: {
-            'Client-ID': TWITCH_CLIENT_ID,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'text/plain',
-          },
-          body: `
-            fields name, cover.url, rating;
-            where rating != null & cover != null & rating > 70;
-            sort rating desc;
-            limit 200;
-          `
-        });
+        const response = await fetch(`${API_BASE}/api/public/popular-games`);
 
         if (!response.ok) {
-          throw new Error('Failed to fetch games');
+          throw new Error('Failed to fetch games from server');
         }
 
-        const games = await response.json();
-        return games.map(game => ({
-          id: game.id,
-          title: game.name,
-          poster: game.cover ? game.cover.url.replace('t_thumb', 't_cover_big') : null,
-          type: 'game',
-          rating: game.rating
-        })).filter(game => game.poster);
+        const data = await response.json();
+        return data.games || [];
       } catch (error) {
         console.error('Error fetching games:', error);
         return [];
@@ -776,39 +719,18 @@
     }
 
     /**
-     * Fetch top 200 popular movies/series from TMDB
+     * Fetch top 200 popular movies/series from server
      */
     async function fetchTopMovies() {
       try {
-        const [moviesResponse, tvResponse] = await Promise.all([
-          fetch(`${TMDB_BASE_URL}/movie/popular?api_key=${TMDB_API_KEY}&language=ru-RU&page=1`),
-          fetch(`${TMDB_BASE_URL}/tv/popular?api_key=${TMDB_API_KEY}&language=ru-RU&page=1`)
-        ]);
+        const response = await fetch(`${API_BASE}/api/public/popular-movies`);
 
-        if (!moviesResponse.ok || !tvResponse.ok) {
-          throw new Error('Failed to fetch movies/series');
+        if (!response.ok) {
+          throw new Error('Failed to fetch movies from server');
         }
 
-        const moviesData = await moviesResponse.json();
-        const tvData = await tvResponse.json();
-
-        const movies = moviesData.results.map(movie => ({
-          id: movie.id,
-          title: movie.title || movie.name,
-          poster: movie.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : null,
-          type: 'movie',
-          rating: movie.vote_average
-        }));
-
-        const series = tvData.results.map(show => ({
-          id: show.id,
-          title: show.title || show.name,
-          poster: show.poster_path ? `${TMDB_IMAGE_BASE}${show.poster_path}` : null,
-          type: 'series',
-          rating: show.vote_average
-        }));
-
-        return [...movies, ...series].filter(item => item.poster);
+        const data = await response.json();
+        return data.movies || [];
       } catch (error) {
         console.error('Error fetching movies:', error);
         return [];
