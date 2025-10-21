@@ -60,7 +60,7 @@ const Avatar = ({ src, size = 'md', className = '' }) => {
 };
 
 // Компонент поиска книг
-const BookSearchModal = ({ isOpen, onClose, onAddBook }) => {
+const BookSearchModal = ({ isOpen, onClose, onAddBook, status = 'want_to_read' }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -83,7 +83,7 @@ const BookSearchModal = ({ isOpen, onClose, onAddBook }) => {
 
   const handleAddBook = () => {
     if (selectedBook) {
-      onAddBook(selectedBook);
+      onAddBook(selectedBook, status);
       onClose();
       setSelectedBook(null);
       setQuery('');
@@ -327,7 +327,7 @@ const BookCard = ({ book, onEdit, onDelete, onRate, onReact, onMove }) => {
 };
 
 // Компонент колонки
-const BookColumn = ({ title, books, onDrop, onEdit, onDelete, onRate, onReact, onMove }) => {
+const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, onReact, onMove, onAddBook }) => {
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDragOver = (e) => {
@@ -353,16 +353,68 @@ const BookColumn = ({ title, books, onDrop, onEdit, onDelete, onRate, onReact, o
     }
   };
 
+  // Определяем цвета для разных статусов
+  const getColumnColors = (status) => {
+    switch (status) {
+      case 'want_to_read':
+        return {
+          bg: 'bg-gradient-to-b from-emerald-500/20 to-teal-500/20',
+          border: 'border-emerald-500/30',
+          text: 'text-emerald-300',
+          button: 'bg-emerald-600 hover:bg-emerald-700'
+        };
+      case 'reading':
+        return {
+          bg: 'bg-gradient-to-b from-cyan-500/20 to-blue-500/20',
+          border: 'border-cyan-500/30',
+          text: 'text-cyan-300',
+          button: 'bg-cyan-600 hover:bg-cyan-700'
+        };
+      case 'read':
+        return {
+          bg: 'bg-gradient-to-b from-green-500/20 to-emerald-500/20',
+          border: 'border-green-500/30',
+          text: 'text-green-300',
+          button: 'bg-green-600 hover:bg-green-700'
+        };
+      case 'dropped':
+        return {
+          bg: 'bg-gradient-to-b from-red-500/20 to-pink-500/20',
+          border: 'border-red-500/30',
+          text: 'text-red-300',
+          button: 'bg-red-600 hover:bg-red-700'
+        };
+      default:
+        return {
+          bg: 'bg-gradient-to-b from-gray-500/20 to-gray-600/20',
+          border: 'border-gray-500/30',
+          text: 'text-gray-300',
+          button: 'bg-gray-600 hover:bg-gray-700'
+        };
+    }
+  };
+
+  const colors = getColumnColors(status);
+
   return (
     <div
-      className={`board-column bg-gray-50 rounded-lg p-4 min-h-96 ${
+      className={`board-column ${colors.bg} ${colors.border} border rounded-lg p-4 min-h-96 backdrop-blur-sm ${
         isDragOver ? 'drag-over-column' : ''
       }`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">{title}</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className={`text-lg font-semibold ${colors.text}`}>{title}</h2>
+        <button
+          onClick={onAddBook}
+          className={`${colors.button} text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors hover:scale-105 active:scale-95`}
+          title="Добавить книгу"
+        >
+          +
+        </button>
+      </div>
       <div className="space-y-4">
         {books.map((book) => (
           <BookCard
@@ -376,11 +428,11 @@ const BookColumn = ({ title, books, onDrop, onEdit, onDelete, onRate, onReact, o
           />
         ))}
         {books.length === 0 && (
-          <div className="text-center text-gray-500 py-8">
-            <svg className="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="text-center text-gray-400 py-8">
+            <svg className="w-12 h-12 mx-auto mb-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            <p>Перетащите книгу сюда</p>
+            <p className="text-sm">Перетащите книгу сюда</p>
           </div>
         )}
       </div>
@@ -408,6 +460,7 @@ const BookTrackerApp = () => {
   const [myBooksSearching, setMyBooksSearching] = useState(false);
   const [showMyBooksSearch, setShowMyBooksSearch] = useState(false);
   const [activities, setActivities] = useState([]);
+  const [selectedStatus, setSelectedStatus] = useState('want_to_read');
 
   // Загрузка данных при монтировании
   useEffect(() => {
@@ -450,24 +503,34 @@ const BookTrackerApp = () => {
   const loadBooks = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
+      console.log('No token found, skipping books load');
       setLoading(false);
       return;
     }
 
+    console.log('Loading books with token:', token.substring(0, 10) + '...');
+    
     try {
       const response = await fetch(`${API_URL}/api/books`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
+      console.log('Books API response status:', response.status);
+      
       if (response.ok) {
         const booksData = await response.json();
+        console.log('Loaded books:', booksData.length);
         setBooks(booksData);
       } else if (response.status === 401) {
-        // Токен недействителен
+        console.log('Token invalid, redirecting to login');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/';
         return;
+      } else {
+        console.error('Books API error:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
       }
     } catch (error) {
       console.error('Error loading books:', error);
@@ -546,10 +609,15 @@ const BookTrackerApp = () => {
     }
   };
 
-  const addBook = async (bookData) => {
+  const addBook = async (bookData, status = 'want_to_read') => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) {
+      console.error('No token found for adding book');
+      return;
+    }
 
+    console.log('Adding book:', bookData, 'with status:', status);
+    
     try {
       const response = await fetch(`${API_URL}/api/books`, {
         method: 'POST',
@@ -559,14 +627,21 @@ const BookTrackerApp = () => {
         },
         body: JSON.stringify({
           ...bookData,
-          status: 'want_to_read'
+          status: status
         })
       });
 
+      console.log('Add book response status:', response.status);
+      
       if (response.ok) {
         const newBook = await response.json();
+        console.log('Book added successfully:', newBook);
         setBooks(prev => [...prev, newBook]);
         showToast('Книга добавлена!', 'success');
+      } else {
+        const errorText = await response.text();
+        console.error('Add book error:', response.status, errorText);
+        showToast('Ошибка при добавлении книги', 'error');
       }
     } catch (error) {
       console.error('Error adding book:', error);
@@ -861,21 +936,9 @@ const BookTrackerApp = () => {
 
         {/* Доска книг */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {books.length === 0 && (
-            <div className="col-span-full text-center py-12">
-              <div className="text-6xl mb-4">📚</div>
-              <h3 className="text-xl font-semibold text-white mb-2">У вас пока нет книг</h3>
-              <p className="text-gray-400 mb-4">Добавьте книги, чтобы начать отслеживать свой прогресс чтения</p>
-              <button
-                onClick={() => setShowSearchModal(true)}
-                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                Найти книгу
-              </button>
-            </div>
-          )}
           <BookColumn
-            title="Хочу прочитать"
+            title="📖 Хочу прочитать"
+            status="want_to_read"
             books={booksByStatus.want_to_read}
             onDrop={(book) => updateBookStatus(book.id, 'want_to_read')}
             onEdit={(book) => {
@@ -886,10 +949,15 @@ const BookTrackerApp = () => {
             onRate={rateBook}
             onReact={reactToBook}
             onMove={updateBookStatus}
+            onAddBook={() => {
+              setSelectedStatus('want_to_read');
+              setShowSearchModal(true);
+            }}
           />
           
           <BookColumn
-            title="Читаю"
+            title="📚 Читаю"
+            status="reading"
             books={booksByStatus.reading}
             onDrop={(book) => updateBookStatus(book.id, 'reading')}
             onEdit={(book) => {
@@ -900,10 +968,15 @@ const BookTrackerApp = () => {
             onRate={rateBook}
             onReact={reactToBook}
             onMove={updateBookStatus}
+            onAddBook={() => {
+              setSelectedStatus('reading');
+              setShowSearchModal(true);
+            }}
           />
           
           <BookColumn
-            title="Прочитал"
+            title="✅ Прочитал"
+            status="read"
             books={booksByStatus.read}
             onDrop={(book) => updateBookStatus(book.id, 'read')}
             onEdit={(book) => {
@@ -914,10 +987,15 @@ const BookTrackerApp = () => {
             onRate={rateBook}
             onReact={reactToBook}
             onMove={updateBookStatus}
+            onAddBook={() => {
+              setSelectedStatus('read');
+              setShowSearchModal(true);
+            }}
           />
           
           <BookColumn
-            title="Бросил"
+            title="❌ Бросил"
+            status="dropped"
             books={booksByStatus.dropped}
             onDrop={(book) => updateBookStatus(book.id, 'dropped')}
             onEdit={(book) => {
@@ -928,6 +1006,10 @@ const BookTrackerApp = () => {
             onRate={rateBook}
             onReact={reactToBook}
             onMove={updateBookStatus}
+            onAddBook={() => {
+              setSelectedStatus('dropped');
+              setShowSearchModal(true);
+            }}
           />
         </div>
 
@@ -963,6 +1045,7 @@ const BookTrackerApp = () => {
         isOpen={showSearchModal}
         onClose={() => setShowSearchModal(false)}
         onAddBook={addBook}
+        status={selectedStatus}
       />
     </div>
   );
