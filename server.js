@@ -3034,6 +3034,111 @@ app.put('/api/notifications/mark-all-read', authenticateToken, async (req, res) 
 
 // === BOOKS API ENDPOINTS ===
 
+// Прокси для OpenLibrary API
+app.get('/api/books/search', async (req, res) => {
+  try {
+    const { q, limit = 10 } = req.query;
+    
+    if (!q) {
+      return res.status(400).json({ error: 'Query parameter is required' });
+    }
+
+    const response = await axios.get(`https://openlibrary.org/search.json`, {
+      params: { q, limit },
+      timeout: 10000
+    });
+
+    // Нормализуем данные книг
+    const normalizedBooks = response.data.docs.map(book => ({
+      id: book.key || `book_${Date.now()}_${Math.random()}`,
+      title: book.title || 'Без названия',
+      author: book.author_name?.[0] || book.author_name || 'Неизвестный автор',
+      year: book.first_publish_year || book.publish_year?.[0] || null,
+      isbn: book.isbn?.[0] || null,
+      coverUrl: getBookCoverUrl(book),
+      description: book.first_sentence?.[0] || null,
+      pages: book.number_of_pages_median || null,
+      subjects: book.subject || [],
+      language: book.language?.[0] || 'ru'
+    }));
+
+    res.json({ books: normalizedBooks });
+  } catch (error) {
+    console.error('OpenLibrary search error:', error);
+    res.status(500).json({ error: 'Failed to search books' });
+  }
+});
+
+// Функция для получения URL обложки книги
+function getBookCoverUrl(book) {
+  if (!book) return null;
+  
+  // Пробуем разные идентификаторы для обложки
+  const identifiers = [
+    book.isbn?.[0],
+    book.isbn?.[1], 
+    book.isbn?.[2],
+    book.oclc?.[0],
+    book.lccn?.[0],
+    book.olid
+  ].filter(Boolean);
+
+  for (const id of identifiers) {
+    if (id.startsWith('978') || id.startsWith('979')) {
+      // ISBN
+      return `https://covers.openlibrary.org/b/isbn/${id}-M.jpg`;
+    } else if (id.startsWith('OL')) {
+      // OLID
+      return `https://covers.openlibrary.org/b/olid/${id}-M.jpg`;
+    } else if (id.startsWith('OCLC')) {
+      // OCLC
+      return `https://covers.openlibrary.org/b/oclc/${id}-M.jpg`;
+    } else if (id.startsWith('LCCN')) {
+      // LCCN
+      return `https://covers.openlibrary.org/b/lccn/${id}-M.jpg`;
+    }
+  }
+
+  // Если ничего не найдено, возвращаем дефолтную обложку
+  return `https://covers.openlibrary.org/b/id/${book.cover_i || 'default'}-M.jpg`;
+}
+
+// Поиск по своим книгам
+app.get('/api/books/search-my', authenticateToken, async (req, res) => {
+  let client;
+  try {
+    client = await pool.connect();
+    
+    const { q } = req.query;
+    if (!q) {
+      return res.json({ books: [] });
+    }
+
+    const result = await client.query(`
+      SELECT b.*, 
+             COALESCE(
+               (SELECT AVG(rating) FROM book_ratings WHERE book_id = b.id), 
+               0
+             ) as avg_rating,
+             COALESCE(
+               (SELECT rating FROM book_ratings WHERE book_id = b.id AND user_id = $1), 
+               0
+             ) as user_rating
+      FROM books b 
+      WHERE b.user_id = $1 
+      AND (LOWER(b.title) LIKE LOWER($2) OR LOWER(b.author) LIKE LOWER($2))
+      ORDER BY b.created_at DESC
+    `, [req.user.id, `%${q}%`]);
+    
+    res.json({ books: result.rows });
+  } catch (error) {
+    console.error('Ошибка поиска по своим книгам:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
 // Получить все книги пользователя
 app.get('/api/books', authenticateToken, async (req, res) => {
   let client;

@@ -10,73 +10,54 @@ const API_URL = getApiUrl();
 const REACTION_EMOJIS = ['😍', '🔥', '👍', '😮', '😂', '👎', '❤️', '🤔', '😢', '🤯'];
 const BOOKS_PER_COLUMN = 5;
 
-// --- OpenLibrary API интеграция ---
+// --- OpenLibrary API интеграция через наш сервер ---
 const OpenLibraryAPI = {
-  // Поиск книг по названию или автору
+  // Поиск книг по названию или автору через наш прокси
   async searchBooks(query, limit = 10) {
     try {
-      const response = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=${limit}`);
+      const response = await fetch(`${API_URL}/api/books/search?q=${encodeURIComponent(query)}&limit=${limit}`);
       if (!response.ok) throw new Error('Search failed');
       const data = await response.json();
-      return data.docs || [];
+      return data.books || [];
     } catch (error) {
       console.error('OpenLibrary search error:', error);
       return [];
     }
-  },
-
-  // Получение обложки книги
-  getCoverUrl(book, size = 'M') {
-    if (!book) return null;
-    
-    // Пробуем разные идентификаторы для обложки
-    const identifiers = [
-      book.isbn?.[0],
-      book.isbn?.[1], 
-      book.isbn?.[2],
-      book.oclc?.[0],
-      book.lccn?.[0],
-      book.olid
-    ].filter(Boolean);
-
-    for (const id of identifiers) {
-      if (id.startsWith('978') || id.startsWith('979')) {
-        // ISBN
-        return `https://covers.openlibrary.org/b/isbn/${id}-${size}.jpg`;
-      } else if (id.startsWith('OL')) {
-        // OLID
-        return `https://covers.openlibrary.org/b/olid/${id}-${size}.jpg`;
-      } else if (id.startsWith('OCLC')) {
-        // OCLC
-        return `https://covers.openlibrary.org/b/oclc/${id}-${size}.jpg`;
-      } else if (id.startsWith('LCCN')) {
-        // LCCN
-        return `https://covers.openlibrary.org/b/lccn/${id}-${size}.jpg`;
-      }
-    }
-
-    // Если ничего не найдено, возвращаем дефолтную обложку
-    return `https://covers.openlibrary.org/b/id/${book.cover_i || 'default'}-${size}.jpg`;
-  },
-
-  // Нормализация данных книги
-  normalizeBook(book) {
-    return {
-      id: book.key || `book_${Date.now()}_${Math.random()}`,
-      title: book.title || 'Без названия',
-      author: book.author_name?.[0] || book.author_name || 'Неизвестный автор',
-      year: book.first_publish_year || book.publish_year?.[0] || null,
-      isbn: book.isbn?.[0] || null,
-      coverUrl: this.getCoverUrl(book),
-      description: book.first_sentence?.[0] || null,
-      pages: book.number_of_pages_median || null,
-      subjects: book.subject || [],
-      language: book.language?.[0] || 'ru'
-    };
   }
 };
 
 // --- Переиспользуемые UI-компоненты ---
+
+// Компонент иконок
+const Icon = ({ name, className = 'w-6 h-6' }) => {
+  const icons = {
+    user: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>,
+    settings: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
+    users: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" /></svg>,
+    bell: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.5 19.5L19 5M15 17h5l-5 5v-5z" /></svg>,
+    barChart: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
+    star: <svg className={className} fill="currentColor" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>,
+    search: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>,
+    x: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
+    check: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>,
+    userPlus: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>,
+    userCheck: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+    userClock: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+    loader: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
+  };
+  return icons[name] || null;
+};
+
+const Avatar = ({ src, size = 'md', className = '' }) => {
+  const sizes = { sm: 'w-8 h-8', md: 'w-12 h-12', lg: 'w-20 h-20', xl: 'w-32 h-32' };
+  return src ? (
+    <img src={src} className={`${sizes[size]} avatar-circle ${className}`} alt="avatar" />
+  ) : (
+    <div className={`${sizes[size]} avatar-circle bg-gradient-to-br from-green-500 to-blue-500 flex items-center justify-center text-white font-bold ${className}`}>
+      <Icon name="user" className={size === 'sm' ? 'w-4 h-4' : 'w-6 h-6'} />
+    </div>
+  );
+};
 
 // Компонент поиска книг
 const BookSearchModal = ({ isOpen, onClose, onAddBook }) => {
@@ -91,8 +72,7 @@ const BookSearchModal = ({ isOpen, onClose, onAddBook }) => {
     setLoading(true);
     try {
       const books = await OpenLibraryAPI.searchBooks(query);
-      const normalizedBooks = books.map(book => OpenLibraryAPI.normalizeBook(book));
-      setResults(normalizedBooks);
+      setResults(books);
     } catch (error) {
       console.error('Search error:', error);
       setResults([]);
@@ -418,6 +398,16 @@ const BookTrackerApp = () => {
   const [editingBook, setEditingBook] = useState(null);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState('default');
+  const [showStatistics, setShowStatistics] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showUserHub, setShowUserHub] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [friendRequests, setFriendRequests] = useState([]);
+  const [myBooksSearchQuery, setMyBooksSearchQuery] = useState('');
+  const [myBooksSearchResults, setMyBooksSearchResults] = useState([]);
+  const [myBooksSearching, setMyBooksSearching] = useState(false);
+  const [showMyBooksSearch, setShowMyBooksSearch] = useState(false);
+  const [activities, setActivities] = useState([]);
 
   // Загрузка данных при монтировании
   useEffect(() => {
@@ -449,6 +439,7 @@ const BookTrackerApp = () => {
 
     loadBooks();
     loadFriends();
+    loadActivities();
   }, []);
 
   // Применяем тему при изменении
@@ -497,6 +488,7 @@ const BookTrackerApp = () => {
       if (response.ok) {
         const friendsData = await response.json();
         setFriends(friendsData.friends || []);
+        setFriendRequests(friendsData.requests || []);
       } else if (response.status === 401) {
         // Токен недействителен
         localStorage.removeItem('token');
@@ -506,6 +498,47 @@ const BookTrackerApp = () => {
       }
     } catch (error) {
       console.error('Error loading friends:', error);
+    }
+  };
+
+  const loadActivities = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/friends/activity?type=book`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setActivities(data.activities || []);
+      }
+    } catch (error) {
+      console.error('Error loading activities:', error);
+    }
+  };
+
+  const searchMyBooks = async (query) => {
+    if (!query.trim()) {
+      setMyBooksSearchResults([]);
+      return;
+    }
+
+    setMyBooksSearching(true);
+    try {
+      const response = await fetch(`${API_URL}/api/books/search-my?q=${encodeURIComponent(query)}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setMyBooksSearchResults(data.books || []);
+      }
+    } catch (error) {
+      console.error('Error searching my books:', error);
+    } finally {
+      setMyBooksSearching(false);
     }
   };
 
@@ -695,13 +728,14 @@ const BookTrackerApp = () => {
   }
 
   return (
-    <div className={`min-h-screen book-tracker-bg ${theme}`}>
-      {/* Header */}
-      <header className="bg-white/90 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold title-books">📚 Книги</h1>
+    <div className={`min-h-screen bg-gradient-to-br from-[#1a1625] to-[#2d1b4e] ${theme} flex flex-col`}>
+      <header className="bg-[#1a0f2e]/85 backdrop-blur-xl border-b border-[#8458B3]/30 sticky top-0 z-50 flex-shrink-0">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <a href="/index.html" className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#d0bdf4] via-[#a0d2eb] to-[#8458B3] active:scale-95 transition-transform cursor-pointer">🎮 GameTracker</a>
+              
+              {/* Кнопки навигации */}
               <div className="flex gap-2">
                 <a
                   href="/index.html"
@@ -719,67 +753,106 @@ const BookTrackerApp = () => {
                   📚 Book
                 </span>
               </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setShowSearchModal(true)}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                🔍 Найти книгу
-              </button>
               
-              <button
-                onClick={toggleTheme}
-                className="p-2 text-gray-600 hover:text-gray-800 transition-colors"
-                title="Сменить тему"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              {/* Красивая разделительная линия */}
+              <div className="h-8 w-px bg-gradient-to-b from-transparent via-[#a0d2eb]/80 to-transparent opacity-80 ml-2"></div>
+              <a href="./books.html" className="inline-flex items-center gap-2 active:scale-95 transition-transform">
+                <svg className="w-7 h-7" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <defs><linearGradient id="bookGradHeaderReact" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#10b981"/><stop offset="100%" stopColor="#3b82f6"/></linearGradient></defs>
+                  <path fill="url(#bookGradHeaderReact)" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm2 0v12h12V6H6zm2 2h8v2H8V8zm0 4h8v2H8v-2zm0 4h4v2H8v-2z"/>
                 </svg>
-              </button>
-
-              {user && (
-                <div className="flex items-center gap-3">
-                  <img
-                    src={user.avatar || '/images/default-avatar.png'}
-                    alt={user.username}
-                    className="w-8 h-8 rounded-full avatar-border"
-                  />
-                  <span className="text-gray-700 font-medium">{user.username}</span>
-                  <button
-                    onClick={handleLogout}
-                    className="text-red-600 hover:text-red-800 transition-colors"
-                  >
-                    Выйти
-                  </button>
-                </div>
-              )}
+                <span className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#10b981] via-[#3b82f6] to-[#0ea5e9]">BookTracker</span>
+              </a>
             </div>
+            {user && (
+                <div className="flex items-center gap-2 md:gap-3">
+                    <div className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-[#10b981]/25 to-[#3b82f6]/20 rounded-lg border border-[#3b82f6]/40">
+                        <Avatar src={user.avatar} size="sm" />
+                        <span className="text-white font-semibold text-sm md:text-base block">{user.username}</span>
+                    </div>
+                    <Fragment>
+                        <button onClick={() => setShowSearchModal(true)} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Найти книгу">
+                            <Icon name="search" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
+                        </button>
+                        <button onClick={() => setShowStatistics(true)} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Статистика книг">
+                            <Icon name="barChart" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
+                        </button>
+                        <button onClick={() => setShowProfile(true)} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30">
+                            <Icon name="settings" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
+                        </button>
+                        <button onClick={() => { setShowUserHub(true); }} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30 relative">
+                            <Icon name="users" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
+                            {friendRequests.length > 0 && <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white badge-notification"></span>}
+                        </button>
+                    </Fragment>
+                    <button onClick={() => setShowNotifications(!showNotifications)} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30 relative">
+                        <Icon name="bell" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
+                    </button>
+                </div>
+            )}
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Статистика */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="stat-books-want p-4 rounded-lg text-center">
-            <div className="text-2xl font-bold text-white">{booksByStatus.want_to_read.length}</div>
-            <div className="text-white/80">Хочу прочитать</div>
+      <main className="flex-grow container mx-auto px-4 py-6 space-y-8">
+        {/* Поиск по своим книгам */}
+        <div className="relative">
+          <div className="flex items-center gap-4 mb-4">
+            <h2 className="text-xl font-semibold text-white">Найти в моих книгах</h2>
+            <button
+              onClick={() => setShowMyBooksSearch(!showMyBooksSearch)}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              {showMyBooksSearch ? 'Скрыть' : 'Показать'}
+            </button>
           </div>
-          <div className="stat-books-reading p-4 rounded-lg text-center">
-            <div className="text-2xl font-bold text-white">{booksByStatus.reading.length}</div>
-            <div className="text-white/80">Читаю</div>
-          </div>
-          <div className="stat-books-read p-4 rounded-lg text-center">
-            <div className="text-2xl font-bold text-white">{booksByStatus.read.length}</div>
-            <div className="text-white/80">Прочитал</div>
-          </div>
-          <div className="stat-books-dropped p-4 rounded-lg text-center">
-            <div className="text-2xl font-bold text-white">{booksByStatus.dropped.length}</div>
-            <div className="text-white/80">Бросил</div>
-          </div>
+          
+          {showMyBooksSearch && (
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4 border border-green-500/30">
+              <div className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  value={myBooksSearchQuery}
+                  onChange={(e) => {
+                    setMyBooksSearchQuery(e.target.value);
+                    searchMyBooks(e.target.value);
+                  }}
+                  placeholder="Поиск по названию или автору..."
+                  className="flex-1 px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-green-500 focus:outline-none"
+                />
+                {myBooksSearching && <Icon name="loader" className="w-6 h-6 text-green-500 animate-spin" />}
+              </div>
+              
+              {myBooksSearchResults.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {myBooksSearchResults.map((book) => (
+                    <div key={book.id} className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
+                      <div className="flex gap-3">
+                        <img
+                          src={book.coverUrl}
+                          alt={book.title}
+                          className="w-12 h-16 object-cover rounded"
+                          onError={(e) => {
+                            e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="64" viewBox="0 0 48 64"><rect width="48" height="64" fill="%23374151"/><text x="24" y="35" text-anchor="middle" fill="%239ca3af" font-size="12">📚</text></svg>';
+                          }}
+                        />
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-white text-sm line-clamp-2">{book.title}</h3>
+                          <p className="text-gray-400 text-xs">{book.author}</p>
+                          <span className="inline-block px-2 py-1 bg-green-600 text-white text-xs rounded mt-1">
+                            {book.status === 'want_to_read' && 'Хочу прочитать'}
+                            {book.status === 'reading' && 'Читаю'}
+                            {book.status === 'read' && 'Прочитал'}
+                            {book.status === 'dropped' && 'Бросил'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Доска книг */}
@@ -840,6 +913,32 @@ const BookTrackerApp = () => {
             onMove={updateBookStatus}
           />
         </div>
+
+        {/* Активность друзей */}
+        {activities.length > 0 && (
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-green-500/30">
+            <h2 className="text-xl font-semibold text-white mb-4">Активность друзей по книгам</h2>
+            <div className="space-y-3">
+              {activities.slice(0, 12).map((activity, index) => (
+                <div key={index} className="flex items-center gap-3 p-3 bg-gray-700/30 rounded-lg">
+                  <Avatar src={activity.user.avatar} size="sm" />
+                  <div className="flex-1">
+                    <p className="text-white text-sm">
+                      <span className="font-semibold">{activity.user.username}</span>
+                      {' '}
+                      {activity.action === 'added' && 'добавил книгу'}
+                      {activity.action === 'moved' && 'переместил книгу'}
+                      {activity.action === 'rated' && 'оценил книгу'}
+                      {' '}
+                      <span className="text-green-400">{activity.book.title}</span>
+                    </p>
+                    <p className="text-gray-400 text-xs">{new Date(activity.created_at).toLocaleString('ru-RU')}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Модальные окна */}
