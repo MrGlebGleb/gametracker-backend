@@ -274,6 +274,11 @@ app.use('/api/profile/avatar', validateJsonSize(5 * 1024 * 1024));
 app.use(express.json({ limit: '10mb' }));
 
 // === STATIC FILES ===
+// Маршрут для главной страницы - показываем landing page
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/landing.html');
+});
+
 // Раздача статических файлов (HTML, CSS, JS)
 app.use(express.static('.'));
 
