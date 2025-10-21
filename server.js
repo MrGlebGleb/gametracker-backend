@@ -3032,6 +3032,323 @@ app.put('/api/notifications/mark-all-read', authenticateToken, async (req, res) 
     }
 });
 
+// === BOOKS API ENDPOINTS ===
+
+// Получить все книги пользователя
+app.get('/api/books', authenticateToken, async (req, res) => {
+  let client;
+  try {
+    client = await pool.connect();
+    
+    const result = await client.query(`
+      SELECT b.*, 
+             COALESCE(
+               (SELECT AVG(rating) FROM book_ratings WHERE book_id = b.id), 
+               0
+             ) as avg_rating,
+             COALESCE(
+               (SELECT rating FROM book_ratings WHERE book_id = b.id AND user_id = $1), 
+               0
+             ) as user_rating
+      FROM books b 
+      WHERE b.user_id = $1 
+      ORDER BY b.created_at DESC
+    `, [req.user.id]);
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Ошибка получения книг:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+// Добавить новую книгу
+app.post('/api/books', authenticateToken, [
+  body('title').notEmpty().withMessage('Название обязательно'),
+  body('author').notEmpty().withMessage('Автор обязателен'),
+  body('status').isIn(['want_to_read', 'reading', 'read', 'dropped']).withMessage('Неверный статус')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  let client;
+  try {
+    client = await pool.connect();
+    
+    const { title, author, year, isbn, coverUrl, description, pages, subjects, language, status } = req.body;
+    
+    const result = await client.query(`
+      INSERT INTO books (
+        user_id, title, author, year, isbn, cover_url, description, 
+        pages, subjects, language, status, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+      RETURNING *
+    `, [
+      req.user.id, title, author, year, isbn, coverUrl, description,
+      pages, JSON.stringify(subjects || []), language || 'ru', status
+    ]);
+    
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Ошибка добавления книги:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+// Обновить книгу
+app.patch('/api/books/:id', authenticateToken, async (req, res) => {
+  let client;
+  try {
+    client = await pool.connect();
+    
+    const { id } = req.params;
+    const updates = req.body;
+    
+    // Проверяем, что книга принадлежит пользователю
+    const bookCheck = await client.query(
+      'SELECT id FROM books WHERE id = $1 AND user_id = $2',
+      [id, req.user.id]
+    );
+    
+    if (bookCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Книга не найдена' });
+    }
+    
+    // Строим динамический запрос
+    const updateFields = [];
+    const values = [];
+    let paramCount = 1;
+    
+    Object.keys(updates).forEach(key => {
+      if (updates[key] !== undefined) {
+        if (key === 'subjects') {
+          updateFields.push(`${key} = $${paramCount}`);
+          values.push(JSON.stringify(updates[key]));
+        } else {
+          updateFields.push(`${key} = $${paramCount}`);
+          values.push(updates[key]);
+        }
+        paramCount++;
+      }
+    });
+    
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'Нет полей для обновления' });
+    }
+    
+    updateFields.push(`updated_at = NOW()`);
+    values.push(id, req.user.id);
+    
+    const result = await client.query(`
+      UPDATE books 
+      SET ${updateFields.join(', ')}
+      WHERE id = $${paramCount} AND user_id = $${paramCount + 1}
+      RETURNING *
+    `, values);
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Ошибка обновления книги:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+// Удалить книгу
+app.delete('/api/books/:id', authenticateToken, async (req, res) => {
+  let client;
+  try {
+    client = await pool.connect();
+    
+    const { id } = req.params;
+    
+    const result = await client.query(
+      'DELETE FROM books WHERE id = $1 AND user_id = $2 RETURNING id',
+      [id, req.user.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Книга не найдена' });
+    }
+    
+    res.json({ success: true, message: 'Книга удалена' });
+  } catch (error) {
+    console.error('Ошибка удаления книги:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+// Оценить книгу
+app.post('/api/books/:id/rate', authenticateToken, [
+  body('rating').isInt({ min: 1, max: 5 }).withMessage('Рейтинг должен быть от 1 до 5')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  let client;
+  try {
+    client = await pool.connect();
+    
+    const { id } = req.params;
+    const { rating } = req.body;
+    
+    // Проверяем, что книга принадлежит пользователю
+    const bookCheck = await client.query(
+      'SELECT id FROM books WHERE id = $1 AND user_id = $2',
+      [id, req.user.id]
+    );
+    
+    if (bookCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Книга не найдена' });
+    }
+    
+    // Добавляем или обновляем рейтинг
+    await client.query(`
+      INSERT INTO book_ratings (book_id, user_id, rating, created_at)
+      VALUES ($1, $2, $3, NOW())
+      ON CONFLICT (book_id, user_id)
+      DO UPDATE SET rating = $3, updated_at = NOW()
+    `, [id, req.user.id, rating]);
+    
+    res.json({ success: true, message: 'Рейтинг сохранен' });
+  } catch (error) {
+    console.error('Ошибка оценки книги:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+// Добавить реакцию к книге
+app.post('/api/books/:id/react', authenticateToken, [
+  body('emoji').notEmpty().withMessage('Эмодзи обязательно')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  let client;
+  try {
+    client = await pool.connect();
+    
+    const { id } = req.params;
+    const { emoji } = req.body;
+    
+    // Проверяем, что книга принадлежит пользователю
+    const bookCheck = await client.query(
+      'SELECT id FROM books WHERE id = $1 AND user_id = $2',
+      [id, req.user.id]
+    );
+    
+    if (bookCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Книга не найдена' });
+    }
+    
+    // Добавляем реакцию
+    await client.query(`
+      INSERT INTO book_reactions (book_id, user_id, emoji, created_at)
+      VALUES ($1, $2, $3, NOW())
+      ON CONFLICT (book_id, user_id)
+      DO UPDATE SET emoji = $3, updated_at = NOW()
+    `, [id, req.user.id, emoji]);
+    
+    res.json({ success: true, message: 'Реакция добавлена' });
+  } catch (error) {
+    console.error('Ошибка добавления реакции:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+// Создать таблицы для книг (миграция)
+app.post('/api/books/migrate', async (req, res) => {
+  let client;
+  try {
+    client = await pool.connect();
+    
+    // Создаем таблицу книг
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS books (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title VARCHAR(500) NOT NULL,
+        author VARCHAR(300) NOT NULL,
+        year INTEGER,
+        isbn VARCHAR(20),
+        cover_url TEXT,
+        description TEXT,
+        pages INTEGER,
+        subjects JSONB DEFAULT '[]'::jsonb,
+        language VARCHAR(10) DEFAULT 'ru',
+        status VARCHAR(20) NOT NULL DEFAULT 'want_to_read',
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    
+    // Создаем таблицу рейтингов книг
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS book_ratings (
+        id SERIAL PRIMARY KEY,
+        book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(book_id, user_id)
+      )
+    `);
+    
+    // Создаем таблицу реакций на книги
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS book_reactions (
+        id SERIAL PRIMARY KEY,
+        book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        emoji VARCHAR(10) NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(book_id, user_id)
+      )
+    `);
+    
+    // Создаем индексы для производительности
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_books_user_id ON books(user_id);
+      CREATE INDEX IF NOT EXISTS idx_books_status ON books(status);
+      CREATE INDEX IF NOT EXISTS idx_book_ratings_book_id ON book_ratings(book_id);
+      CREATE INDEX IF NOT EXISTS idx_book_reactions_book_id ON book_reactions(book_id);
+    `);
+    
+    client.release();
+    res.json({ 
+      status: 'OK', 
+      message: 'Таблицы для книг созданы успешно' 
+    });
+  } catch (error) {
+    console.error('Ошибка миграции книг:', error);
+    res.status(500).json({ 
+      status: 'Error', 
+      error: error.message 
+    });
+  } finally {
+    if (client) client.release();
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Сервер на порту ${PORT}`);
 });

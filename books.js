@@ -421,40 +421,47 @@ const BookTrackerApp = () => {
 
   // Загрузка данных при монтировании
   useEffect(() => {
-    loadUserData();
-    loadBooks();
-    loadFriends();
-  }, []);
-
-  const loadUserData = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
       window.location.href = '/';
       return;
     }
 
-    try {
-      const response = await fetch(`${API_URL}/api/user/profile`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-      } else {
+    // Загружаем пользователя из localStorage как в movies.js
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+        setTheme(parsedUser.theme || 'default');
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        localStorage.removeItem('user');
         localStorage.removeItem('token');
         window.location.href = '/';
+        return;
       }
-    } catch (error) {
-      console.error('Error loading user data:', error);
-      localStorage.removeItem('token');
+    } else {
+      // Если пользователь не найден в localStorage, перенаправляем на главную
       window.location.href = '/';
+      return;
     }
-  };
+
+    loadBooks();
+    loadFriends();
+  }, []);
+
+  // Применяем тему при изменении
+  useEffect(() => {
+    document.body.className = theme;
+  }, [theme]);
 
   const loadBooks = async () => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch(`${API_URL}/api/books`, {
@@ -464,6 +471,12 @@ const BookTrackerApp = () => {
       if (response.ok) {
         const booksData = await response.json();
         setBooks(booksData);
+      } else if (response.status === 401) {
+        // Токен недействителен
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/';
+        return;
       }
     } catch (error) {
       console.error('Error loading books:', error);
@@ -483,7 +496,13 @@ const BookTrackerApp = () => {
       
       if (response.ok) {
         const friendsData = await response.json();
-        setFriends(friendsData);
+        setFriends(friendsData.friends || []);
+      } else if (response.status === 401) {
+        // Токен недействителен
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/';
+        return;
       }
     } catch (error) {
       console.error('Error loading friends:', error);
@@ -628,13 +647,21 @@ const BookTrackerApp = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
     window.location.href = '/';
   };
 
   const toggleTheme = () => {
     const newTheme = theme === 'default' ? 'liquid-eye' : 'default';
     setTheme(newTheme);
-    document.body.className = newTheme;
+    
+    // Обновляем пользователя в localStorage с новой темой
+    if (user) {
+      const updatedUser = { ...user, theme: newTheme };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+    }
   };
 
   // Группировка книг по статусам
@@ -649,8 +676,19 @@ const BookTrackerApp = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Загрузка...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Перенаправление...</p>
         </div>
       </div>
     );
