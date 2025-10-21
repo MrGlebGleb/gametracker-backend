@@ -81,6 +81,12 @@
       animation: fadeInUp 0.4s ease-out forwards;
     }
 
+    /* Отключение анимации во время drag */
+    .is-dragging .game-card,
+    .board-column.drag-over-column .game-card {
+      animation: none !important;
+    }
+
     /* Задержка для последовательного появления */
     .game-card:nth-child(1) { animation-delay: 0.05s; }
     .game-card:nth-child(2) { animation-delay: 0.1s; }
@@ -375,19 +381,6 @@
       transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
-    /* Эффект "дыхания" для целевой доски */
-    @keyframes breathe {
-      0%, 100% {
-        transform: scale(1.06);
-      }
-      50% {
-        transform: scale(1.08);
-      }
-    }
-
-    .drag-over-column {
-      animation: breathe 2s ease-in-out infinite !important;
-    }
 
     /* Улучшенная анимация перетаскиваемой карточки */
     .dragging-card {
@@ -508,32 +501,11 @@
     
     /* Shadow transitions */
     .shadow-transition { transition: box-shadow 200ms ease; }
-    
-    /* Drag & Drop optimizations */
-    .dragging-card {
-      opacity: 0.8;
-      transform: rotate(2deg) scale(1.05);
-      z-index: 1000;
-      pointer-events: none;
-      transition: all 200ms ease;
-    }
-    
+
     .drag-ghost {
       opacity: 0.3;
       transform: scale(0.95);
       transition: none;
-    }
-    
-    .drag-over-column {
-      background-color: rgba(139, 92, 246, 0.1);
-      transform: scale(1.02);
-      transition: all 200ms ease;
-    }
-    
-    /* Prevent layout shifts during drag */
-    .board-column {
-      min-height: 200px;
-      transition: all 200ms ease;
     }
     
     .game-card {
@@ -3422,8 +3394,9 @@
             },
             body: JSON.stringify(updates)
           });
-           // Перезагружаем доски после обновления, чтобы получить актуальную ленту
-           if(updates.board) {
+           // Не перезагружаем доски при изменении board - UI уже обновлен оптимистично
+           // Перезагружаем только если нужно обновить ленту (например, при изменении рейтинга/статуса)
+           if(updates.rating !== undefined || updates.status !== undefined) {
               loadBoards(token);
            }
         } catch (err) {
@@ -3620,6 +3593,8 @@
         draggedElement.current = e.currentTarget;
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/html', e.currentTarget.outerHTML);
+        // Добавляем класс для отключения анимаций карточек во время drag
+        document.body.classList.add('is-dragging');
         setTimeout(() => {
           e.currentTarget.classList.add('dragging-card');
         }, 0);
@@ -3718,6 +3693,8 @@
       };
 
       const handleDragEnd = () => {
+        // Убираем класс is-dragging для включения анимаций обратно
+        document.body.classList.remove('is-dragging');
         document.querySelectorAll('.dragging-card').forEach(el => el.classList.remove('dragging-card'));
         document.querySelectorAll('.drag-over-column').forEach(el => el.classList.remove('drag-over-column'));
         document.querySelectorAll('.drag-over-card').forEach(el => el.classList.remove('drag-over-card'));
