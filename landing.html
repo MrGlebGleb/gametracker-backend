@@ -234,7 +234,7 @@
 
     .gallery-grid {
       position: absolute;
-      top: 50%;
+      top: 60%;
       left: 50%;
       transform: translateX(-50%);
       display: flex;
@@ -284,66 +284,66 @@
       height: 160px;
     }
 
-    /* Полукруглое огибание кнопки - постеры располагаются по дуге */
+    /* Полукруглое огибание кнопки - постеры располагаются по дуге под кнопкой */
     .poster-card:nth-child(1) { 
       position: absolute;
-      top: 20px;
-      left: -200px;
+      top: -20px;
+      left: -120px;
     }
     .poster-card:nth-child(2) { 
       position: absolute;
-      top: 40px;
-      left: -150px;
+      top: -10px;
+      left: -90px;
     }
     .poster-card:nth-child(3) { 
       position: absolute;
-      top: 60px;
-      left: -100px;
+      top: 0px;
+      left: -60px;
     }
     .poster-card:nth-child(4) { 
       position: absolute;
-      top: 80px;
-      left: -50px;
+      top: 10px;
+      left: -30px;
     }
     .poster-card:nth-child(5) { 
       position: absolute;
-      top: 100px;
+      top: 20px;
       left: 0px;
     }
     .poster-card:nth-child(6) { 
       position: absolute;
-      top: 120px;
-      left: 50px;
+      top: 30px;
+      left: 30px;
     }
     .poster-card:nth-child(7) { 
       position: absolute;
-      top: 100px;
-      left: 100px;
+      top: 20px;
+      left: 60px;
     }
     .poster-card:nth-child(8) { 
       position: absolute;
-      top: 80px;
-      left: 150px;
+      top: 10px;
+      left: 90px;
     }
     .poster-card:nth-child(9) { 
       position: absolute;
-      top: 60px;
-      left: 200px;
+      top: 0px;
+      left: 120px;
     }
     .poster-card:nth-child(10) { 
       position: absolute;
-      top: 40px;
-      left: 250px;
+      top: -10px;
+      left: 150px;
     }
     .poster-card:nth-child(11) { 
       position: absolute;
-      top: 20px;
-      left: 300px;
+      top: -20px;
+      left: 180px;
     }
     .poster-card:nth-child(12) { 
       position: absolute;
-      top: 0px;
-      left: 350px;
+      top: -30px;
+      left: 210px;
     }
 
     .poster-card::before {
@@ -603,18 +603,18 @@
       }
 
       /* Адаптируем позиции для планшетов */
-      .poster-card:nth-child(1) { left: -150px; }
-      .poster-card:nth-child(2) { left: -120px; }
-      .poster-card:nth-child(3) { left: -90px; }
-      .poster-card:nth-child(4) { left: -60px; }
-      .poster-card:nth-child(5) { left: -30px; }
-      .poster-card:nth-child(6) { left: 0px; }
-      .poster-card:nth-child(7) { left: 30px; }
-      .poster-card:nth-child(8) { left: 60px; }
-      .poster-card:nth-child(9) { left: 90px; }
-      .poster-card:nth-child(10) { left: 120px; }
-      .poster-card:nth-child(11) { left: 150px; }
-      .poster-card:nth-child(12) { left: 180px; }
+      .poster-card:nth-child(1) { left: -100px; top: -15px; }
+      .poster-card:nth-child(2) { left: -75px; top: -8px; }
+      .poster-card:nth-child(3) { left: -50px; top: 0px; }
+      .poster-card:nth-child(4) { left: -25px; top: 8px; }
+      .poster-card:nth-child(5) { left: 0px; top: 15px; }
+      .poster-card:nth-child(6) { left: 25px; top: 22px; }
+      .poster-card:nth-child(7) { left: 50px; top: 15px; }
+      .poster-card:nth-child(8) { left: 75px; top: 8px; }
+      .poster-card:nth-child(9) { left: 100px; top: 0px; }
+      .poster-card:nth-child(10) { left: 125px; top: -8px; }
+      .poster-card:nth-child(11) { left: 150px; top: -15px; }
+      .poster-card:nth-child(12) { left: 175px; top: -22px; }
 
       .feature-cards {
         grid-template-columns: repeat(2, 1fr);
@@ -671,18 +671,18 @@
       }
 
       /* Упрощаем дугу для мобильных */
-      .poster-card:nth-child(1) { left: -100px; top: 10px; }
-      .poster-card:nth-child(2) { left: -80px; top: 20px; }
-      .poster-card:nth-child(3) { left: -60px; top: 30px; }
-      .poster-card:nth-child(4) { left: -40px; top: 40px; }
-      .poster-card:nth-child(5) { left: -20px; top: 50px; }
-      .poster-card:nth-child(6) { left: 0px; top: 60px; }
-      .poster-card:nth-child(7) { left: 20px; top: 50px; }
-      .poster-card:nth-child(8) { left: 40px; top: 40px; }
-      .poster-card:nth-child(9) { left: 60px; top: 30px; }
-      .poster-card:nth-child(10) { left: 80px; top: 20px; }
-      .poster-card:nth-child(11) { left: 100px; top: 10px; }
-      .poster-card:nth-child(12) { left: 120px; top: 0px; }
+      .poster-card:nth-child(1) { left: -80px; top: -10px; }
+      .poster-card:nth-child(2) { left: -60px; top: -5px; }
+      .poster-card:nth-child(3) { left: -40px; top: 0px; }
+      .poster-card:nth-child(4) { left: -20px; top: 5px; }
+      .poster-card:nth-child(5) { left: 0px; top: 10px; }
+      .poster-card:nth-child(6) { left: 20px; top: 15px; }
+      .poster-card:nth-child(7) { left: 40px; top: 10px; }
+      .poster-card:nth-child(8) { left: 60px; top: 5px; }
+      .poster-card:nth-child(9) { left: 80px; top: 0px; }
+      .poster-card:nth-child(10) { left: 100px; top: -5px; }
+      .poster-card:nth-child(11) { left: 120px; top: -10px; }
+      .poster-card:nth-child(12) { left: 140px; top: -15px; }
 
       .media-universe {
         padding: 80px 20px;
