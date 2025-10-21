@@ -118,7 +118,7 @@
       justify-content: center;
       align-items: center;
       text-align: center;
-      padding: 120px 20px 120px;
+      padding: 120px 20px 0;
       background: linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 100%);
       position: relative;
       overflow: visible;
@@ -210,7 +210,7 @@
     }
 
     /* ========================================
-       MEDIA GALLERY - COMPACT MOSAIC LAYOUT
+       MEDIA GALLERY - INFINITE HORIZONTAL SCROLL
        ======================================== */
     .media-gallery {
       padding: 0;
@@ -222,29 +222,33 @@
       height: 100vh;
       z-index: 5;
       pointer-events: none;
+      overflow: hidden;
     }
 
     .gallery-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 20px;
-      height: 100%;
-      position: relative;
-    }
-
-    .gallery-grid {
       position: absolute;
       top: 60%;
-      left: 50%;
-      transform: translateX(-50%);
+      left: 0;
+      right: 0;
+      height: 120px;
+      overflow: hidden;
+    }
+
+    .gallery-scroll {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+      gap: 16px;
+      animation: scrollLeft 30s linear infinite;
       opacity: 0;
-      animation: fadeIn 0.6s ease-out 0.3s forwards;
-      width: 100%;
-      justify-content: center;
-      align-items: flex-start;
+      animation: fadeIn 0.6s ease-out 0.3s forwards, scrollLeft 30s linear infinite 0.6s;
+    }
+
+    @keyframes scrollLeft {
+      0% {
+        transform: translateX(0);
+      }
+      100% {
+        transform: translateX(-50%);
+      }
     }
 
     @keyframes fadeIn {
@@ -261,90 +265,11 @@
       transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
       background: #1a1a1a;
       flex-shrink: 0;
-    }
-
-    /* Размеры карточек для компактной мозаики */
-    .poster-card.small {
       width: 80px;
       height: 100px;
     }
 
-    .poster-card.medium {
-      width: 100px;
-      height: 120px;
-    }
-
-    .poster-card.large {
-      width: 120px;
-      height: 140px;
-    }
-
-    .poster-card.xlarge {
-      width: 140px;
-      height: 160px;
-    }
-
-    /* Полукруглое огибание кнопки - постеры располагаются по дуге под кнопкой */
-    .poster-card:nth-child(1) { 
-      position: absolute;
-      top: -20px;
-      left: -120px;
-    }
-    .poster-card:nth-child(2) { 
-      position: absolute;
-      top: -10px;
-      left: -90px;
-    }
-    .poster-card:nth-child(3) { 
-      position: absolute;
-      top: 0px;
-      left: -60px;
-    }
-    .poster-card:nth-child(4) { 
-      position: absolute;
-      top: 10px;
-      left: -30px;
-    }
-    .poster-card:nth-child(5) { 
-      position: absolute;
-      top: 20px;
-      left: 0px;
-    }
-    .poster-card:nth-child(6) { 
-      position: absolute;
-      top: 30px;
-      left: 30px;
-    }
-    .poster-card:nth-child(7) { 
-      position: absolute;
-      top: 20px;
-      left: 60px;
-    }
-    .poster-card:nth-child(8) { 
-      position: absolute;
-      top: 10px;
-      left: 90px;
-    }
-    .poster-card:nth-child(9) { 
-      position: absolute;
-      top: 0px;
-      left: 120px;
-    }
-    .poster-card:nth-child(10) { 
-      position: absolute;
-      top: -10px;
-      left: 150px;
-    }
-    .poster-card:nth-child(11) { 
-      position: absolute;
-      top: -20px;
-      left: 180px;
-    }
-    .poster-card:nth-child(12) { 
-      position: absolute;
-      top: -30px;
-      left: 210px;
-    }
+    /* Постеры в горизонтальной ленте - одинакового размера */
 
     .poster-card::before {
       content: '';
@@ -431,7 +356,8 @@
        ======================================== */
     .media-universe {
       padding: 120px 20px;
-      background: linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 100%);
+      background: #0a0a0a;
+      margin-top: 0;
     }
 
     .universe-container {
@@ -582,39 +508,14 @@
        RESPONSIVE DESIGN
        ======================================== */
     @media (max-width: 1200px) {
-      .poster-card.small {
-        width: 60px;
-        height: 80px;
+      .poster-card {
+        width: 70px;
+        height: 90px;
       }
 
-      .poster-card.medium {
-        width: 80px;
+      .gallery-container {
         height: 100px;
       }
-
-      .poster-card.large {
-        width: 100px;
-        height: 120px;
-      }
-
-      .poster-card.xlarge {
-        width: 120px;
-        height: 140px;
-      }
-
-      /* Адаптируем позиции для планшетов */
-      .poster-card:nth-child(1) { left: -100px; top: -15px; }
-      .poster-card:nth-child(2) { left: -75px; top: -8px; }
-      .poster-card:nth-child(3) { left: -50px; top: 0px; }
-      .poster-card:nth-child(4) { left: -25px; top: 8px; }
-      .poster-card:nth-child(5) { left: 0px; top: 15px; }
-      .poster-card:nth-child(6) { left: 25px; top: 22px; }
-      .poster-card:nth-child(7) { left: 50px; top: 15px; }
-      .poster-card:nth-child(8) { left: 75px; top: 8px; }
-      .poster-card:nth-child(9) { left: 100px; top: 0px; }
-      .poster-card:nth-child(10) { left: 125px; top: -8px; }
-      .poster-card:nth-child(11) { left: 150px; top: -15px; }
-      .poster-card:nth-child(12) { left: 175px; top: -22px; }
 
       .feature-cards {
         grid-template-columns: repeat(2, 1fr);
@@ -650,39 +551,14 @@
         font-size: 16px;
       }
 
-      .poster-card.small {
-        width: 50px;
-        height: 70px;
+      .poster-card {
+        width: 60px;
+        height: 80px;
       }
 
-      .poster-card.medium {
-        width: 70px;
+      .gallery-container {
         height: 90px;
       }
-
-      .poster-card.large {
-        width: 90px;
-        height: 110px;
-      }
-
-      .poster-card.xlarge {
-        width: 110px;
-        height: 130px;
-      }
-
-      /* Упрощаем дугу для мобильных */
-      .poster-card:nth-child(1) { left: -80px; top: -10px; }
-      .poster-card:nth-child(2) { left: -60px; top: -5px; }
-      .poster-card:nth-child(3) { left: -40px; top: 0px; }
-      .poster-card:nth-child(4) { left: -20px; top: 5px; }
-      .poster-card:nth-child(5) { left: 0px; top: 10px; }
-      .poster-card:nth-child(6) { left: 20px; top: 15px; }
-      .poster-card:nth-child(7) { left: 40px; top: 10px; }
-      .poster-card:nth-child(8) { left: 60px; top: 5px; }
-      .poster-card:nth-child(9) { left: 80px; top: 0px; }
-      .poster-card:nth-child(10) { left: 100px; top: -5px; }
-      .poster-card:nth-child(11) { left: 120px; top: -10px; }
-      .poster-card:nth-child(12) { left: 140px; top: -15px; }
 
       .media-universe {
         padding: 80px 20px;
@@ -762,7 +638,7 @@
     <!-- MEDIA GALLERY -->
     <section class="media-gallery">
       <div class="gallery-container">
-        <div id="galleryGrid" class="gallery-grid">
+        <div id="galleryScroll" class="gallery-scroll">
           <!-- Posters will be loaded here by JavaScript -->
           <div class="loading-container">
             <div class="loading-spinner"></div>
@@ -929,14 +805,14 @@
     }
 
     /**
-     * Render gallery with posters
+     * Render infinite scroll gallery with posters
      */
     function renderGallery(posters) {
-      const galleryGrid = document.getElementById('galleryGrid');
-      galleryGrid.innerHTML = '';
+      const galleryScroll = document.getElementById('galleryScroll');
+      galleryScroll.innerHTML = '';
 
       if (posters.length === 0) {
-        galleryGrid.innerHTML = `
+        galleryScroll.innerHTML = `
           <div class="loading-container">
             <p class="loading-text">Не удалось загрузить контент. Попробуйте обновить страницу.</p>
           </div>
@@ -944,32 +820,12 @@
         return;
       }
 
-      // Размеры для компактной мозаики (12 постеров)
-      const sizePattern = [
-        'small',    // 1
-        'medium',   // 2
-        'small',    // 3
-        'large',    // 4
-        'small',    // 5
-        'medium',   // 6
-        'small',    // 7
-        'xlarge',   // 8
-        'small',    // 9
-        'medium',   // 10
-        'small',    // 11
-        'large'     // 12
-      ];
+      // Создаем дубликаты постеров для бесконечной ленты
+      const duplicatedPosters = [...posters, ...posters];
 
-      posters.forEach((poster, index) => {
+      duplicatedPosters.forEach((poster, index) => {
         const card = createPosterCard(poster);
-
-        // Назначаем размер из паттерна
-        const size = sizePattern[index % sizePattern.length];
-        card.classList.add(size);
-
-        // Stagger animation
-        card.style.animationDelay = `${index * 0.05}s`;
-        galleryGrid.appendChild(card);
+        galleryScroll.appendChild(card);
       });
     }
 
