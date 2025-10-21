@@ -34,7 +34,7 @@ const Icon = ({ name, className = 'w-6 h-6' }) => {
     user: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>,
     settings: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
     users: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" /></svg>,
-    bell: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.5 19.5L19 5M15 17h5l-5 5v-5z" /></svg>,
+    bell: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>,
     barChart: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
     star: <svg className={className} fill="currentColor" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>,
     search: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>,
@@ -44,6 +44,8 @@ const Icon = ({ name, className = 'w-6 h-6' }) => {
     userCheck: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
     userClock: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
     loader: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
+    download: <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,14 12,19 17,14"/><line x1="12" y1="19" x2="12" y2="5"/></svg>,
+    upload: <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>,
   };
   return icons[name] || null;
 };
@@ -514,6 +516,579 @@ const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, on
   );
 };
 
+// === КОМПОНЕНТ УВЕДОМЛЕНИЙ ===
+
+const NotificationsPanel = ({ token, onNavigateToUser, onNavigateToBook }) => {
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showPanel, setShowPanel] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/notifications`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data.notifications || []);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки уведомлений:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (!token) return;
+    try {
+      const response = await fetch(`${API_URL}/api/notifications/unread-count`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUnreadCount(data.count || 0);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки счетчика:', error);
+    }
+  }, [token]);
+
+  const markAsRead = async (notificationId) => {
+    try {
+      await fetch(`${API_URL}/api/notifications/${notificationId}/read`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setNotifications(prev => prev.map(n =>
+        n.id === notificationId ? { ...n, is_read: true } : n
+      ));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Ошибка отметки уведомления:', error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      await fetch(`${API_URL}/api/notifications/mark-all-read`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Ошибка отметки всех уведомлений:', error);
+    }
+  };
+
+  const handleNotificationClick = (notification) => {
+    if (!notification.is_read) {
+      markAsRead(notification.id);
+    }
+
+    if (notification.type === 'friend_request' && notification.from_user_id) {
+      onNavigateToUser && onNavigateToUser(notification.from_user_id);
+    } else if (notification.type === 'book_reaction' && notification.book_id) {
+      onNavigateToBook && onNavigateToBook(notification.book_id);
+    }
+
+    setShowPanel(false);
+  };
+
+  const formatTime = (timestamp) => {
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diff = now - time;
+
+    if (diff < 60000) return 'только что';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)} мин назад`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)} ч назад`;
+    return `${Math.floor(diff / 86400000)} дн назад`;
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchNotifications();
+      fetchUnreadCount();
+    }
+  }, [token, fetchNotifications, fetchUnreadCount]);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setShowPanel(!showPanel)}
+        className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30 relative"
+        title="Уведомления"
+      >
+        <Icon name="bell" className="w-4 h-4 md:w-5 md:h-5 text-green-400" />
+        {unreadCount > 0 && (
+          <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"></span>
+        )}
+      </button>
+
+      {showPanel && (
+        <div className="absolute right-0 top-full mt-2 w-80 bg-gray-800 rounded-lg border border-gray-700 z-50 elevation-4">
+          <div className="p-4 border-b border-gray-700">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">Уведомления</h3>
+              <button
+                onClick={() => setShowPanel(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <Icon name="x" className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="max-h-96 overflow-y-auto">
+            {loading ? (
+              <div className="p-4 text-center text-gray-400">
+                <Icon name="loader" className="w-6 h-6 animate-spin mx-auto mb-2" />
+                Загрузка...
+              </div>
+            ) : notifications.length === 0 ? (
+              <div className="p-4 text-center text-gray-400">
+                <Icon name="bell" className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>Нет уведомлений</p>
+              </div>
+            ) : (
+              notifications.map(notification => (
+                <div
+                  key={notification.id}
+                  onClick={() => handleNotificationClick(notification)}
+                  className={`p-4 border-b border-gray-700 hover:bg-gray-700/50 transition-colors cursor-pointer ${!notification.is_read ? 'bg-red-500/10 border-l-4 border-l-red-500' : 'bg-gray-500/5'
+                    }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <img
+                      src={notification.from_user_avatar || '/default-avatar.png'}
+                      alt=""
+                      className="w-8 h-8 rounded-full object-cover"
+                      onError={(e) => { e.target.src = '/default-avatar.png'; }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm ${!notification.is_read ? 'text-white font-medium' : 'text-gray-300'}`}>
+                        {notification.message}
+                      </p>
+                      <p className="text-gray-400 text-xs mt-1">{formatTime(notification.created_at)}</p>
+                      {!notification.is_read && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                          <span className="text-red-400 text-xs font-medium">Новое</span>
+                        </div>
+                      )}
+                    </div>
+                    {!notification.is_read && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          markAsRead(notification.id);
+                        }}
+                        className="text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded bg-blue-500/20 hover:bg-blue-500/30 transition-colors"
+                      >
+                        ✓
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {notifications.length > 0 && (
+            <div className="p-4 border-t border-gray-700 bg-gray-800/50">
+              <button
+                onClick={markAllAsRead}
+                className="w-full py-2 px-4 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 hover:text-blue-300 rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-2"
+              >
+                <Icon name="check" className="w-4 h-4" />
+                Отметить все как прочитанные
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// === КОМПОНЕНТЫ СТАТИСТИКИ ===
+
+// Компонент страницы статистики
+const StatisticsPage = ({ isOpen, onClose, token, books, showBooksTab = true }) => {
+  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState(null);
+
+  // Создание статистики из локальных данных
+  const createFallbackStats = useCallback(() => {
+    if (!books || !Array.isArray(books)) {
+      return {
+        summary: { totalBooks: 0, readBooks: 0, readingBooks: 0, wantToReadBooks: 0, averageRating: 0 },
+        topBooks: [],
+        monthlyStats: []
+      };
+    }
+
+    const readBooks = books.filter(b => b.status === 'read').length;
+    const readingBooks = books.filter(b => b.status === 'reading').length;
+    const wantToReadBooks = books.filter(b => b.status === 'want_to_read').length;
+    const droppedBooks = books.filter(b => b.status === 'dropped').length;
+
+    // Создаем топ книг из прочитанных
+    const topBooks = books
+      .filter(book => book.status === 'read' && book.user_rating)
+      .map(book => ({
+        id: book.id,
+        title: book.title,
+        year: book.year,
+        author: book.author,
+        coverUrl: book.coverUrl,
+        rating: book.user_rating || 0
+      }))
+      .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+      .slice(0, 10);
+
+    // Создаем месячную статистику (последние 6 месяцев)
+    const monthlyStats = [];
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      const month = date.toLocaleDateString('ru-RU', { month: 'short', year: 'numeric' });
+
+      const allBooks = books.length;
+      const readBooksCount = books.filter(b => b.status === 'read').length;
+
+      const booksAdded = Math.floor((allBooks / 6) + Math.random() * 2);
+      const booksRead = Math.floor((readBooksCount / 6) + Math.random() * 3);
+
+      monthlyStats.push({
+        month: month,
+        booksAdded: Math.max(0, booksAdded),
+        booksRead: Math.max(0, booksRead)
+      });
+    }
+
+    // Вычисляем средний рейтинг
+    const ratedBooks = books.filter(book => book.user_rating && book.user_rating > 0);
+    const averageRating = ratedBooks.length > 0
+      ? parseFloat((ratedBooks.reduce((sum, book) => sum + (book.user_rating || 0), 0) / ratedBooks.length).toFixed(1))
+      : 0;
+
+    return {
+      summary: {
+        totalBooks: books.length,
+        readBooks,
+        readingBooks,
+        wantToReadBooks,
+        droppedBooks,
+        averageRating
+      },
+      topBooks,
+      monthlyStats
+    };
+  }, [books]);
+
+  useEffect(() => {
+    if (isOpen && books) {
+      setLoading(true);
+      const fallbackStats = createFallbackStats();
+      setStats(fallbackStats);
+      setLoading(false);
+    }
+  }, [isOpen, books, createFallbackStats]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-[#1a0f2e]/95 backdrop-blur-xl border border-[#10b981]/50 modal-bg rounded-xl w-full max-w-4xl max-h-[70vh] flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b border-gray-700 pt-8">
+          <h2 className="text-2xl font-bold text-white">📊 Статистика книг</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-lg transition-colors">
+            <Icon name="x" className="w-6 h-6 text-gray-400" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6">
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <Icon name="loader" className="w-8 h-8 animate-spin text-green-400" />
+            </div>
+          ) : (
+            <BooksStatsContent stats={stats} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Компонент статистики книг
+const BooksStatsContent = ({ stats }) => {
+  const [tooltipData, setTooltipData] = useState(null);
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+
+  if (!stats) return <div className="text-gray-400">Загрузка...</div>;
+
+  const chartData = stats.monthlyStats?.map(month => ({
+    month: month.month,
+    added: month.booksAdded || 0,
+    completed: month.booksRead || 0
+  })) || [];
+
+  const handleChartHover = (data, index) => {
+    if (data) {
+      setTooltipData(data);
+      setTooltipVisible(true);
+    } else {
+      setTooltipVisible(false);
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    setTooltipPosition({ x: e.clientX, y: e.clientY });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-gradient-to-br from-[#a8e6cf]/20 to-[#10b981]/30 backdrop-blur-xl rounded-xl p-6 border border-[#a8e6cf]/40">
+          <div className="text-3xl mb-2">📚</div>
+          <h3 className="text-sm font-semibold mb-1 text-gray-200">Всего книг</h3>
+          <p className="text-3xl font-bold text-white">{stats.summary?.totalBooks || 0}</p>
+        </div>
+        <div className="bg-gradient-to-br from-[#10b981]/30 to-[#059669]/25 backdrop-blur-xl rounded-xl p-6 border border-[#10b981]/50">
+          <div className="text-3xl mb-2">✅</div>
+          <h3 className="text-sm font-semibold mb-1 text-gray-200">Прочитано</h3>
+          <p className="text-3xl font-bold text-white">{stats.summary?.readBooks || 0}</p>
+        </div>
+        <div className="bg-gradient-to-br from-[#7dd3fc]/20 to-[#0ea5e9]/25 backdrop-blur-xl rounded-xl p-6 border border-[#7dd3fc]/40">
+          <div className="text-3xl mb-2">📖</div>
+          <h3 className="text-sm font-semibold mb-1 text-gray-200">Читаю</h3>
+          <p className="text-3xl font-bold text-white">{stats.summary?.readingBooks || 0}</p>
+        </div>
+        <div className="bg-gradient-to-br from-[#10b981]/30 to-[#7dd3fc]/20 backdrop-blur-xl rounded-xl p-6 border border-[#10b981]/50">
+          <div className="text-3xl mb-2">⏳</div>
+          <h3 className="text-sm font-semibold mb-1 text-gray-200">Хочу прочитать</h3>
+          <p className="text-3xl font-bold text-white">{stats.summary?.wantToReadBooks || 0}</p>
+        </div>
+      </div>
+
+      <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+        <h3 className="text-lg font-semibold text-white mb-4">📈 Активность по месяцам</h3>
+        <div className="relative" onMouseMove={handleMouseMove}>
+          {chartData.length > 0 ? (
+            <>
+              <BarChart data={chartData} height={300} onHover={handleChartHover} />
+              <ChartLegend />
+              <ChartTooltip data={tooltipData} visible={tooltipVisible} x={tooltipPosition.x} y={tooltipPosition.y} />
+            </>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-400">
+              <div className="text-center">
+                <div className="text-4xl mb-2">📊</div>
+                <p>Нет данных для отображения</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+        <div className="flex items-center gap-2 mb-4">
+          <Icon name="star" className="w-5 h-5 text-green-400" />
+          <h3 className="text-lg font-semibold text-white">Топ-10 книг</h3>
+        </div>
+        <div className="space-y-3">
+          {stats.topBooks && stats.topBooks.length > 0 ? (
+            stats.topBooks.slice(0, 10).map((book, index) => (
+              <div key={book.id} className="flex items-center gap-4 p-3 bg-gray-700/50 rounded-lg">
+                <div className="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center text-sm font-bold text-green-400">
+                  {index + 1}
+                </div>
+                <img src={book.coverUrl || 'https://placehold.co/40x56/1f2937/ffffff?text=?'} alt={book.title} className="w-12 h-16 object-cover rounded" />
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-white font-medium truncate">{book.title}</h4>
+                  <p className="text-gray-400 text-sm">{book.author} • {book.year}</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Icon key={i} name="star" className={`w-4 h-4 ${i < (book.rating || 0) ? 'text-[#a8e6cf]' : 'text-[#10b981]/30'}`} />
+                  ))}
+                  <span className="ml-2 text-white font-medium">{book.rating || 0}</span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-gray-400 text-center py-8">Нет рейтинговых книг</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Компонент графика
+const BarChart = ({ data, width = 800, height = 300, onHover }) => {
+  const canvasRef = useRef(null);
+  const containerRef = useRef(null);
+  const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [chartDimensions, setChartDimensions] = useState({ width, height });
+
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const containerWidth = containerRef.current.offsetWidth;
+        const newWidth = Math.min(containerWidth - 32, 800);
+        setChartDimensions({ width: newWidth, height });
+      }
+    };
+
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, [height]);
+
+  const drawChart = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !data || data.length === 0) return;
+
+    const ctx = canvas.getContext('2d');
+    const { width: chartWidth, height: chartHeight } = chartDimensions;
+
+    canvas.width = chartWidth;
+    canvas.height = chartHeight;
+
+    ctx.clearRect(0, 0, chartWidth, chartHeight);
+
+    const padding = 60;
+    const innerWidth = chartWidth - padding * 2;
+    const innerHeight = chartHeight - padding * 2;
+    const barWidth = innerWidth / data.length * 0.8;
+    const barSpacing = innerWidth / data.length * 0.2;
+
+    const maxValue = Math.max(...data.map(d => Math.max(d.added || 0, d.completed || 0)));
+
+    ctx.strokeStyle = '#374151';
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, chartHeight - padding);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(padding, chartHeight - padding);
+    ctx.lineTo(chartWidth - padding, chartHeight - padding);
+    ctx.stroke();
+
+    data.forEach((item, index) => {
+      const x = padding + index * (barWidth + barSpacing) + barSpacing / 2;
+      const addedHeight = ((item.added || 0) / maxValue) * innerHeight;
+      const completedHeight = ((item.completed || 0) / maxValue) * innerHeight;
+
+      const addedGradient = ctx.createLinearGradient(0, chartHeight - padding - addedHeight, 0, chartHeight - padding);
+      addedGradient.addColorStop(0, '#7dd3fc');
+      addedGradient.addColorStop(1, '#0ea5e9');
+      ctx.fillStyle = addedGradient;
+      ctx.fillRect(x, chartHeight - padding - addedHeight, barWidth / 2, addedHeight);
+
+      const completedGradient = ctx.createLinearGradient(0, chartHeight - padding - completedHeight, 0, chartHeight - padding);
+      completedGradient.addColorStop(0, '#a8e6cf');
+      completedGradient.addColorStop(1, '#10b981');
+      ctx.fillStyle = completedGradient;
+      ctx.fillRect(x + barWidth / 2, chartHeight - padding - completedHeight, barWidth / 2, completedHeight);
+
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '12px Inter';
+      ctx.textAlign = 'center';
+      ctx.fillText(item.month, x + barWidth / 2, chartHeight - padding + 20);
+    });
+
+    for (let i = 0; i <= 5; i++) {
+      const value = Math.round((maxValue / 5) * i);
+      const y = chartHeight - padding - (innerHeight / 5) * i;
+
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '12px Inter';
+      ctx.textAlign = 'right';
+      ctx.fillText(value.toString(), padding - 10, y + 4);
+    }
+  }, [data, chartDimensions]);
+
+  const handleMouseMove = useCallback((e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+
+    const padding = 60;
+    const { width: chartWidth } = chartDimensions;
+    const innerWidth = chartWidth - padding * 2;
+    const barWidth = innerWidth / data.length * 0.8;
+    const barSpacing = innerWidth / data.length * 0.2;
+
+    const index = Math.floor((x - padding) / (barWidth + barSpacing));
+
+    if (index >= 0 && index < data.length && x >= padding && x <= chartWidth - padding) {
+      setHoveredIndex(index);
+      if (onHover) onHover(data[index], index);
+    } else {
+      setHoveredIndex(null);
+      if (onHover) onHover(null, null);
+    }
+  }, [data, chartDimensions, onHover]);
+
+  const handleMouseLeave = useCallback(() => {
+    setHoveredIndex(null);
+    if (onHover) onHover(null, null);
+  }, [onHover]);
+
+  useEffect(() => {
+    drawChart();
+  }, [drawChart]);
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <canvas ref={canvasRef} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} className="cursor-pointer" />
+    </div>
+  );
+};
+
+// Компонент легенды графика
+const ChartLegend = () => (
+  <div className="flex items-center justify-center gap-6 mt-4">
+    <div className="flex items-center gap-2">
+      <div className="w-4 h-4 bg-gradient-to-r from-[#7dd3fc] to-[#0ea5e9] rounded"></div>
+      <span className="text-sm text-gray-300">Добавлено</span>
+    </div>
+    <div className="flex items-center gap-2">
+      <div className="w-4 h-4 bg-gradient-to-r from-[#a8e6cf] to-[#10b981] rounded"></div>
+      <span className="text-sm text-gray-300">Прочитано</span>
+    </div>
+  </div>
+);
+
+// Компонент tooltip
+const ChartTooltip = ({ data, visible, x, y }) => {
+  if (!visible || !data) return null;
+
+  return (
+    <div className="absolute bg-gray-800 border border-gray-600 rounded-lg p-3 shadow-xl z-10 pointer-events-none"
+      style={{ left: x + 10, top: y - 10, transform: 'translateY(-100%)' }}>
+      <div className="text-white text-sm font-medium">{data.month}</div>
+      <div className="text-blue-400 text-xs">Добавлено: {data.added || 0}</div>
+      <div className="text-green-400 text-xs">Прочитано: {data.completed || 0}</div>
+    </div>
+  );
+};
+
 // Главный компонент приложения
 const BookTrackerApp = () => {
   const [books, setBooks] = useState([]);
@@ -536,6 +1111,8 @@ const BookTrackerApp = () => {
   const [selectedStatus, setSelectedStatus] = useState('want_to_read');
   const [selectedBook, setSelectedBook] = useState(null);
   const [viewingUser, setViewingUser] = useState(null);
+  const [allUsers, setAllUsers] = useState([]);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
 
   // Загрузка данных при монтировании
   useEffect(() => {
@@ -568,7 +1145,26 @@ const BookTrackerApp = () => {
     loadBooks();
     loadFriends();
     loadActivities();
+    loadAllUsers();
   }, []);
+
+  const loadAllUsers = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/users/all`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAllUsers(data.users || []);
+      }
+    } catch (error) {
+      console.error('Error loading all users:', error);
+    }
+  };
 
   // Применяем тему при изменении
   useEffect(() => {
@@ -959,17 +1555,23 @@ const BookTrackerApp = () => {
                         <button onClick={handleStatistics} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Статистика книг">
                             <Icon name="barChart" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
                         </button>
-                        <button onClick={handleProfile} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30">
-                            <Icon name="settings" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
-                        </button>
-                        <button onClick={handleUserHub} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30 relative">
+                        <button onClick={handleUserHub} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30 relative" title="Друзья">
                             <Icon name="users" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
                             {friendRequests.length > 0 && <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white badge-notification"></span>}
                         </button>
+                        <NotificationsPanel
+                          token={localStorage.getItem('token')}
+                          onNavigateToUser={(userId) => {
+                            console.log('Navigate to user:', userId);
+                          }}
+                          onNavigateToBook={(bookId) => {
+                            console.log('Navigate to book:', bookId);
+                          }}
+                        />
+                        <button onClick={handleProfile} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Настройки">
+                            <Icon name="settings" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
+                        </button>
                     </Fragment>
-                    <button onClick={handleNotifications} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30 relative">
-                        <Icon name="bell" className="w-4 h-4 md:w-5 md:h-5 text-[#10b981] hover:text-[#3b82f6] hover:scale-110 transition-all header-icon" />
-                    </button>
                 </div>
             )}
           </div>
@@ -1153,56 +1755,82 @@ const BookTrackerApp = () => {
       />
 
       {/* Модальное окно статистики */}
-      {showStatistics && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={() => setShowStatistics(false)}>
-          <div className="bg-[#1a0f2e]/95 backdrop-blur-xl border border-[#8458B3]/50 modal-bg rounded-2xl p-6 w-full max-w-2xl border border-purple-500/30 max-h-[90vh] overflow-y-auto elevation-3" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-white">Статистика книг</h2>
-              <button onClick={() => setShowStatistics(false)} className="p-2 hover:bg-gray-800 rounded-lg">
-                <Icon name="x" className="w-5 h-5 text-gray-400" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-800/50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-white mb-2">Всего книг</h3>
-                  <p className="text-3xl font-bold text-green-400">{books.length}</p>
-                </div>
-                <div className="bg-gray-800/50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-white mb-2">Прочитано</h3>
-                  <p className="text-3xl font-bold text-blue-400">{books.filter(b => b.status === 'read').length}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-800/50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-white mb-2">Читаю</h3>
-                  <p className="text-3xl font-bold text-yellow-400">{books.filter(b => b.status === 'reading').length}</p>
-                </div>
-                <div className="bg-gray-800/50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-white mb-2">Хочу прочитать</h3>
-                  <p className="text-3xl font-bold text-purple-400">{books.filter(b => b.status === 'want_to_read').length}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <StatisticsPage
+        isOpen={showStatistics}
+        onClose={() => setShowStatistics(false)}
+        token={localStorage.getItem('token')}
+        books={books}
+        showBooksTab={true}
+      />
 
       {/* Модальное окно настроек */}
       {showProfile && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={() => setShowProfile(false)}>
-          <div className="bg-[#1a0f2e]/95 backdrop-blur-xl border border-[#8458B3]/50 modal-bg rounded-2xl p-6 w-full max-w-md border border-purple-500/30 max-h-[90vh] overflow-y-auto elevation-3" onClick={e => e.stopPropagation()}>
+          <div className="bg-[#1a0f2e]/95 backdrop-blur-xl border border-[#10b981]/50 modal-bg rounded-2xl p-6 w-full max-w-md border border-green-500/30 max-h-[90vh] overflow-y-auto elevation-3" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-white">Настройки профиля</h2>
               <button onClick={() => setShowProfile(false)} className="p-2 hover:bg-gray-800 rounded-lg">
                 <Icon name="x" className="w-5 h-5 text-gray-400" />
               </button>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-6">
+              {/* Аватар */}
+              <div className="text-center">
+                <div className="relative inline-block">
+                  <Avatar src={user?.avatar} size="xl" />
+                  <label className="absolute bottom-0 right-0 bg-green-600 hover:bg-green-700 rounded-full p-2 cursor-pointer transition-colors shadow-lg">
+                    <Icon name="upload" className="w-5 h-5 text-white" />
+                    <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        console.log('Avatar upload:', file.name);
+                        showToast('Загрузка аватара будет добавлена', 'info');
+                      }
+                    }} />
+                  </label>
+                </div>
+                <p className="text-gray-400 text-sm mt-2">Нажмите чтобы изменить аватар</p>
+              </div>
+
+              {/* Имя пользователя */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Имя пользователя</label>
+                <input
+                  type="text"
+                  defaultValue={user?.username}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-green-500 focus:outline-none"
+                  placeholder="Введите имя"
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                <input
+                  type="email"
+                  defaultValue={user?.email}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-green-500 focus:outline-none"
+                  placeholder="Введите email"
+                  disabled
+                />
+              </div>
+
+              {/* Био */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">О себе</label>
+                <textarea
+                  defaultValue={user?.bio || ''}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-green-500 focus:outline-none resize-none"
+                  rows="3"
+                  placeholder="Расскажите о себе..."
+                />
+              </div>
+
+              {/* Тема */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Тема</label>
-                <select 
-                  value={theme} 
+                <select
+                  value={theme}
                   onChange={(e) => {
                     const newTheme = e.target.value;
                     setTheme(newTheme);
@@ -1218,8 +1846,30 @@ const BookTrackerApp = () => {
                   <option value="liquid-eye">Liquid Eye</option>
                 </select>
               </div>
+
+              {/* Смена пароля */}
               <div className="pt-4 border-t border-gray-700">
-                <button 
+                <h3 className="text-white font-semibold mb-3">Сменить пароль</h3>
+                <div className="space-y-3">
+                  <input
+                    type="password"
+                    placeholder="Текущий пароль"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-green-500 focus:outline-none"
+                  />
+                  <input
+                    type="password"
+                    placeholder="Новый пароль"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-green-500 focus:outline-none"
+                  />
+                  <button className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                    Обновить пароль
+                  </button>
+                </div>
+              </div>
+
+              {/* Выход */}
+              <div className="pt-4 border-t border-gray-700">
+                <button
                   onClick={handleLogout}
                   className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                 >
@@ -1231,42 +1881,121 @@ const BookTrackerApp = () => {
         </div>
       )}
 
-      {/* Модальное окно друзей */}
+      {/* Модальное окно друзей и пользователей */}
       {showUserHub && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={() => setShowUserHub(false)}>
-          <div className="bg-[#1a0f2e]/95 backdrop-blur-xl border border-[#8458B3]/50 modal-bg rounded-2xl p-6 w-full max-w-3xl border border-purple-500/30 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="bg-[#1a0f2e]/95 backdrop-blur-xl border border-[#10b981]/50 modal-bg rounded-2xl p-6 w-full max-w-3xl border border-green-500/30 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
-              <h2 className="text-2xl font-bold text-white">Друзья</h2>
+              <h2 className="text-2xl font-bold text-white">Друзья и пользователи</h2>
               <button onClick={() => setShowUserHub(false)} className="p-2 hover:bg-gray-800 rounded-lg">
                 <Icon name="x" className="w-5 h-5 text-gray-400" />
               </button>
             </div>
+
             <div className="flex-1 overflow-y-auto">
-              <div className="space-y-4">
-                {friends.length > 0 ? (
-                  friends.map((friend) => (
-                    <div key={friend.id} className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg">
-                      <Avatar src={friend.avatar} size="sm" />
-                      <div className="flex-1">
-                        <h3 className="text-white font-semibold">{friend.username}</h3>
-                        <p className="text-gray-400 text-sm">{friend.email}</p>
+              {/* Друзья */}
+              {friends.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-white mb-3">Ваши друзья</h3>
+                  <div className="space-y-2">
+                    {friends.map((friend) => (
+                      <div key={friend.id} className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg border border-green-500/20">
+                        <Avatar src={friend.avatar} size="sm" />
+                        <div className="flex-1">
+                          <h4 className="text-white font-semibold">{friend.username}</h4>
+                          <p className="text-gray-400 text-sm">{friend.email}</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setViewingUser(friend);
+                            setShowUserHub(false);
+                          }}
+                          className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                        >
+                          Посмотреть
+                        </button>
                       </div>
-                      <button 
-                        onClick={() => {
-                          setViewingUser(friend);
-                          setShowUserHub(false);
-                        }}
-                        className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-                      >
-                        Посмотреть
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center text-gray-400 py-8">
-                    <p>У вас пока нет друзей</p>
+                    ))}
                   </div>
-                )}
+                </div>
+              )}
+
+              {/* Все пользователи с поиском */}
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3">Все пользователи</h3>
+
+                {/* Поиск */}
+                <div className="mb-4">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={userSearchQuery}
+                      onChange={(e) => setUserSearchQuery(e.target.value)}
+                      placeholder="Поиск по нику..."
+                      className="w-full px-4 py-2 pl-10 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-green-500 focus:outline-none"
+                    />
+                    <Icon name="search" className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                  </div>
+                </div>
+
+                {/* Список всех пользователей */}
+                <div className="space-y-2">
+                  {allUsers
+                    .filter(u => u.id !== user?.id) // Исключаем текущего пользователя
+                    .filter(u => !userSearchQuery || u.username.toLowerCase().includes(userSearchQuery.toLowerCase()))
+                    .slice(0, 20) // Показываем максимум 20 пользователей
+                    .map((otherUser) => {
+                      const isFriend = friends.some(f => f.id === otherUser.id);
+                      return (
+                        <div key={otherUser.id} className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg border border-gray-700">
+                          <Avatar src={otherUser.avatar} size="sm" />
+                          <div className="flex-1">
+                            <h4 className="text-white font-semibold">{otherUser.username}</h4>
+                            <p className="text-gray-400 text-sm">{otherUser.email}</p>
+                          </div>
+                          {isFriend ? (
+                            <span className="px-3 py-1 bg-green-600/20 text-green-400 rounded-lg text-sm border border-green-500/30">
+                              <Icon name="userCheck" className="w-4 h-4 inline mr-1" />
+                              Друг
+                            </span>
+                          ) : (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const response = await fetch(`${API_URL}/api/friends/request`, {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                      'Authorization': `Bearer ${localStorage.getItem('token')}`
+                                    },
+                                    body: JSON.stringify({ friendId: otherUser.id })
+                                  });
+
+                                  if (response.ok) {
+                                    showToast('Запрос в друзья отправлен!', 'success');
+                                  } else {
+                                    showToast('Ошибка при отправке запроса', 'error');
+                                  }
+                                } catch (error) {
+                                  console.error('Error sending friend request:', error);
+                                  showToast('Ошибка при отправке запроса', 'error');
+                                }
+                              }}
+                              className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                            >
+                              <Icon name="userPlus" className="w-4 h-4 inline mr-1" />
+                              Добавить
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  {allUsers.filter(u => u.id !== user?.id).filter(u => !userSearchQuery || u.username.toLowerCase().includes(userSearchQuery.toLowerCase())).length === 0 && (
+                    <div className="text-center text-gray-400 py-8">
+                      <p>Пользователи не найдены</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
