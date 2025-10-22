@@ -3347,7 +3347,23 @@ app.post('/api/books/:id/rate', authenticateToken, [
       DO UPDATE SET rating = $3, updated_at = NOW()
     `, [id, req.user.id, rating]);
     
-    res.json({ success: true, message: 'Рейтинг сохранен' });
+    // Получаем обновленную книгу с рейтингом
+    const updatedBook = await client.query(`
+      SELECT b.*, 
+             b.cover_url as "coverUrl",
+             COALESCE(
+               (SELECT AVG(rating) FROM book_ratings WHERE book_id = b.id), 
+               0
+             ) as avg_rating,
+             COALESCE(
+               (SELECT rating FROM book_ratings WHERE book_id = b.id AND user_id = $1), 
+               0
+             ) as user_rating
+      FROM books b 
+      WHERE b.id = $2 AND b.user_id = $1
+    `, [req.user.id, id]);
+    
+    res.json(updatedBook.rows[0]);
   } catch (error) {
     console.error('Ошибка оценки книги:', error);
     res.status(500).json({ error: 'Ошибка сервера' });
