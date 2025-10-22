@@ -3600,6 +3600,486 @@ app.post('/api/books/migrate', async (req, res) => {
   }
 });
 
+// === COMICS API ENDPOINTS ===
+
+// Rate limiting для Comics Vine API (1 запрос в секунду)
+const comicsVineRateLimiter = rateLimit({
+  windowMs: 1000, // 1 секунда
+  max: 1, // 1 запрос
+  message: 'Слишком много запросов к Comics Vine API. Попробуйте через секунду.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Кэш для Comics Vine запросов
+const comicsCache = new Map();
+const COMICS_CACHE_TTL = 3600000; // 1 час
+
+// Прокси для Comics Vine API с кэшированием
+app.get('/api/comics/search', comicsVineRateLimiter, async (req, res) => {
+  try {
+    const { q, limit = 10 } = req.query;
+    
+    if (!q) {
+      return res.status(400).json({ error: 'Query parameter is required' });
+    }
+
+    // Проверяем кэш
+    const cacheKey = `search_${q}_${limit}`;
+    const cachedResult = comicsCache.get(cacheKey);
+    
+    if (cachedResult && (Date.now() - cachedResult.timestamp < COMICS_CACHE_TTL)) {
+      console.log('Returning cached Comics Vine result for:', q);
+      return res.json(cachedResult.data);
+    }
+
+    const COMICS_VINE_API_KEY = process.env.COMICS_VINE_API;
+    
+    if (!COMICS_VINE_API_KEY) {
+      return res.status(500).json({ error: 'Comics Vine API key not configured' });
+    }
+
+    // Comics Vine API использует формат: https://comicvine.gamespot.com/api/search/
+    const response = await axios.get(`https://comicvine.gamespot.com/api/search/`, {
+      params: {
+        api_key: COMICS_VINE_API_KEY,
+        format: 'json',
+        query: q,
+        resources: 'volume', // Ищем серии комиксов (volumes)
+        limit: limit,
+        field_list: 'id,name,start_year,publisher,image,description,count_of_issues,deck'
+      },
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'Omnilogue Comics Tracker'
+      }
+    });
+
+    // Нормализуем данные комиксов
+    const normalizedComics = (response.data.results || []).map(comic => ({
+      id: `cv_${comic.id}`,
+      title: comic.name || 'Без названия',
+      publisher: comic.publisher?.name || 'Неизвестный издатель',
+      year: comic.start_year || null,
+      description: comic.deck || comic.description || '',
+      issueCount: comic.count_of_issues || 0,
+      coverUrl: comic.image?.medium_url || comic.image?.small_url || comic.image?.thumb_url || 'https://placehold.co/200x300/1f2937/ffffff?text=📚',
+      apiId: comic.id
+    }));
+
+    const result = { comics: normalizedComics };
+    
+    // Сохраняем в кэш
+    comicsCache.set(cacheKey, {
+      data: result,
+      timestamp: Date.now()
+    });
+
+    // Очищаем старые записи из кэша
+    if (comicsCache.size > 100) {
+      const firstKey = comicsCache.keys().next().value;
+      comicsCache.delete(firstKey);
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error('ComicsVine API error:', error.message);
+    if (error.response) {
+      console.error('ComicsVine API response:', error.response.data);
+    }
+    res.status(500).json({ 
+      error: 'Ошибка поиска комиксов',
+      comics: [] 
+    });
+  }
+});
+
+// Получить все комиксы пользователя
+app.get('/api/comics', authenticateToken, async (req, res) => {
+  let client;
+  try {
+    client = await pool.connect();
+    
+    const result = await client.query(`
+      SELECT 
+        c.*,
+        cr.rating as user_rating,
+        json_agg(
+          json_build_object(
+            'emoji', cre.emoji,
+            'user_id', cre.user_id,
+            'username', u.username
+          )
+        ) FILTER (WHERE cre.id IS NOT NULL) as reactions
+      FROM comics c
+      LEFT JOIN comic_ratings cr ON c.id = cr.comic_id AND cr.user_id = $1
+      LEFT JOIN comic_reactions cre ON c.id = cre.comic_id
+      LEFT JOIN users u ON cre.user_id = u.id
+      WHERE c.user_id = $1
+      GROUP BY c.id, cr.rating
+      ORDER BY c.created_at DESC
+    `, [req.user.id]);
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Ошибка получения комиксов:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+// Добавить комикс
+app.post('/api/comics', authenticateToken, async (req, res) => {
+  let client;
+  try {
+    const { title, publisher, year, description, issueCount, coverUrl, status = 'want_to_read', apiId } = req.body;
+    
+    client = await pool.connect();
+    
+    const result = await client.query(`
+      INSERT INTO comics (user_id, title, publisher, year, description, issue_count, cover_url, status, api_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *
+    `, [req.user.id, title, publisher, year, description, issueCount, coverUrl, status, apiId]);
+    
+    // Логируем активность
+    await client.query(`
+      INSERT INTO comic_activities (user_id, comic_id, action_type, details)
+      VALUES ($1, $2, 'add_comic', $3)
+    `, [req.user.id, result.rows[0].id, JSON.stringify({ title, status })]);
+    
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Ошибка добавления комикса:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+// Обновить комикс
+app.patch('/api/comics/:id', authenticateToken, async (req, res) => {
+  let client;
+  try {
+    const { id } = req.params;
+    const { status, review } = req.body;
+    
+    client = await pool.connect();
+    
+    // Получаем текущий статус для логирования
+    const currentComic = await client.query('SELECT title, status FROM comics WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+    
+    if (currentComic.rows.length === 0) {
+      return res.status(404).json({ error: 'Комикс не найден' });
+    }
+    
+    const updates = [];
+    const values = [];
+    let paramCount = 1;
+    
+    if (status) {
+      updates.push(`status = $${paramCount++}`);
+      values.push(status);
+    }
+    
+    if (review !== undefined) {
+      updates.push(`review = $${paramCount++}`);
+      values.push(review);
+    }
+    
+    updates.push(`updated_at = NOW()`);
+    values.push(id, req.user.id);
+    
+    const result = await client.query(`
+      UPDATE comics
+      SET ${updates.join(', ')}
+      WHERE id = $${paramCount++} AND user_id = $${paramCount++}
+      RETURNING *
+    `, values);
+    
+    // Логируем активность при изменении статуса
+    if (status && status !== currentComic.rows[0].status) {
+      await client.query(`
+        INSERT INTO comic_activities (user_id, comic_id, action_type, details)
+        VALUES ($1, $2, 'move_comic', $3)
+      `, [req.user.id, id, JSON.stringify({ title: currentComic.rows[0].title, status })]);
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Ошибка обновления комикса:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+// Удалить комикс
+app.delete('/api/comics/:id', authenticateToken, async (req, res) => {
+  let client;
+  try {
+    const { id } = req.params;
+    
+    client = await pool.connect();
+    
+    // Получаем данные комикса перед удалением для логирования
+    const comic = await client.query('SELECT title FROM comics WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+    
+    if (comic.rows.length === 0) {
+      return res.status(404).json({ error: 'Комикс не найден' });
+    }
+    
+    await client.query('DELETE FROM comics WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+    
+    // Логируем активность
+    await client.query(`
+      INSERT INTO comic_activities (user_id, comic_id, action_type, details)
+      VALUES ($1, $2, 'remove_comic', $3)
+    `, [req.user.id, id, JSON.stringify({ title: comic.rows[0].title })]);
+    
+    res.json({ message: 'Комикс удален' });
+  } catch (error) {
+    console.error('Ошибка удаления комикса:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+// Оценить комикс
+app.post('/api/comics/:id/rate', authenticateToken, async (req, res) => {
+  let client;
+  try {
+    const { id } = req.params;
+    const { rating } = req.body;
+    
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'Рейтинг должен быть от 1 до 5' });
+    }
+    
+    client = await pool.connect();
+    
+    // Получаем данные комикса для логирования
+    const comic = await client.query('SELECT title FROM comics WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+    
+    if (comic.rows.length === 0) {
+      return res.status(404).json({ error: 'Комикс не найден' });
+    }
+    
+    await client.query(`
+      INSERT INTO comic_ratings (comic_id, user_id, rating)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (comic_id, user_id)
+      DO UPDATE SET rating = $3, updated_at = NOW()
+    `, [id, req.user.id, rating]);
+    
+    // Получаем обновленный комикс
+    const result = await client.query(`
+      SELECT 
+        c.*,
+        cr.rating as user_rating
+      FROM comics c
+      LEFT JOIN comic_ratings cr ON c.id = cr.comic_id AND cr.user_id = $2
+      WHERE c.id = $1 AND c.user_id = $2
+    `, [id, req.user.id]);
+    
+    // Логируем активность
+    await client.query(`
+      INSERT INTO comic_activities (user_id, comic_id, action_type, details)
+      VALUES ($1, $2, 'rate_comic', $3)
+    `, [req.user.id, id, JSON.stringify({ title: comic.rows[0].title, rating })]);
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Ошибка оценки комикса:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+// Добавить реакцию на комикс
+app.post('/api/comics/:id/react', authenticateToken, async (req, res) => {
+  let client;
+  try {
+    const { id } = req.params;
+    const { emoji } = req.body;
+    
+    client = await pool.connect();
+    
+    await client.query(`
+      INSERT INTO comic_reactions (comic_id, user_id, emoji)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (comic_id, user_id)
+      DO UPDATE SET emoji = $3
+    `, [id, req.user.id, emoji]);
+    
+    res.json({ message: 'Реакция добавлена' });
+  } catch (error) {
+    console.error('Ошибка добавления реакции:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+// Поиск по своим комиксам
+app.get('/api/comics/search-my', authenticateToken, async (req, res) => {
+  let client;
+  try {
+    const { q } = req.query;
+    
+    if (!q) {
+      return res.status(400).json({ error: 'Query parameter is required' });
+    }
+    
+    client = await pool.connect();
+    
+    const result = await client.query(`
+      SELECT 
+        c.*,
+        cr.rating as user_rating
+      FROM comics c
+      LEFT JOIN comic_ratings cr ON c.id = cr.comic_id AND cr.user_id = $1
+      WHERE c.user_id = $1 AND (
+        LOWER(c.title) LIKE LOWER($2) OR
+        LOWER(c.publisher) LIKE LOWER($2)
+      )
+      ORDER BY c.created_at DESC
+      LIMIT 20
+    `, [req.user.id, `%${q}%`]);
+    
+    res.json({ comics: result.rows });
+  } catch (error) {
+    console.error('Ошибка поиска по своим комиксам:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+// Получить активность друзей по комиксам
+app.get('/api/friends/activity', authenticateToken, async (req, res) => {
+  let client;
+  try {
+    const { type } = req.query;
+    
+    client = await pool.connect();
+    
+    if (type === 'comic') {
+      const result = await client.query(`
+        SELECT 
+          ca.*,
+          u.username,
+          u.id as user_id
+        FROM comic_activities ca
+        JOIN users u ON ca.user_id = u.id
+        JOIN friends f ON (f.user_id = $1 AND f.friend_id = ca.user_id) OR (f.friend_id = $1 AND f.user_id = ca.user_id)
+        WHERE f.status = 'accepted' AND u.show_activity = true
+        ORDER BY ca.created_at DESC LIMIT 12
+      `, [req.user.id]);
+      
+      res.json({ activities: result.rows });
+    } else {
+      res.json({ activities: [] });
+    }
+  } catch (error) {
+    console.error('Ошибка получения активности друзей:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+// Создать таблицы для комиксов (миграция)
+app.post('/api/comics/migrate', async (req, res) => {
+  let client;
+  try {
+    client = await pool.connect();
+    
+    // Создаем таблицу комиксов
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS comics (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title VARCHAR(500) NOT NULL,
+        publisher VARCHAR(300) NOT NULL,
+        year INTEGER,
+        api_id VARCHAR(50),
+        cover_url TEXT,
+        description TEXT,
+        issue_count INTEGER,
+        review TEXT,
+        status VARCHAR(20) NOT NULL DEFAULT 'want_to_read',
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    
+    // Создаем таблицу рейтингов комиксов
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS comic_ratings (
+        id SERIAL PRIMARY KEY,
+        comic_id INTEGER NOT NULL REFERENCES comics(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(comic_id, user_id)
+      )
+    `);
+    
+    // Создаем таблицу реакций на комиксы
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS comic_reactions (
+        id SERIAL PRIMARY KEY,
+        comic_id INTEGER NOT NULL REFERENCES comics(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        emoji VARCHAR(10) NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(comic_id, user_id)
+      )
+    `);
+    
+    // Создаем таблицу активности по комиксам
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS comic_activities (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        comic_id INTEGER REFERENCES comics(id) ON DELETE CASCADE,
+        action_type VARCHAR(50) NOT NULL,
+        details JSONB,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    
+    // Создаем индексы
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_comics_user_id ON comics(user_id);
+      CREATE INDEX IF NOT EXISTS idx_comics_status ON comics(status);
+      CREATE INDEX IF NOT EXISTS idx_comic_ratings_comic_id ON comic_ratings(comic_id);
+      CREATE INDEX IF NOT EXISTS idx_comic_reactions_comic_id ON comic_reactions(comic_id);
+      CREATE INDEX IF NOT EXISTS idx_comic_activities_user_id ON comic_activities(user_id);
+      CREATE INDEX IF NOT EXISTS idx_comic_activities_created_at ON comic_activities(created_at);
+    `);
+    
+    client.release();
+    res.json({ 
+      status: 'OK', 
+      message: 'Таблицы для комиксов созданы успешно' 
+    });
+  } catch (error) {
+    console.error('Ошибка миграции комиксов:', error);
+    res.status(500).json({ 
+      status: 'Error', 
+      error: error.message 
+    });
+  } finally {
+    if (client) client.release();
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Сервер на порту ${PORT}`);
 });

@@ -8,14 +8,14 @@ const getApiUrl = () => {
 };
 const API_URL = getApiUrl();
 const REACTION_EMOJIS = ['😍', '🔥', '👍', '😮', '😂', '👎', '❤️', '🤔', '😢', '🤯'];
-const BOOKS_PER_COLUMN = 5;
+const COMICS_PER_COLUMN = 5;
 
 // --- OpenLibrary API интеграция через наш сервер ---
-const OpenLibraryAPI = {
-  // Поиск книг по названию или автору через наш прокси
-  async searchBooks(query, limit = 10) {
+const ComicsVineAPI = {
+  // Поиск комиксов по названию или автору через наш прокси
+  async searchComics(query, limit = 10) {
     try {
-      const response = await fetch(`${API_URL}/api/books/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+      const response = await fetch(`${API_URL}/api/comics/search?q=${encodeURIComponent(query)}&limit=${limit}`);
       if (!response.ok) throw new Error('Search failed');
       const data = await response.json();
       return data.books || [];
@@ -59,14 +59,14 @@ const Avatar = ({ src, size = 'md', className = '' }) => {
   );
 };
 
-// Компонент поиска книг
-const BookSearchModal = ({ isOpen, onClose, onAddBook, status = 'want_to_read' }) => {
+// Компонент поиска комиксов
+const ComicSearchModal = ({ isOpen, onClose, onAddComic, status = 'want_to_read' }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [selectedBook, setSelectedBook] = useState(null);
+  const [selectedComic, setSelectedComic] = useState(null);
 
-  const searchBooks = async () => {
+  const searchComics = async () => {
     if (!query.trim()) {
       setResults([]);
       return;
@@ -74,8 +74,8 @@ const BookSearchModal = ({ isOpen, onClose, onAddBook, status = 'want_to_read' }
     
     setLoading(true);
     try {
-      const books = await OpenLibraryAPI.searchBooks(query);
-      setResults(books);
+      const comics = await ComicsVineAPI.searchComics(query);
+      setResults(comics);
     } catch (error) {
       console.error('Search error:', error);
       setResults([]);
@@ -92,17 +92,17 @@ const BookSearchModal = ({ isOpen, onClose, onAddBook, status = 'want_to_read' }
     }
 
     const timeoutId = setTimeout(() => {
-      searchBooks();
+      searchComics();
     }, 300); // Задержка 300мс
 
     return () => clearTimeout(timeoutId);
   }, [query]);
 
-  const handleAddBook = () => {
-    if (selectedBook) {
-      onAddBook(selectedBook, status);
+  const handleAddComic = () => {
+    if (selectedComic) {
+      onAddComic(selectedComic, status);
       onClose();
-      setSelectedBook(null);
+      setSelectedComic(null);
       setQuery('');
       setResults([]);
     }
@@ -115,7 +115,7 @@ const BookSearchModal = ({ isOpen, onClose, onAddBook, status = 'want_to_read' }
       <div className="bg-[#1a0f2e] rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-[#8458B3]/30">
         <div className="p-6 border-b border-[#8458B3]/30">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-white">Поиск книг</h2>
+            <h2 className="text-2xl font-bold text-white">Поиск комиксов</h2>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-200 transition-colors"
@@ -131,7 +131,7 @@ const BookSearchModal = ({ isOpen, onClose, onAddBook, status = 'want_to_read' }
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Введите название книги или автора..."
+              placeholder="Введите название комиксови или автора..."
               className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-transparent pr-10"
             />
             {loading && (
@@ -146,19 +146,19 @@ const BookSearchModal = ({ isOpen, onClose, onAddBook, status = 'want_to_read' }
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600">Поиск книг...</span>
+              <span className="ml-3 text-gray-600">Поиск комиксов...</span>
             </div>
           ) : results.length > 0 ? (
             <div className="grid gap-4">
-              {results.map((book) => (
+              {results.map((comic) => (
                 <div
                   key={book.id}
                   className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                    selectedBook?.id === book.id 
+                    selectedComic?.id === book.id 
                       ? 'border-green-500 bg-green-500/10' 
                       : 'border-gray-600 hover:border-gray-500 bg-gray-800'
                   }`}
-                  onClick={() => setSelectedBook(book)}
+                  onClick={() => setSelectedComic(comic)}
                 >
                   <div className="flex gap-4">
                     <img
@@ -171,7 +171,7 @@ const BookSearchModal = ({ isOpen, onClose, onAddBook, status = 'want_to_read' }
                     />
                     <div className="flex-1">
                       <h3 className="font-semibold text-white line-clamp-2">{book.title}</h3>
-                      <p className="text-gray-300 text-sm">{book.author}</p>
+                      <p className="text-gray-300 text-sm">{book.publisher}</p>
                       {book.year && <p className="text-gray-400 text-sm">{book.year}</p>}
                       {book.pages && <p className="text-gray-400 text-sm">{book.pages} стр.</p>}
                     </div>
@@ -181,21 +181,21 @@ const BookSearchModal = ({ isOpen, onClose, onAddBook, status = 'want_to_read' }
             </div>
           ) : query && !loading ? (
             <div className="text-center text-gray-500 py-8">
-              Книги не найдены. Попробуйте другой запрос.
+              Комиксы не найдены. Попробуйте другой запрос.
             </div>
           ) : null}
         </div>
 
-        {selectedBook && (
+        {selectedComic && (
           <div className="p-6 border-t border-gray-600 bg-gray-800">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-300">Выбрана книга:</p>
-                <p className="font-semibold text-white">{selectedBook.title}</p>
-                <p className="text-sm text-gray-300">{selectedBook.author}</p>
+                <p className="text-sm text-gray-300">Выбран комикс:</p>
+                <p className="font-semibold text-white">{selectedComic.title}</p>
+                <p className="text-sm text-gray-300">{selectedComic.publisher}</p>
               </div>
               <button
-                onClick={handleAddBook}
+                onClick={handleAddComic}
                 className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
               >
                 Добавить
@@ -381,8 +381,8 @@ const NotificationsPanel = ({ token, onNavigateToUser }) => {
   );
 };
 
-// Компонент активности друзей для книг
-function BookActivityFeed({ token, onNavigateToUser }) {
+// Компонент активности друзей для комиксов
+function ComicActivityFeed({ token, onNavigateToUser }) {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -399,7 +399,7 @@ function BookActivityFeed({ token, onNavigateToUser }) {
           setActivities(data.activities || []);
         }
       } catch (err) {
-        console.error("Failed to fetch book activities", err);
+        console.error("Failed to fetch comic activities", err);
       } finally {
         setLoading(false);
       }
@@ -430,21 +430,21 @@ function BookActivityFeed({ token, onNavigateToUser }) {
     
     switch (action_type) {
       case 'add_book':
-        return <>{clickableUsername} добавил книгу {bookName} в <span className="italic">{boardTitles[details.status]}</span></>;
+        return <>{clickableUsername} добавил комикс {bookName} в <span className="italic">{boardTitles[details.status]}</span></>;
       case 'move_book':
-        return <>{clickableUsername} переместил книгу {bookName} в <span className="italic">{boardTitles[details.status]}</span></>;
+        return <>{clickableUsername} переместил комикс {bookName} в <span className="italic">{boardTitles[details.status]}</span></>;
       case 'rate_book':
-        return <>{clickableUsername} оценил книгу {bookName} на {details.rating}⭐</>;
+        return <>{clickableUsername} оценил комикс {bookName} на {details.rating}⭐</>;
       case 'remove_book':
-        return <>{clickableUsername} удалил книгу {bookName}</>;
+        return <>{clickableUsername} удалил комикс {bookName}</>;
       default:
-        return <>{clickableUsername} выполнил действие с книгой {bookName}</>;
+        return <>{clickableUsername} выполнил действие с комиксовой {bookName}</>;
     }
   };
   
   return (
     <div className="bg-gradient-to-br from-[#10b981]/30 to-[#059669]/25 backdrop-blur-xl rounded-xl border border-[#10b981]/40 p-6">
-      <h3 className="text-xl font-bold text-white mb-4">Активность друзей по книгам</h3>
+      <h3 className="text-xl font-bold text-white mb-4">Активность друзей по комиксовам</h3>
       {loading ? (
         <div className="w-full flex items-center justify-center p-10">
           <Icon name="loader" className="w-8 h-8 text-green-400 animate-spin"/>
@@ -459,21 +459,21 @@ function BookActivityFeed({ token, onNavigateToUser }) {
           ))}
         </div>
       ) : (
-        <p className="text-gray-400 text-center py-8">Пока нет активности от ваших друзей по книгам.</p>
+        <p className="text-gray-400 text-center py-8">Пока нет активности от ваших друзей по комиксовам.</p>
       )}
     </div>
   );
 }
 
-// Компонент модального окна для деталей книги
-function BookDetailsModal({ book, onClose, onUpdate, onReact, user }) {
+// Компонент модального окна для деталей комиксови
+function ComicDetailsModal({ book, onClose, onUpdate, onReact, user }) {
   if (!book) return null;
   const userReaction = (book.reactions || []).find(r => r.user_id === user?.id);
   
   // Локальное состояние для мгновенного обновления рейтинга
   const [localRating, setLocalRating] = useState(book.user_rating || 0);
 
-  // Синхронизируем локальное состояние с обновленной книгой
+  // Синхронизируем локальное состояние с обновленной комиксовой
   useEffect(() => {
     setLocalRating(book.user_rating || 0);
   }, [book.user_rating]);
@@ -559,17 +559,17 @@ function BookDetailsModal({ book, onClose, onUpdate, onReact, user }) {
   );
 }
 
-// Компонент карточки книги (скопирован с MediaCard из movies.js)
-function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect }) {
+// Компонент карточки комиксови (скопирован с MediaCard из movies.js)
+function ComicCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect }) {
   return (
     <div
       draggable={true}
       onDragStart={(e) => {
-        e.dataTransfer.setData('text/plain', JSON.stringify(book));
+        e.dataTransfer.setData('text/plain', JSON.stringify(comic));
       }}
       onClick={() => {
         // Открываем модальное окно для редактирования/оценки
-        onSelect(book);
+        onSelect(comic);
       }}
       data-card-id={book.id}
       className="bg-[#1a0f2e]/70 rounded-xl border border-[#8458B3]/30 hover:border-[#a0d2eb] hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(160,210,235,0.4)] transition-all duration-200 cursor-pointer flex gap-3 p-2 group relative elevation-1 hover:elevation-2 shadow-transition media-card backdrop-blur-xl"
@@ -606,7 +606,7 @@ function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect })
         <div>
           <h3 className="text-white font-semibold text-sm line-clamp-2 mb-1" style={{fontWeight: '600'}}>{book.title}</h3>
           {book.year && <p className="text-xs" style={{color: 'rgba(208, 189, 244, 0.8)'}}>{book.year}</p>}
-          <p className="text-xs text-gray-400 mb-1">{book.author}</p>
+          <p className="text-xs text-gray-400 mb-1">{book.publisher}</p>
           {/* Рейтинг под названием */}
           {book.user_rating && book.user_rating > 0 && (
             <div className="flex gap-0.5 mt-1">
@@ -676,7 +676,7 @@ function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect })
 }
 
 // Компонент колонки
-const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, onReact, onMove, onAddBook, onSelect }) => {
+const ComicColumn = ({ title, status, comics, onDrop, onEdit, onDelete, onRate, onReact, onMove, onAddComic, onSelect }) => {
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDragOver = (e) => {
@@ -757,16 +757,16 @@ const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, on
       <div className="flex items-center justify-between mb-4">
         <h2 className={`text-lg font-semibold ${colors.text}`}>{title}</h2>
         <button
-          onClick={onAddBook}
+          onClick={onAddComic}
           className={`${colors.button} text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors hover:scale-105 active:scale-95`}
-          title="Добавить книгу"
+          title="Добавить комикс"
         >
           +
         </button>
       </div>
       <div className="space-y-4">
-        {books.map((book) => (
-          <BookCard
+        {comics.map((comic) => (
+          <ComicCard
             key={book.id}
             book={book}
             onEdit={onEdit}
@@ -777,12 +777,12 @@ const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, on
             onSelect={onSelect}
           />
         ))}
-        {books.length === 0 && (
+        {comics.length === 0 && (
           <div className="text-center text-gray-400 py-8">
             <svg className="w-12 h-12 mx-auto mb-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            <p className="text-sm">Перетащите книгу сюда</p>
+            <p className="text-sm">Перетащите комикс сюда</p>
           </div>
         )}
       </div>
@@ -791,13 +791,13 @@ const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, on
 };
 
 // Главный компонент приложения
-const BookTrackerApp = () => {
-  const [books, setBooks] = useState([]);
+const ComicsTrackerApp = () => {
+  const [comics, setComics] = useState([]);
   const [user, setUser] = useState(null);
   const [friends, setFriends] = useState([]);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editingBook, setEditingBook] = useState(null);
+  const [editingComic, setEditingComic] = useState(null);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState('default');
   const [showStatistics, setShowStatistics] = useState(false);
@@ -808,7 +808,7 @@ const BookTrackerApp = () => {
   const [myBooksSearchResults, setMyBooksSearchResults] = useState([]);
   const [myBooksSearching, setMyBooksSearching] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState('want_to_read');
-  const [selectedBook, setSelectedBook] = useState(null);
+  const [selectedComic, setSelectedComic] = useState(null);
   const [viewingUser, setViewingUser] = useState(null);
   const [profileData, setProfileData] = useState({ username: '', bio: '', currentPassword: '', newPassword: '' });
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -845,7 +845,7 @@ const BookTrackerApp = () => {
       return;
     }
 
-    loadBooks();
+    loadComics();
     loadFriends();
   }, []);
 
@@ -854,18 +854,18 @@ const BookTrackerApp = () => {
     document.body.className = theme;
   }, [theme]);
 
-  const loadBooks = async () => {
+  const loadComics = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
-      console.log('No token found, skipping books load');
+      console.log('No token found, skipping comics load');
       setLoading(false);
       return;
     }
 
-    console.log('Loading books with token:', token.substring(0, 10) + '...');
+    console.log('Loading comics with token:', token.substring(0, 10) + '...');
     
     try {
-      const response = await fetch(`${API_URL}/api/books`, {
+      const response = await fetch(`${API_URL}/api/comics`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -873,9 +873,9 @@ const BookTrackerApp = () => {
       
       if (response.ok) {
         const booksData = await response.json();
-        console.log('Loaded books:', booksData.length);
+        console.log('Loaded comics:', booksData.length);
         console.log('Books data:', booksData);
-        setBooks(booksData);
+        setComics(comicsData);
       } else if (response.status === 401) {
         console.log('Token invalid, redirecting to login');
         localStorage.removeItem('token');
@@ -888,7 +888,7 @@ const BookTrackerApp = () => {
         console.error('Error response:', errorText);
       }
     } catch (error) {
-      console.error('Error loading books:', error);
+      console.error('Error loading comics:', error);
     } finally {
       setLoading(false);
     }
@@ -924,7 +924,7 @@ const BookTrackerApp = () => {
     if (!token) return;
 
     try {
-      const url = userId ? `${API_URL}/api/user/${userId}/books` : `${API_URL}/api/books`;
+      const url = userId ? `${API_URL}/api/user/${userId}/books` : `${API_URL}/api/comics`;
       const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -932,7 +932,7 @@ const BookTrackerApp = () => {
       if (response.ok) {
         const booksData = await response.json();
         if (userId) {
-          // Загружаем книги друга
+          // Загружаем комиксови друга
           // Сначала загружаем данные пользователя
           const userResponse = await fetch(`${API_URL}/api/users/${userId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -944,11 +944,11 @@ const BookTrackerApp = () => {
           } else {
             setViewingUser({ id: userId, username: 'Друг' });
           }
-          setBooks(booksData);
+          setComics(comicsData);
         } else {
-          // Загружаем свои книги
+          // Загружаем свои комиксови
           setViewingUser(null);
-          setBooks(booksData);
+          setComics(comicsData);
         }
       } else if (response.status === 401) {
         localStorage.removeItem('token');
@@ -957,7 +957,7 @@ const BookTrackerApp = () => {
         return;
       }
     } catch (error) {
-      console.error('Error loading user books:', error);
+      console.error('Error loading user comics:', error);
     }
   };
 
@@ -970,7 +970,7 @@ const BookTrackerApp = () => {
 
     setMyBooksSearching(true);
     try {
-      const response = await fetch(`${API_URL}/api/books/search-my?q=${encodeURIComponent(query)}`, {
+      const response = await fetch(`${API_URL}/api/comics/search-my?q=${encodeURIComponent(query)}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -979,13 +979,13 @@ const BookTrackerApp = () => {
         setMyBooksSearchResults(data.books || []);
       }
     } catch (error) {
-      console.error('Error searching my books:', error);
+      console.error('Error searching my comics:', error);
     } finally {
       setMyBooksSearching(false);
     }
   };
 
-  const addBook = async (bookData, status = 'want_to_read') => {
+  const addComic = async (bookData, status = 'want_to_read') => {
     const token = localStorage.getItem('token');
     if (!token) {
       console.error('No token found for adding book');
@@ -995,7 +995,7 @@ const BookTrackerApp = () => {
     console.log('Adding book:', bookData, 'with status:', status);
     
     try {
-      const response = await fetch(`${API_URL}/api/books`, {
+      const response = await fetch(`${API_URL}/api/comics`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1007,37 +1007,37 @@ const BookTrackerApp = () => {
         })
       });
 
-      console.log('Add book response status:', response.status);
+      console.log('Add comic response status:', response.status);
       
       if (response.ok) {
         const newBook = await response.json();
         console.log('Book added successfully:', newBook);
         
         // Принудительно обновляем состояние
-        setBooks(prev => {
+        setComics(prev => {
           const updatedBooks = [...prev, newBook];
-          console.log('Updated books state:', updatedBooks);
+          console.log('Updated comics state:', updatedBooks);
           return updatedBooks;
         });
         
         showToast('Книга добавлена!', 'success');
       } else {
         const errorText = await response.text();
-        console.error('Add book error:', response.status, errorText);
-        showToast('Ошибка при добавлении книги', 'error');
+        console.error('Add comic error:', response.status, errorText);
+        showToast('Ошибка при добавлении комиксови', 'error');
       }
     } catch (error) {
       console.error('Error adding book:', error);
-      showToast('Ошибка при добавлении книги', 'error');
+      showToast('Ошибка при добавлении комиксови', 'error');
     }
   };
 
-  const updateBookStatus = async (bookId, newStatus) => {
+  const updateComicStatus = async (bookId, newStatus) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/books/${bookId}`, {
+      const response = await fetch(`${API_URL}/api/comics/${bookId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1047,43 +1047,43 @@ const BookTrackerApp = () => {
       });
 
       if (response.ok) {
-        setBooks(prev => prev.map(book => 
+        setComics(prev => prev.map(book => 
           book.id === bookId ? { ...book, status: newStatus } : book
         ));
-        showToast('Статус книги обновлен!', 'success');
+        showToast('Статус комиксови обновлен!', 'success');
       }
     } catch (error) {
-      console.error('Error updating book status:', error);
+      console.error('Error updating comic status:', error);
       showToast('Ошибка при обновлении статуса', 'error');
     }
   };
 
-  const deleteBook = async (bookId) => {
+  const deleteComic = async (bookId) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/books/${bookId}`, {
+      const response = await fetch(`${API_URL}/api/comics/${bookId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {
-        setBooks(prev => prev.filter(book => book.id !== bookId));
+        setComics(prev => prev.filter(book => book.id !== bookId));
         showToast('Книга удалена', 'info');
       }
     } catch (error) {
       console.error('Error deleting book:', error);
-      showToast('Ошибка при удалении книги', 'error');
+      showToast('Ошибка при удалении комиксови', 'error');
     }
   };
 
-  const rateBook = async (bookId, rating) => {
+  const rateComic = async (bookId, rating) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/books/${bookId}/rate`, {
+      const response = await fetch(`${API_URL}/api/comics/${bookId}/rate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1093,7 +1093,7 @@ const BookTrackerApp = () => {
       });
 
       if (response.ok) {
-        setBooks(prev => prev.map(book => 
+        setComics(prev => prev.map(book => 
           book.id === bookId ? { ...book, rating } : book
         ));
         showToast('Рейтинг сохранен!', 'success');
@@ -1104,12 +1104,12 @@ const BookTrackerApp = () => {
     }
   };
 
-  const reactToBook = async (bookId, emoji) => {
+  const reactToComic = async (bookId, emoji) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/books/${bookId}/react`, {
+      const response = await fetch(`${API_URL}/api/comics/${bookId}/react`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1127,14 +1127,14 @@ const BookTrackerApp = () => {
     }
   };
 
-  const updateBook = async (book, updates) => {
+  const updateComic = async (book, updates) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
       // Если обновляется рейтинг, используем специальный endpoint
       if (updates.user_rating !== undefined) {
-        const response = await fetch(`${API_URL}/api/books/${book.id}/rate`, {
+        const response = await fetch(`${API_URL}/api/comics/${book.id}/rate`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1145,7 +1145,7 @@ const BookTrackerApp = () => {
 
         if (response.ok) {
           const updatedBook = await response.json();
-          setBooks(prev => prev.map(b => b.id === book.id ? updatedBook : b));
+          setComics(prev => prev.map(b => b.id === book.id ? updatedBook : b));
           showToast('Рейтинг сохранен!', 'success');
         } else {
           showToast('Ошибка при сохранении рейтинга', 'error');
@@ -1154,7 +1154,7 @@ const BookTrackerApp = () => {
       }
 
       // Для других обновлений используем обычный PATCH
-      const response = await fetch(`${API_URL}/api/books/${book.id}`, {
+      const response = await fetch(`${API_URL}/api/comics/${book.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1165,12 +1165,12 @@ const BookTrackerApp = () => {
 
       if (response.ok) {
         const updatedBook = await response.json();
-        setBooks(prev => prev.map(b => b.id === book.id ? updatedBook : b));
+        setComics(prev => prev.map(b => b.id === book.id ? updatedBook : b));
         showToast('Книга обновлена!', 'success');
       }
     } catch (error) {
       console.error('Error updating book:', error);
-      showToast('Ошибка при обновлении книги', 'error');
+      showToast('Ошибка при обновлении комиксови', 'error');
     }
   };
 
@@ -1332,12 +1332,12 @@ const BookTrackerApp = () => {
     }
   };
 
-  // Группировка книг по статусам
-  const booksByStatus = {
-    want_to_read: books.filter(book => book.status === 'want_to_read'),
-    reading: books.filter(book => book.status === 'reading'),
-    read: books.filter(book => book.status === 'read'),
-    dropped: books.filter(book => book.status === 'dropped')
+  // Группировка комиксов по статусам
+  const comicsByStatus = {
+    want_to_read: comics.filter(book => book.status === 'want_to_read'),
+    reading: comics.filter(book => book.status === 'reading'),
+    read: comics.filter(book => book.status === 'read'),
+    dropped: comics.filter(book => book.status === 'dropped')
   };
 
   if (loading) {
@@ -1382,15 +1382,15 @@ const BookTrackerApp = () => {
                 >
                   🎬 MovieTracker
                 </a>
-                <span className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400">
-                  📚 BookTracker
-                </span>
                 <a
-                  href="/comics.html"
-                  className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 hover:scale-105 transition-transform cursor-pointer"
+                  href="/books.html"
+                  className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 hover:scale-105 transition-transform cursor-pointer"
                 >
-                  📚 ComicsTracker
+                  📚 BookTracker
                 </a>
+                <span className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-red-400 to-pink-400">
+                  📚 ComicsTracker
+                </span>
               </div>
             </div>
             {user && (
@@ -1400,7 +1400,7 @@ const BookTrackerApp = () => {
                         <span className="text-white font-semibold text-sm md:text-base block">{user.username}</span>
                     </div>
                     <Fragment>
-                        <button onClick={handleStatistics} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Статистика книг">
+                        <button onClick={handleStatistics} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Статистика комиксов">
                             <Icon name="barChart" className="w-4 h-4 md:w-5 md:h-5 text-green-400 hover:text-green-300 hover:scale-110 transition-all header-icon" />
                         </button>
                         <button onClick={handleProfile} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30">
@@ -1435,98 +1435,98 @@ const BookTrackerApp = () => {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              Назад к моим книгам
+              Назад к моим комиксам
             </button>
             <h2 className="text-xl font-semibold text-white">
-              Книги {viewingUser.username || 'друга'}
+              Комиксы {viewingUser.username || 'друга'}
             </h2>
           </div>
         )}
 
-        {/* Доска книг */}
+        {/* Доска комиксов */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <BookColumn
+          <ComicColumn
             title="📖 Хочу прочитать"
             status="want_to_read"
-            books={booksByStatus.want_to_read}
-            onDrop={(book) => updateBookStatus(book.id, 'want_to_read')}
-            onEdit={(book) => {
-              setEditingBook(book);
+            comics={comicsByStatus.want_to_read}
+            onDrop={(comic) => updateComicStatus(book.id, 'want_to_read')}
+            onEdit={(comic) => {
+              setEditingComic(comic);
               setShowEditModal(true);
             }}
-            onDelete={deleteBook}
-            onRate={rateBook}
-            onReact={reactToBook}
-            onMove={updateBookStatus}
-            onAddBook={() => {
+            onDelete={deleteComic}
+            onRate={rateComic}
+            onReact={reactToComic}
+            onMove={updateComicStatus}
+            onAddComic={() => {
               setSelectedStatus('want_to_read');
               setShowSearchModal(true);
             }}
-            onSelect={setSelectedBook}
+            onSelect={setSelectedComic}
           />
           
-          <BookColumn
+          <ComicColumn
             title="📚 Читаю"
             status="reading"
-            books={booksByStatus.reading}
-            onDrop={(book) => updateBookStatus(book.id, 'reading')}
-            onEdit={(book) => {
-              setEditingBook(book);
+            comics={comicsByStatus.reading}
+            onDrop={(comic) => updateComicStatus(book.id, 'reading')}
+            onEdit={(comic) => {
+              setEditingComic(comic);
               setShowEditModal(true);
             }}
-            onDelete={deleteBook}
-            onRate={rateBook}
-            onReact={reactToBook}
-            onMove={updateBookStatus}
-            onAddBook={() => {
+            onDelete={deleteComic}
+            onRate={rateComic}
+            onReact={reactToComic}
+            onMove={updateComicStatus}
+            onAddComic={() => {
               setSelectedStatus('reading');
               setShowSearchModal(true);
             }}
-            onSelect={setSelectedBook}
+            onSelect={setSelectedComic}
           />
           
-          <BookColumn
+          <ComicColumn
             title="✅ Прочитал"
             status="read"
-            books={booksByStatus.read}
-            onDrop={(book) => updateBookStatus(book.id, 'read')}
-            onEdit={(book) => {
-              setEditingBook(book);
+            comics={comicsByStatus.read}
+            onDrop={(comic) => updateComicStatus(book.id, 'read')}
+            onEdit={(comic) => {
+              setEditingComic(comic);
               setShowEditModal(true);
             }}
-            onDelete={deleteBook}
-            onRate={rateBook}
-            onReact={reactToBook}
-            onMove={updateBookStatus}
-            onAddBook={() => {
+            onDelete={deleteComic}
+            onRate={rateComic}
+            onReact={reactToComic}
+            onMove={updateComicStatus}
+            onAddComic={() => {
               setSelectedStatus('read');
               setShowSearchModal(true);
             }}
-            onSelect={setSelectedBook}
+            onSelect={setSelectedComic}
           />
           
-          <BookColumn
+          <ComicColumn
             title="❌ Бросил"
             status="dropped"
-            books={booksByStatus.dropped}
-            onDrop={(book) => updateBookStatus(book.id, 'dropped')}
-            onEdit={(book) => {
-              setEditingBook(book);
+            comics={comicsByStatus.dropped}
+            onDrop={(comic) => updateComicStatus(book.id, 'dropped')}
+            onEdit={(comic) => {
+              setEditingComic(comic);
               setShowEditModal(true);
             }}
-            onDelete={deleteBook}
-            onRate={rateBook}
-            onReact={reactToBook}
-            onMove={updateBookStatus}
-            onAddBook={() => {
+            onDelete={deleteComic}
+            onRate={rateComic}
+            onReact={reactToComic}
+            onMove={updateComicStatus}
+            onAddComic={() => {
               setSelectedStatus('dropped');
               setShowSearchModal(true);
             }}
-            onSelect={setSelectedBook}
+            onSelect={setSelectedComic}
           />
         </div>
 
-        {/* Поиск по своим книгам */}
+        {/* Поиск по своим комиксовам */}
         <div className="w-full">
           <div className="bg-gray-800/25 backdrop-blur-sm rounded-lg p-4 border border-green-500/15">
             <div className="flex gap-2">
@@ -1537,7 +1537,7 @@ const BookTrackerApp = () => {
                   setMyBooksSearchQuery(e.target.value);
                   searchMyBooks(e.target.value);
                 }}
-                placeholder="Найти в моих книгах..."
+                placeholder="Найти в моих комиксовах..."
                 className="flex-1 px-4 py-3 bg-gray-700/30 border border-gray-600/50 rounded-lg text-white/80 placeholder-gray-500 focus:border-green-500/50 focus:outline-none"
               />
               {myBooksSearching && <Icon name="loader" className="w-6 h-6 text-green-500 animate-spin" />}
@@ -1545,7 +1545,7 @@ const BookTrackerApp = () => {
               
             {myBooksSearchResults.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                {myBooksSearchResults.map((book) => (
+                {myBooksSearchResults.map((comic) => (
                   <div key={book.id} className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
                     <div className="flex gap-3">
                       <img
@@ -1558,7 +1558,7 @@ const BookTrackerApp = () => {
                       />
                       <div className="flex-1">
                         <h3 className="font-semibold text-white text-sm line-clamp-2">{book.title}</h3>
-                        <p className="text-gray-400 text-xs">{book.author}</p>
+                        <p className="text-gray-400 text-xs">{book.publisher}</p>
                         <span className="inline-block px-2 py-1 bg-green-600 text-white text-xs rounded mt-1">
                           {book.status === 'want_to_read' && 'Хочу прочитать'}
                           {book.status === 'reading' && 'Читаю'}
@@ -1576,7 +1576,7 @@ const BookTrackerApp = () => {
 
         {/* Активность друзей */}
         {!viewingUser && (
-          <BookActivityFeed 
+          <ComicActivityFeed 
             token={localStorage.getItem('token')} 
             onNavigateToUser={(userId) => {
               console.log('Navigating to user:', userId);
@@ -1587,18 +1587,18 @@ const BookTrackerApp = () => {
       </main>
 
       {/* Модальные окна */}
-      <BookSearchModal
+      <ComicSearchModal
         isOpen={showSearchModal}
         onClose={() => setShowSearchModal(false)}
-        onAddBook={addBook}
+        onAddComic={addComic}
         status={selectedStatus}
       />
       
-      <BookDetailsModal
-        book={selectedBook}
-        onClose={() => setSelectedBook(null)}
-        onUpdate={updateBook}
-        onReact={reactToBook}
+      <ComicDetailsModal
+        book={selectedComic}
+        onClose={() => setSelectedComic(null)}
+        onUpdate={updateComic}
+        onReact={reactToComic}
         user={user}
       />
 
@@ -1607,7 +1607,7 @@ const BookTrackerApp = () => {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={() => setShowStatistics(false)}>
           <div className="bg-[#1a0f2e]/95 backdrop-blur-xl border border-[#8458B3]/50 modal-bg rounded-2xl p-6 w-full max-w-2xl border border-green-500/30 max-h-[90vh] overflow-y-auto elevation-3" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-white" style={{textShadow: '0 2px 4px rgba(16, 185, 129, 0.3)'}}>Статистика книг</h2>
+              <h2 className="text-2xl font-bold text-white" style={{textShadow: '0 2px 4px rgba(16, 185, 129, 0.3)'}}>Статистика комиксов</h2>
               <button onClick={() => setShowStatistics(false)} className="p-2 hover:bg-gray-800 rounded-lg">
                 <Icon name="x" className="w-5 h-5 text-gray-400" />
               </button>
@@ -1616,20 +1616,20 @@ const BookTrackerApp = () => {
               {/* Основная статистика */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg p-4 border border-green-500/30">
-                  <h3 className="text-lg font-semibold text-white mb-2">Всего книг</h3>
-                  <p className="text-3xl font-bold text-green-400">{books.length}</p>
+                  <h3 className="text-lg font-semibold text-white mb-2">Всего комиксов</h3>
+                  <p className="text-3xl font-bold text-green-400">{comics.length}</p>
                 </div>
                 <div className="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-lg p-4 border border-blue-500/30">
                   <h3 className="text-lg font-semibold text-white mb-2">Прочитано</h3>
-                  <p className="text-3xl font-bold text-blue-400">{books.filter(b => b.status === 'read').length}</p>
+                  <p className="text-3xl font-bold text-blue-400">{comics.filter(b => b.status === 'read').length}</p>
                 </div>
                 <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-lg p-4 border border-yellow-500/30">
                   <h3 className="text-lg font-semibold text-white mb-2">Читаю</h3>
-                  <p className="text-3xl font-bold text-yellow-400">{books.filter(b => b.status === 'reading').length}</p>
+                  <p className="text-3xl font-bold text-yellow-400">{comics.filter(b => b.status === 'reading').length}</p>
                 </div>
                 <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-lg p-4 border border-purple-500/30">
                   <h3 className="text-lg font-semibold text-white mb-2">Хочу прочитать</h3>
-                  <p className="text-3xl font-bold text-purple-400">{books.filter(b => b.status === 'want_to_read').length}</p>
+                  <p className="text-3xl font-bold text-purple-400">{comics.filter(b => b.status === 'want_to_read').length}</p>
                 </div>
               </div>
 
@@ -1637,40 +1637,40 @@ const BookTrackerApp = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-gray-800/50 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-white mb-2">Брошено</h3>
-                  <p className="text-3xl font-bold text-red-400">{books.filter(b => b.status === 'dropped').length}</p>
+                  <p className="text-3xl font-bold text-red-400">{comics.filter(b => b.status === 'dropped').length}</p>
                 </div>
                 <div className="bg-gray-800/50 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-white mb-2">С рейтингом</h3>
-                  <p className="text-3xl font-bold text-yellow-400">{books.filter(b => b.user_rating && b.user_rating > 0).length}</p>
+                  <p className="text-3xl font-bold text-yellow-400">{comics.filter(b => b.user_rating && b.user_rating > 0).length}</p>
                 </div>
               </div>
 
               {/* Прогресс чтения */}
-              {books.length > 0 && (
+              {comics.length > 0 && (
                 <div className="bg-gray-800/50 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-white mb-4">Прогресс чтения</h3>
                   <div className="space-y-3">
                     <div>
                       <div className="flex justify-between text-sm text-gray-400 mb-1">
                         <span>Прочитано</span>
-                        <span>{Math.round((books.filter(b => b.status === 'read').length / books.length) * 100)}%</span>
+                        <span>{Math.round((comics.filter(b => b.status === 'read').length / comics.length) * 100)}%</span>
                       </div>
                       <div className="w-full bg-gray-700 rounded-full h-2">
                         <div 
                           className="bg-green-500 h-2 rounded-full transition-all duration-500" 
-                          style={{ width: `${(books.filter(b => b.status === 'read').length / books.length) * 100}%` }}
+                          style={{ width: `${(comics.filter(b => b.status === 'read').length / comics.length) * 100}%` }}
                         ></div>
                       </div>
                     </div>
                     <div>
                       <div className="flex justify-between text-sm text-gray-400 mb-1">
                         <span>В процессе</span>
-                        <span>{Math.round((books.filter(b => b.status === 'reading').length / books.length) * 100)}%</span>
+                        <span>{Math.round((comics.filter(b => b.status === 'reading').length / comics.length) * 100)}%</span>
                       </div>
                       <div className="w-full bg-gray-700 rounded-full h-2">
                         <div 
                           className="bg-yellow-500 h-2 rounded-full transition-all duration-500" 
-                          style={{ width: `${(books.filter(b => b.status === 'reading').length / books.length) * 100}%` }}
+                          style={{ width: `${(comics.filter(b => b.status === 'reading').length / comics.length) * 100}%` }}
                         ></div>
                       </div>
                     </div>
@@ -1838,4 +1838,4 @@ const BookTrackerApp = () => {
 };
 
 // Рендер приложения
-ReactDOM.render(<BookTrackerApp />, document.getElementById('root'));
+ReactDOM.render(<ComicsTrackerApp />, document.getElementById('root'));

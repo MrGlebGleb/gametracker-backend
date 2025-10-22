@@ -3892,6 +3892,12 @@
                     >
                       📚 BookTracker
                     </a>
+                    <a
+                      href="/comics.html"
+                      className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 hover:scale-105 transition-transform cursor-pointer"
+                    >
+                      📚 ComicsTracker
+                    </a>
                   </div>
                   {selectedTag && (
                     <div className="flex items-center gap-2">
@@ -4014,6 +4020,7 @@
                   <span className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400">🎮 GameTracker</span>
                   <a href="/movies.html" className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400">🎬 MovieTracker</a>
                   <a href="/books.html" className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400">📚 BookTracker</a>
+                  <a href="/comics.html" className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-red-400 to-pink-400">📚 ComicsTracker</a>
                 </div>
               </div>
 
@@ -4069,6 +4076,18 @@
                     className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:bg-gray-800"
                   >
                     🎬 <span>MovieTracker</span>
+                  </button>
+                  <button 
+                    onClick={() => {window.location.href = '/books.html'; setShowMobileMenu(false);}}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:bg-gray-800"
+                  >
+                    📚 <span>BookTracker</span>
+                  </button>
+                  <button 
+                    onClick={() => {window.location.href = '/comics.html'; setShowMobileMenu(false);}}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:bg-gray-800"
+                  >
+                    📚 <span>ComicsTracker</span>
                   </button>
                 </div>
 

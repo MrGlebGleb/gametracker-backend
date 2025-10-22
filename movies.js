@@ -1983,6 +1983,12 @@ function MovieApp() {
                 >
                   📚 BookTracker
                 </a>
+                <a
+                  href="/comics.html"
+                  className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 hover:scale-105 transition-transform cursor-pointer"
+                >
+                  📚 ComicsTracker
+                </a>
               </div>
             </div>
             {user && (
