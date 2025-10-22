@@ -561,6 +561,21 @@ function BookDetailsModal({ book, onClose, onUpdate, onReact, user }) {
 
 // Компонент карточки книги (скопирован с MediaCard из movies.js)
 function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect }) {
+  // Определяем цвет полоски в зависимости от статуса
+  const getAccentColor = (status) => {
+    switch (status) {
+      case 'want_to_read':
+        return '#8B5CF6'; // Фиолетовый
+      case 'reading':
+        return '#A855F7'; // Пурпурный
+      case 'read':
+        return '#6366F1'; // Индиго
+      case 'dropped':
+        return '#64748B'; // Серый
+      default:
+        return '#8B5CF6';
+    }
+  };
   return (
     <div
       draggable={true}
@@ -577,7 +592,7 @@ function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect })
       {/* Цветная полоска слева */}
       <div 
         className="w-1 rounded-l-xl flex-shrink-0" 
-        style={{ backgroundColor: '#10b981', opacity: 0.8, boxShadow: '0 0 10px currentColor' }}
+        style={{ backgroundColor: getAccentColor(book.status), opacity: 0.8, boxShadow: '0 0 10px currentColor' }}
       ></div>
       <div className="relative flex-shrink-0">
         <img 

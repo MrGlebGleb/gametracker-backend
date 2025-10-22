@@ -569,6 +569,21 @@ function ComicDetailsModal({ comic, onClose, onUpdate, onReact, user }) {
 
 // Компонент карточки комиксови (скопирован с MediaCard из movies.js)
 function ComicCard({ comic, onEdit, onDelete, onRate, onReact, onMove, onSelect }) {
+  // Определяем цвет полоски в зависимости от статуса
+  const getAccentColor = (status) => {
+    switch (status) {
+      case 'want_to_read':
+        return '#8B5CF6'; // Фиолетовый
+      case 'reading':
+        return '#F59E0B'; // Оранжевый
+      case 'read':
+        return '#6366F1'; // Индиго
+      case 'dropped':
+        return '#64748B'; // Серый
+      default:
+        return '#8B5CF6';
+    }
+  };
   return (
     <div
       draggable={true}
@@ -585,7 +600,7 @@ function ComicCard({ comic, onEdit, onDelete, onRate, onReact, onMove, onSelect 
       {/* Цветная полоска слева */}
       <div 
         className="w-1 rounded-l-xl flex-shrink-0" 
-        style={{ backgroundColor: '#8B5CF6', opacity: 0.8, boxShadow: '0 0 10px currentColor' }}
+        style={{ backgroundColor: getAccentColor(comic.status), opacity: 0.8, boxShadow: '0 0 10px currentColor' }}
       ></div>
       <div className="relative flex-shrink-0">
         <img 
