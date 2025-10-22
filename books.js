@@ -229,7 +229,7 @@ function BookDetailsModal({ book, onClose, onUpdate, onReact, user }) {
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
-                  onClick={() => onUpdate(book, { rating: star })}
+                  onClick={() => onUpdate(book, { user_rating: star })}
                   className={`w-6 h-6 transition-colors ${
                     star <= (book.user_rating || 0)
                       ? 'text-yellow-400 hover:text-yellow-300'
@@ -1315,10 +1315,13 @@ const BookTrackerApp = () => {
       return;
     }
 
-    console.log('Loading books with token:', token.substring(0, 10) + '...', userId ? `for user ${userId}` : 'for current user');
+    setLoading(true);
+    console.log('📚 Loading books...', userId ? `for user ${userId}` : 'for current user');
 
     try {
       const url = userId ? `${API_URL}/api/user/${userId}/books` : `${API_URL}/api/books`;
+      console.log('Fetching from:', url);
+
       const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -1327,17 +1330,18 @@ const BookTrackerApp = () => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Received data:', data);
 
         if (userId) {
           // Загрузка книг другого пользователя
           setViewingUser(data.user || null);
           setBooks(data.books || []);
-          console.log('Loaded books for user:', data.user?.username, 'books count:', data.books?.length);
+          console.log('✅ Loaded books for user:', data.user?.username, 'books count:', (data.books || []).length);
         } else {
           // Загрузка своих книг
           setViewingUser(null);
-          setBooks(data);
-          console.log('Loaded books:', data.length);
+          setBooks(Array.isArray(data) ? data : (data.books || []));
+          console.log('✅ Loaded own books:', Array.isArray(data) ? data.length : (data.books || []).length);
         }
       } else if (response.status === 401) {
         console.log('Token invalid, redirecting to login');
@@ -1346,12 +1350,14 @@ const BookTrackerApp = () => {
         window.location.href = '/';
         return;
       } else {
-        console.error('Books API error:', response.status, response.statusText);
+        console.error('❌ Books API error:', response.status, response.statusText);
         const errorText = await response.text();
         console.error('Error response:', errorText);
+        showToast(`Ошибка загрузки книг: ${response.status}`, 'error');
       }
     } catch (error) {
-      console.error('Error loading books:', error);
+      console.error('❌ Error loading books:', error);
+      showToast('Ошибка при загрузке книг', 'error');
     } finally {
       setLoading(false);
     }
