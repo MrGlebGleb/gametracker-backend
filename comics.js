@@ -688,7 +688,7 @@ function ComicCard({ comic, onEdit, onDelete, onRate, onReact, onMove, onSelect 
 }
 
 // Компонент колонки
-const ComicColumn = ({ title, status, comics, onDrop, onEdit, onDelete, onRate, onReact, onMove, onAddComic, onSelect }) => {
+const ComicColumn = ({ title, status, comics, onDrop, onEdit, onDelete, onRate, onReact, onMove, onAddComic, onSelect, isExpanded, onToggleExpansion }) => {
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDragOver = (e) => {
@@ -714,7 +714,7 @@ const ComicColumn = ({ title, status, comics, onDrop, onEdit, onDelete, onRate, 
     }
   };
 
-  // Определяем цвета для разных статусов (фиолетовая палитра)
+  // Определяем цвета для разных статусов (фиолетово-оранжевая палитра)
   const getColumnColors = (status) => {
     switch (status) {
       case 'want_to_read':
@@ -726,10 +726,10 @@ const ComicColumn = ({ title, status, comics, onDrop, onEdit, onDelete, onRate, 
         };
       case 'reading':
         return {
-          bg: 'bg-gradient-to-b from-purple-500/20 to-fuchsia-500/20',
-          border: 'border-purple-500/30',
-          text: 'text-purple-300',
-          button: 'bg-purple-600 hover:bg-purple-700'
+          bg: 'bg-gradient-to-b from-orange-500/20 to-amber-500/20',
+          border: 'border-orange-500/30',
+          text: 'text-orange-300',
+          button: 'bg-orange-600 hover:bg-orange-700'
         };
       case 'read':
         return {
@@ -740,10 +740,10 @@ const ComicColumn = ({ title, status, comics, onDrop, onEdit, onDelete, onRate, 
         };
       case 'dropped':
         return {
-          bg: 'bg-gradient-to-b from-slate-500/20 to-gray-500/20',
-          border: 'border-slate-500/30',
-          text: 'text-slate-300',
-          button: 'bg-slate-600 hover:bg-slate-700'
+          bg: 'bg-gradient-to-b from-red-500/20 to-orange-500/20',
+          border: 'border-red-500/30',
+          text: 'text-red-300',
+          button: 'bg-red-600 hover:bg-red-700'
         };
       default:
         return {
@@ -777,7 +777,7 @@ const ComicColumn = ({ title, status, comics, onDrop, onEdit, onDelete, onRate, 
                     </button>
             </div>
       <div className="space-y-4">
-        {comics.map((comic) => (
+        {(isExpanded ? comics : comics.slice(0, 5)).map((comic) => (
           <ComicCard
             key={comic.id}
             comic={comic}
@@ -795,7 +795,15 @@ const ComicColumn = ({ title, status, comics, onDrop, onEdit, onDelete, onRate, 
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
             <p className="text-sm">Перетащите комикс сюда</p>
-        </div>
+          </div>
+        )}
+        {comics.length > 5 && (
+          <button
+            onClick={() => onToggleExpansion(status)}
+            className={`w-full ${colors.button} text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:scale-105 active:scale-95 mt-4`}
+          >
+            {isExpanded ? 'Скрыть' : `Показать ещё (${comics.length - 5})`}
+          </button>
         )}
       </div>
     </div>
@@ -817,6 +825,12 @@ const ComicsTrackerApp = () => {
   const [showUserHub, setShowUserHub] = useState(false);
   const [friendRequests, setFriendRequests] = useState([]);
   const [myBooksSearchQuery, setMyBooksSearchQuery] = useState('');
+  const [expandedColumns, setExpandedColumns] = useState({
+    want_to_read: false,
+    reading: false,
+    read: false,
+    dropped: false
+  });
   const [myBooksSearchResults, setMyBooksSearchResults] = useState([]);
   const [myBooksSearching, setMyBooksSearching] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState('want_to_read');
@@ -1384,6 +1398,14 @@ const ComicsTrackerApp = () => {
     }
   };
 
+  // Переключение состояния столбцов
+  const toggleColumnExpansion = (status) => {
+    setExpandedColumns(prev => ({
+      ...prev,
+      [status]: !prev[status]
+    }));
+  };
+
   // Группировка комиксов по статусам
   const comicsByStatus = {
     want_to_read: comics.filter(comic => comic.status === 'want_to_read'),
@@ -1515,6 +1537,8 @@ const ComicsTrackerApp = () => {
               setShowSearchModal(true);
             }}
             onSelect={setSelectedComic}
+            isExpanded={expandedColumns.want_to_read}
+            onToggleExpansion={toggleColumnExpansion}
           />
           
           <ComicColumn
@@ -1535,6 +1559,8 @@ const ComicsTrackerApp = () => {
               setShowSearchModal(true);
             }}
             onSelect={setSelectedComic}
+            isExpanded={expandedColumns.reading}
+            onToggleExpansion={toggleColumnExpansion}
           />
           
           <ComicColumn
@@ -1555,6 +1581,8 @@ const ComicsTrackerApp = () => {
               setShowSearchModal(true);
             }}
             onSelect={setSelectedComic}
+            isExpanded={expandedColumns.read}
+            onToggleExpansion={toggleColumnExpansion}
           />
           
           <ComicColumn
@@ -1575,6 +1603,8 @@ const ComicsTrackerApp = () => {
               setShowSearchModal(true);
             }}
             onSelect={setSelectedComic}
+            isExpanded={expandedColumns.dropped}
+            onToggleExpansion={toggleColumnExpansion}
           />
             </div>
 
