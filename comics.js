@@ -326,22 +326,22 @@ const NotificationsPanel = ({ token, onNavigateToUser }) => {
 
       {/* Выпадающее меню */}
       {showPanel && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-gray-800/95 backdrop-blur-xl rounded-lg border border-green-500/30 z-50 elevation-4 shadow-2xl">
-          <div className="p-4 border-b border-green-500/20">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-gray-700/95 backdrop-blur-xl rounded-lg border border-violet-500/30 z-50 elevation-4 shadow-2xl">
+          <div className="p-4 border-b border-violet-500/20">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white" style={{textShadow: '0 1px 2px rgba(16, 185, 129, 0.3)'}}>Уведомления</h3>
+              <h3 className="text-lg font-semibold text-white" style={{textShadow: '0 1px 2px rgba(139, 92, 246, 0.3)'}}>Уведомления</h3>
               <div className="flex items-center gap-2">
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllAsRead}
-                    className="text-xs text-green-400 hover:text-green-300 transition-colors"
+                    className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
                   >
                     Отметить все как прочитанные
                   </button>
                 )}
               <button
                 onClick={() => setShowPanel(false)}
-                  className="text-gray-400 hover:text-green-400 transition-colors"
+                  className="text-gray-400 hover:text-violet-400 transition-colors"
               >
                 <Icon name="x" className="w-5 h-5" />
               </button>
@@ -355,17 +355,17 @@ const NotificationsPanel = ({ token, onNavigateToUser }) => {
                 <div
                   key={notification.id}
                   onClick={() => handleNotificationClick(notification)}
-                  className={`p-4 border-b border-green-500/10 cursor-pointer hover:bg-green-500/5 transition-all duration-200 ${
-                    !notification.is_read ? 'bg-green-500/10 border-l-4 border-l-green-500' : ''
+                  className={`p-4 border-b border-violet-500/10 cursor-pointer hover:bg-violet-500/5 transition-all duration-200 ${
+                    !notification.is_read ? 'bg-violet-500/10 border-l-4 border-l-violet-500' : ''
                   }`}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                      !notification.is_read ? 'bg-green-400 animate-pulse' : 'bg-gray-500'
+                      !notification.is_read ? 'bg-violet-400 animate-pulse' : 'bg-gray-500'
                     }`}></div>
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-sm">{notification.message}</p>
-                      <p className="text-green-400/70 text-xs mt-1">{formatTime(notification.created_at)}</p>
+                      <p className="text-violet-400/70 text-xs mt-1">{formatTime(notification.created_at)}</p>
                         </div>
                   </div>
                 </div>
@@ -373,7 +373,7 @@ const NotificationsPanel = ({ token, onNavigateToUser }) => {
             ) : (
               <div className="p-8 text-center">
                 <div className="text-4xl mb-2 opacity-50">🔔</div>
-                <p className="text-green-400/60 text-sm">Нет уведомлений</p>
+                <p className="text-violet-400/60 text-sm">Нет уведомлений</p>
               </div>
             )}
           </div>

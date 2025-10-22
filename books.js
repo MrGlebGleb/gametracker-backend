@@ -443,16 +443,16 @@ function BookActivityFeed({ token, onNavigateToUser }) {
   };
   
   return (
-    <div className="bg-gradient-to-br from-[#10b981]/30 to-[#059669]/25 backdrop-blur-xl rounded-xl border border-[#10b981]/40 p-6">
+    <div className="bg-gradient-to-br from-[#2d1b69]/60 to-[#1a0f2e]/50 backdrop-blur-xl rounded-xl border border-[#8B5CF6]/40 p-6">
       <h3 className="text-xl font-bold text-white mb-4">Активность друзей по книгам</h3>
       {loading ? (
         <div className="w-full flex items-center justify-center p-10">
-          <Icon name="loader" className="w-8 h-8 text-green-400 animate-spin"/>
+          <Icon name="loader" className="w-8 h-8 text-violet-400 animate-spin"/>
         </div>
       ) : activities.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {activities.map(act => (
-            <div key={act.id} className="text-sm text-gray-300 p-4 bg-[#1a0f2e]/60 rounded-lg border border-[#10b981]/30 hover:border-[#a8e6cf] hover:-translate-y-1 transition-all">
+            <div key={act.id} className="text-sm text-gray-300 p-4 bg-[#2d1b69]/60 rounded-lg border border-[#8B5CF6]/30 hover:border-[#A855F7] hover:-translate-y-1 transition-all">
               <p>{formatActivity(act)}</p>
               <div className="text-xs text-gray-500 mt-2 text-right">{new Date(act.created_at).toLocaleString('ru-RU')}</div>
             </div>
@@ -702,36 +702,36 @@ const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, on
     }
   };
 
-  // Определяем цвета для разных статусов
+  // Определяем цвета для разных статусов (приглушенная фиолетово-зеленая палитра)
   const getColumnColors = (status) => {
     switch (status) {
       case 'want_to_read':
         return {
-          bg: 'bg-gradient-to-b from-emerald-500/20 to-teal-500/20',
-          border: 'border-emerald-500/30',
-          text: 'text-emerald-300',
-          button: 'bg-emerald-600 hover:bg-emerald-700'
+          bg: 'bg-gradient-to-b from-violet-500/15 to-emerald-500/15',
+          border: 'border-violet-500/25',
+          text: 'text-violet-200',
+          button: 'bg-violet-500/80 hover:bg-violet-600/80'
         };
       case 'reading':
         return {
-          bg: 'bg-gradient-to-b from-cyan-500/20 to-blue-500/20',
-          border: 'border-cyan-500/30',
-          text: 'text-cyan-300',
-          button: 'bg-cyan-600 hover:bg-cyan-700'
+          bg: 'bg-gradient-to-b from-purple-500/15 to-cyan-500/15',
+          border: 'border-purple-500/25',
+          text: 'text-purple-200',
+          button: 'bg-purple-500/80 hover:bg-purple-600/80'
         };
       case 'read':
         return {
-          bg: 'bg-gradient-to-b from-green-500/20 to-emerald-500/20',
-          border: 'border-green-500/30',
-          text: 'text-green-300',
-          button: 'bg-green-600 hover:bg-green-700'
+          bg: 'bg-gradient-to-b from-indigo-500/15 to-green-500/15',
+          border: 'border-indigo-500/25',
+          text: 'text-indigo-200',
+          button: 'bg-indigo-500/80 hover:bg-indigo-600/80'
         };
       case 'dropped':
         return {
-          bg: 'bg-gradient-to-b from-red-500/20 to-pink-500/20',
-          border: 'border-red-500/30',
-          text: 'text-red-300',
-          button: 'bg-red-600 hover:bg-red-700'
+          bg: 'bg-gradient-to-b from-slate-500/15 to-gray-500/15',
+          border: 'border-slate-500/25',
+          text: 'text-slate-200',
+          button: 'bg-slate-500/80 hover:bg-slate-600/80'
         };
       default:
         return {
