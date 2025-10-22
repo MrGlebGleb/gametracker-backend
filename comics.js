@@ -198,7 +198,7 @@ const ComicSearchModal = ({ isOpen, onClose, onAddComic, status = 'want_to_read'
               </div>
               <button
                 onClick={handleAddComic}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                className="px-6 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
               >
                 Добавить
               </button>
@@ -714,36 +714,36 @@ const ComicColumn = ({ title, status, comics, onDrop, onEdit, onDelete, onRate, 
     }
   };
 
-  // Определяем цвета для разных статусов (фиолетово-оранжевая палитра)
+  // Определяем цвета для разных статусов (приглушенная фиолетово-оранжевая палитра)
   const getColumnColors = (status) => {
     switch (status) {
       case 'want_to_read':
         return {
-          bg: 'bg-gradient-to-b from-violet-500/20 to-purple-500/20',
-          border: 'border-violet-500/30',
-          text: 'text-violet-300',
-          button: 'bg-violet-600 hover:bg-violet-700'
+          bg: 'bg-gradient-to-b from-violet-500/15 to-purple-500/15',
+          border: 'border-violet-500/25',
+          text: 'text-violet-200',
+          button: 'bg-violet-500/80 hover:bg-violet-600/80'
         };
       case 'reading':
         return {
-          bg: 'bg-gradient-to-b from-orange-500/20 to-amber-500/20',
-          border: 'border-orange-500/30',
-          text: 'text-orange-300',
-          button: 'bg-orange-600 hover:bg-orange-700'
+          bg: 'bg-gradient-to-b from-purple-500/15 to-orange-500/15',
+          border: 'border-purple-500/25',
+          text: 'text-purple-200',
+          button: 'bg-purple-500/80 hover:bg-purple-600/80'
         };
       case 'read':
         return {
-          bg: 'bg-gradient-to-b from-indigo-500/20 to-violet-500/20',
-          border: 'border-indigo-500/30',
-          text: 'text-indigo-300',
-          button: 'bg-indigo-600 hover:bg-indigo-700'
+          bg: 'bg-gradient-to-b from-indigo-500/15 to-violet-500/15',
+          border: 'border-indigo-500/25',
+          text: 'text-indigo-200',
+          button: 'bg-indigo-500/80 hover:bg-indigo-600/80'
         };
       case 'dropped':
         return {
-          bg: 'bg-gradient-to-b from-red-500/20 to-orange-500/20',
-          border: 'border-red-500/30',
-          text: 'text-red-300',
-          button: 'bg-red-600 hover:bg-red-700'
+          bg: 'bg-gradient-to-b from-slate-500/15 to-gray-500/15',
+          border: 'border-slate-500/25',
+          text: 'text-slate-200',
+          button: 'bg-slate-500/80 hover:bg-slate-600/80'
         };
       default:
         return {
@@ -795,7 +795,7 @@ const ComicColumn = ({ title, status, comics, onDrop, onEdit, onDelete, onRate, 
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
             <p className="text-sm">Перетащите комикс сюда</p>
-          </div>
+        </div>
         )}
         {comics.length > 5 && (
           <button
@@ -987,7 +987,7 @@ const ComicsTrackerApp = () => {
             setViewingUser({ id: userId, username: 'Друг' });
       }
           setComics(comicsData);
-    } else {
+      } else {
           // Загружаем свои комиксови
           setViewingUser(null);
           setComics(comicsData);
@@ -1017,7 +1017,7 @@ const ComicsTrackerApp = () => {
       });
       
       if (response.ok) {
-        const data = await response.json();
+          const data = await response.json();
         setMyBooksSearchResults(data.books || []);
       }
     } catch (error) {
@@ -1207,7 +1207,7 @@ const ComicsTrackerApp = () => {
           };
           setComics(prev => prev.map(c => c.id === comic.id ? normalizedUpdatedComic : c));
           showToast('Рейтинг сохранен!', 'success');
-        } else {
+    } else {
           showToast('Ошибка при сохранении рейтинга', 'error');
         }
         return;
@@ -1291,7 +1291,7 @@ const ComicsTrackerApp = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    setUploadingAvatar(true);
+        setUploadingAvatar(true);
     try {
       const formData = new FormData();
       formData.append('avatar', file);
@@ -1426,7 +1426,7 @@ const ComicsTrackerApp = () => {
   }
 
   if (!user) {
-    return (
+  return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1625] to-[#2d1b4e]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
@@ -1775,7 +1775,7 @@ const ComicsTrackerApp = () => {
               <div className="flex flex-col items-center gap-3">
                 <Avatar src={user?.avatar} size="xl" />
                 <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden" />
-                <button onClick={() => fileInputRef.current?.click()} disabled={uploadingAvatar} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#10b981] to-[#059669] hover:bg-green-600 text-white rounded-lg transition-all disabled:opacity-50">
+                <button onClick={() => fileInputRef.current?.click()} disabled={uploadingAvatar} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white rounded-lg transition-all disabled:opacity-50">
                   {uploadingAvatar ? <Icon name="loader" className="w-4 h-4" /> : <Icon name="upload" className="w-4 h-4" />} {uploadingAvatar ? 'Загрузка...' : 'Загрузить аватар'}
                 </button>
               </div>
@@ -1809,7 +1809,7 @@ const ComicsTrackerApp = () => {
                 </button>
               </div>
               <div className="flex gap-2 mt-6">
-                <button onClick={updateProfile} className="flex-1 py-2 bg-gradient-to-r from-[#10b981] to-[#059669] text-white font-bold rounded-lg hover:from-green-600 hover:to-green-700">Сохранить</button>
+                <button onClick={updateProfile} className="flex-1 py-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold rounded-lg hover:from-violet-700 hover:to-purple-700">Сохранить</button>
                 <button onClick={() => setShowProfile(false)} className="flex-1 py-2 bg-gray-800 text-white font-bold rounded-lg hover:bg-gray-700">Отмена</button>
               </div>
             </div>
@@ -1839,8 +1839,8 @@ const ComicsTrackerApp = () => {
                           <p className="text-white font-semibold">{req.username}</p>
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => friendAction(req.id, 'accept')} className="p-2 bg-green-500/20 hover:bg-green-500/30 rounded-lg">
-                            <Icon name="check" className="w-5 h-5 text-green-400" />
+                          <button onClick={() => friendAction(req.id, 'accept')} className="p-2 bg-violet-500/20 hover:bg-violet-500/30 rounded-lg">
+                            <Icon name="check" className="w-5 h-5 text-violet-400" />
                           </button>
                           <button onClick={() => friendAction(req.id, 'reject')} className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg">
                             <Icon name="x" className="w-5 h-5 text-red-400" />
@@ -1900,7 +1900,7 @@ const ComicsTrackerApp = () => {
                         {!isFriend && !hasRequest && (
                           <button 
                             onClick={() => friendAction(u.id, 'request')} 
-                            className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                            className="px-3 py-1 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm"
                           >
                             Добавить
                           </button>
