@@ -581,7 +581,7 @@ function ComicCard({ comic, onEdit, onDelete, onRate, onReact, onMove, onSelect 
       ></div>
       <div className="relative flex-shrink-0">
         <img 
-          src={comic.coverUrl || 'https://placehold.co/96x128/1f2937/ffffff?text=📚'} 
+          src={comic.coverUrl ? `${comic.coverUrl}?v=${Date.now()}` : 'https://placehold.co/96x128/1f2937/ffffff?text=📚'} 
           alt={comic.title} 
           className="w-16 h-24 object-cover rounded-lg flex-shrink-0" 
           onError={(e) => {
@@ -1032,12 +1032,12 @@ const ComicsTrackerApp = () => {
     }
   };
 
-  const updateComicStatus = async (bookId, newStatus) => {
+  const updateComicStatus = async (comicId, newStatus) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/comics/${bookId}`, {
+      const response = await fetch(`${API_URL}/api/comics/${comicId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1048,7 +1048,7 @@ const ComicsTrackerApp = () => {
 
       if (response.ok) {
         setComics(prev => prev.map(comic => 
-          comic.id === bookId ? { ...comic, status: newStatus } : comic
+          comic.id === comicId ? { ...comic, status: newStatus } : comic
         ));
         showToast('Статус комиксови обновлен!', 'success');
       }
@@ -1058,19 +1058,22 @@ const ComicsTrackerApp = () => {
     }
   };
 
-  const deleteComic = async (bookId) => {
+  const deleteComic = async (comicId) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/comics/${bookId}`, {
+      const response = await fetch(`${API_URL}/api/comics/${comicId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {
-        setComics(prev => prev.filter(comic => comic.id !== bookId));
-        showToast('Книга удалена', 'info');
+        setComics(prev => prev.filter(comic => comic.id !== comicId));
+        showToast('Комикс удален', 'info');
+      } else {
+        console.error('Delete comic error:', response.status, response.statusText);
+        showToast('Ошибка при удалении комиксови', 'error');
       }
     } catch (error) {
       console.error('Error deleting comic:', error);
@@ -1078,12 +1081,12 @@ const ComicsTrackerApp = () => {
     }
   };
 
-  const rateComic = async (bookId, rating) => {
+  const rateComic = async (comicId, rating) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/comics/${bookId}/rate`, {
+      const response = await fetch(`${API_URL}/api/comics/${comicId}/rate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1094,7 +1097,7 @@ const ComicsTrackerApp = () => {
 
       if (response.ok) {
         setComics(prev => prev.map(comic => 
-          comic.id === bookId ? { ...comic, rating } : comic
+          comic.id === comicId ? { ...comic, rating } : comic
         ));
         showToast('Рейтинг сохранен!', 'success');
       }
@@ -1104,12 +1107,12 @@ const ComicsTrackerApp = () => {
     }
   };
 
-  const reactToComic = async (bookId, emoji) => {
+  const reactToComic = async (comicId, emoji) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/comics/${bookId}/react`, {
+      const response = await fetch(`${API_URL}/api/comics/${comicId}/react`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
