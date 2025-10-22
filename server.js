@@ -2886,35 +2886,6 @@ app.put('/api/user/boards/reorder', authenticateToken, async (req, res) => {
   }
 });
 
-app.get('/api/friends/activity', authenticateToken, async (req, res) => {
-    const client = await pool.connect();
-    try {
-        const { type } = req.query; // optional: 'games' | 'media'
-        let whereType = '';
-        if (type === 'games') {
-          // filter only game-related actions
-          whereType = " AND (a.action_type LIKE '%game%') ";
-        } else if (type === 'media') {
-          // filter only media-related actions
-          whereType = " AND (a.action_type LIKE '%media%') ";
-        }
-        const result = await client.query(
-          `SELECT a.id, a.action_type, a.details, a.created_at, u.username, u.id as user_id
-           FROM activities a 
-           JOIN users u ON u.id = a.user_id
-           JOIN friendships f ON f.friend_id = a.user_id
-           WHERE f.user_id = $1 AND f.status = 'accepted' AND u.show_activity = true${whereType}
-           ORDER BY a.created_at DESC LIMIT 12;`,
-          [req.user.id]
-        );
-        res.json({ activities: result.rows });
-    } catch (error) {
-        console.error('Error fetching friend activity:', error);
-        res.status(500).json({ error: 'Server error' });
-    } finally {
-        client.release();
-    }
-});
 
 app.post('/api/game/score', authenticateToken, async (req, res) => {
     const { score } = req.body;
@@ -3190,6 +3161,39 @@ app.get('/api/books', authenticateToken, async (req, res) => {
   }
 });
 
+// Получить книги конкретного пользователя
+app.get('/api/user/:userId/books', authenticateToken, async (req, res) => {
+  let client;
+  try {
+    client = await pool.connect();
+    
+    const { userId } = req.params;
+    
+    const result = await client.query(`
+      SELECT b.*, 
+             b.cover_url as "coverUrl",
+             COALESCE(
+               (SELECT AVG(rating) FROM book_ratings WHERE book_id = b.id), 
+               0
+             ) as avg_rating,
+             COALESCE(
+               (SELECT rating FROM book_ratings WHERE book_id = b.id AND user_id = $1), 
+               0
+             ) as user_rating
+      FROM books b 
+      WHERE b.user_id = $2 
+      ORDER BY b.created_at DESC
+    `, [req.user.id, userId]);
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Ошибка получения книг пользователя:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
 // Добавить новую книгу
 app.post('/api/books', authenticateToken, [
   body('title').notEmpty().withMessage('Название обязательно'),
@@ -3415,53 +3419,67 @@ app.post('/api/books/:id/react', authenticateToken, [
   }
 });
 
-// Получить активность друзей по книгам
+// Получить активность друзей
 app.get('/api/friends/activity', authenticateToken, async (req, res) => {
   let client;
   try {
     client = await pool.connect();
     
-    const { type = 'book' } = req.query;
+    const { type } = req.query;
     
-    // Получаем активность друзей по книгам
-    const result = await client.query(`
-      SELECT 
-        a.id,
-        a.action,
-        a.created_at,
-        u.username,
-        u.avatar,
-        b.title as book_title,
-        b.cover_url as book_cover
-      FROM book_activities a
-      JOIN users u ON a.user_id = u.id
-      JOIN books b ON a.book_id = b.id
-      WHERE a.user_id IN (
-        SELECT friend_id FROM friendships 
-        WHERE user_id = $1 AND status = 'accepted'
-        UNION
-        SELECT user_id FROM friendships 
-        WHERE friend_id = $1 AND status = 'accepted'
-      )
-      ORDER BY a.created_at DESC
-      LIMIT 12
-    `, [req.user.id]);
-    
-    const activities = result.rows.map(row => ({
-      id: row.id,
-      action: row.action,
-      created_at: row.created_at,
-      user: {
-        username: row.username,
-        avatar: row.avatar
-      },
-      book: {
-        title: row.book_title,
-        cover_url: row.book_cover
-      }
-    }));
-    
-    res.json({ activities });
+    if (type === 'book') {
+      // Получаем активность друзей по книгам
+      const result = await client.query(`
+        SELECT 
+          a.id,
+          a.action,
+          a.created_at,
+          u.username,
+          u.avatar,
+          b.title as book_title,
+          b.cover_url as book_cover
+        FROM book_activities a
+        JOIN users u ON a.user_id = u.id
+        JOIN books b ON a.book_id = b.id
+        WHERE a.user_id IN (
+          SELECT friend_id FROM friendships 
+          WHERE user_id = $1 AND status = 'accepted'
+          UNION
+          SELECT user_id FROM friendships 
+          WHERE friend_id = $1 AND status = 'accepted'
+        )
+        ORDER BY a.created_at DESC
+        LIMIT 12
+      `, [req.user.id]);
+      
+      const activities = result.rows.map(row => ({
+        id: row.id,
+        action: row.action,
+        created_at: row.created_at,
+        user: {
+          username: row.username,
+          avatar: row.avatar
+        },
+        book: {
+          title: row.book_title,
+          cover_url: row.book_cover
+        }
+      }));
+      
+      res.json({ activities });
+    } else {
+      // Получаем общую активность друзей (по умолчанию)
+      const result = await client.query(`
+        SELECT a.id, a.action_type, a.details, a.created_at, u.username, u.id as user_id
+        FROM activities a 
+        JOIN users u ON u.id = a.user_id
+        JOIN friendships f ON f.friend_id = a.user_id
+        WHERE f.user_id = $1 AND f.status = 'accepted' AND u.show_activity = true
+        ORDER BY a.created_at DESC LIMIT 12
+      `, [req.user.id]);
+      
+      res.json({ activities: result.rows });
+    }
   } catch (error) {
     console.error('Ошибка получения активности друзей:', error);
     res.status(500).json({ error: 'Ошибка сервера' });

@@ -34,7 +34,7 @@ const Icon = ({ name, className = 'w-6 h-6' }) => {
     user: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>,
     settings: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
     users: <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
-    bell: <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
+    bell: <svg className={className} fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
     barChart: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
     star: <svg className={className} fill="currentColor" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>,
     search: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>,
@@ -313,33 +313,33 @@ const NotificationsPanel = ({ token, onNavigateToUser }) => {
     <div className="relative">
       <button
         onClick={() => setShowPanel(!showPanel)}
-        className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30 relative"
+        className="p-2 hover:bg-green-500/10 rounded-lg border border-green-500/20 relative transition-all duration-200 hover:border-green-500/40"
         title="Уведомления"
       >
-        <Icon name="bell" className="w-4 h-4 md:w-5 md:h-5 text-green-400" />
+        <Icon name="bell" className="w-4 h-4 md:w-5 md:h-5 text-green-400 hover:text-green-300 transition-colors" />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"></span>
+          <span className="absolute -top-1 -right-1 block h-3 w-3 rounded-full bg-red-500 ring-1 ring-white animate-pulse"></span>
         )}
       </button>
 
       {/* Выпадающее меню */}
       {showPanel && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-gray-800 rounded-lg border border-gray-700 z-50 elevation-4">
-          <div className="p-4 border-b border-gray-700">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-gray-800/95 backdrop-blur-xl rounded-lg border border-green-500/30 z-50 elevation-4 shadow-2xl">
+          <div className="p-4 border-b border-green-500/20">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Уведомления</h3>
+              <h3 className="text-lg font-semibold text-white" style={{textShadow: '0 1px 2px rgba(16, 185, 129, 0.3)'}}>Уведомления</h3>
               <div className="flex items-center gap-2">
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllAsRead}
-                    className="text-xs text-green-400 hover:text-green-300"
+                    className="text-xs text-green-400 hover:text-green-300 transition-colors"
                   >
                     Отметить все как прочитанные
                   </button>
                 )}
                 <button
                   onClick={() => setShowPanel(false)}
-                  className="text-gray-400 hover:text-white"
+                  className="text-gray-400 hover:text-green-400 transition-colors"
                 >
                   <Icon name="x" className="w-5 h-5" />
                 </button>
@@ -353,25 +353,25 @@ const NotificationsPanel = ({ token, onNavigateToUser }) => {
                 <div
                   key={notification.id}
                   onClick={() => handleNotificationClick(notification)}
-                  className={`p-4 border-b border-gray-700 cursor-pointer hover:bg-gray-700 transition-colors ${
-                    !notification.is_read ? 'bg-green-900/20' : ''
+                  className={`p-4 border-b border-green-500/10 cursor-pointer hover:bg-green-500/5 transition-all duration-200 ${
+                    !notification.is_read ? 'bg-green-500/10 border-l-4 border-l-green-500' : ''
                   }`}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                      !notification.is_read ? 'bg-green-400' : 'bg-gray-500'
+                      !notification.is_read ? 'bg-green-400 animate-pulse' : 'bg-gray-500'
                     }`}></div>
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-sm">{notification.message}</p>
-                      <p className="text-gray-400 text-xs mt-1">{formatTime(notification.created_at)}</p>
+                      <p className="text-green-400/70 text-xs mt-1">{formatTime(notification.created_at)}</p>
                     </div>
                   </div>
                 </div>
               ))
             ) : (
               <div className="p-8 text-center">
-                <div className="text-4xl mb-2">🔔</div>
-                <p className="text-gray-400">Нет уведомлений</p>
+                <div className="text-4xl mb-2 opacity-50">🔔</div>
+                <p className="text-green-400/60 text-sm">Нет уведомлений</p>
               </div>
             )}
           </div>
