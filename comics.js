@@ -449,16 +449,16 @@ function ComicActivityFeed({ token, onNavigateToUser }) {
   };
 
   return (
-    <div className="bg-gradient-to-br from-[#10b981]/30 to-[#059669]/25 backdrop-blur-xl rounded-xl border border-[#10b981]/40 p-6">
+    <div className="bg-gradient-to-br from-[#8B5CF6]/30 to-[#7C3AED]/25 backdrop-blur-xl rounded-xl border border-[#8B5CF6]/40 p-6">
       <h3 className="text-xl font-bold text-white mb-4">Активность друзей</h3>
       {loading ? (
         <div className="w-full flex items-center justify-center p-10">
-          <Icon name="loader" className="w-8 h-8 text-green-400 animate-spin"/>
+          <Icon name="loader" className="w-8 h-8 text-violet-400 animate-spin"/>
         </div>
       ) : activities.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {activities.map(act => (
-            <div key={act.id} className="text-sm text-gray-300 p-4 bg-[#1a0f2e]/60 rounded-lg border border-[#10b981]/30 hover:border-[#a8e6cf] hover:-translate-y-1 transition-all">
+            <div key={act.id} className="text-sm text-gray-300 p-4 bg-[#2d1b69]/60 rounded-lg border border-[#8B5CF6]/30 hover:border-[#A855F7] hover:-translate-y-1 transition-all">
               <p>{formatActivity(act)}</p>
               <div className="text-xs text-gray-500 mt-2 text-right">{new Date(act.created_at).toLocaleString('ru-RU')}</div>
         </div>
@@ -495,7 +495,7 @@ function ComicDetailsModal({ comic, onClose, onUpdate, onReact, user }) {
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={onClose}>
-      <div className="bg-[#1a0f2e]/95 backdrop-blur-xl border border-[#8458B3]/50 modal-bg rounded-2xl p-6 w-full max-w-md border border-purple-500/30 max-h-[90vh] overflow-y-auto elevation-3" onClick={e => e.stopPropagation()}>
+      <div className="bg-[#2d1b69]/95 backdrop-blur-xl border border-[#8B5CF6]/50 modal-bg rounded-2xl p-6 w-full max-w-md border border-violet-500/30 max-h-[90vh] overflow-y-auto elevation-3" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-white">{comic.title}</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-lg"><Icon name="x" className="w-5 h-5 text-gray-400" /></button>
@@ -580,12 +580,12 @@ function ComicCard({ comic, onEdit, onDelete, onRate, onReact, onMove, onSelect 
         onSelect(comic);
       }}
       data-card-id={comic.id}
-      className="bg-[#1a0f2e]/70 rounded-xl border border-[#8458B3]/30 hover:border-[#a0d2eb] hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(160,210,235,0.4)] transition-all duration-200 cursor-pointer flex gap-3 p-2 group relative elevation-1 hover:elevation-2 shadow-transition media-card backdrop-blur-xl"
+      className="bg-[#2d1b69]/70 rounded-xl border border-[#8B5CF6]/30 hover:border-[#A855F7] hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all duration-200 cursor-pointer flex gap-3 p-2 group relative elevation-1 hover:elevation-2 shadow-transition media-card backdrop-blur-xl"
     >
       {/* Цветная полоска слева */}
       <div 
         className="w-1 rounded-l-xl flex-shrink-0" 
-        style={{ backgroundColor: '#10b981', opacity: 0.8, boxShadow: '0 0 10px currentColor' }}
+        style={{ backgroundColor: '#8B5CF6', opacity: 0.8, boxShadow: '0 0 10px currentColor' }}
       ></div>
       <div className="relative flex-shrink-0">
         <img 
@@ -714,36 +714,36 @@ const ComicColumn = ({ title, status, comics, onDrop, onEdit, onDelete, onRate, 
     }
   };
 
-  // Определяем цвета для разных статусов
+  // Определяем цвета для разных статусов (фиолетовая палитра)
   const getColumnColors = (status) => {
     switch (status) {
       case 'want_to_read':
         return {
-          bg: 'bg-gradient-to-b from-emerald-500/20 to-teal-500/20',
-          border: 'border-emerald-500/30',
-          text: 'text-emerald-300',
-          button: 'bg-emerald-600 hover:bg-emerald-700'
+          bg: 'bg-gradient-to-b from-violet-500/20 to-purple-500/20',
+          border: 'border-violet-500/30',
+          text: 'text-violet-300',
+          button: 'bg-violet-600 hover:bg-violet-700'
         };
       case 'reading':
         return {
-          bg: 'bg-gradient-to-b from-cyan-500/20 to-blue-500/20',
-          border: 'border-cyan-500/30',
-          text: 'text-cyan-300',
-          button: 'bg-cyan-600 hover:bg-cyan-700'
+          bg: 'bg-gradient-to-b from-purple-500/20 to-fuchsia-500/20',
+          border: 'border-purple-500/30',
+          text: 'text-purple-300',
+          button: 'bg-purple-600 hover:bg-purple-700'
         };
       case 'read':
         return {
-          bg: 'bg-gradient-to-b from-green-500/20 to-emerald-500/20',
-          border: 'border-green-500/30',
-          text: 'text-green-300',
-          button: 'bg-green-600 hover:bg-green-700'
+          bg: 'bg-gradient-to-b from-indigo-500/20 to-violet-500/20',
+          border: 'border-indigo-500/30',
+          text: 'text-indigo-300',
+          button: 'bg-indigo-600 hover:bg-indigo-700'
         };
       case 'dropped':
         return {
-          bg: 'bg-gradient-to-b from-red-500/20 to-pink-500/20',
-          border: 'border-red-500/30',
-          text: 'text-red-300',
-          button: 'bg-red-600 hover:bg-red-700'
+          bg: 'bg-gradient-to-b from-slate-500/20 to-gray-500/20',
+          border: 'border-slate-500/30',
+          text: 'text-slate-300',
+          button: 'bg-slate-600 hover:bg-slate-700'
         };
       default:
         return {
@@ -1415,8 +1415,8 @@ const ComicsTrackerApp = () => {
   }
   
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-[#1a1625] to-[#2d1b4e] ${theme} flex flex-col`}>
-      <header className="bg-[#1a0f2e]/85 backdrop-blur-xl border-b border-[#8458B3]/30 sticky top-0 z-50 flex-shrink-0">
+    <div className={`min-h-screen bg-gradient-to-br from-[#1a0f2e] to-[#2d1b69] ${theme} flex flex-col`}>
+      <header className="bg-[#2d1b69]/85 backdrop-blur-xl border-b border-[#8B5CF6]/30 sticky top-0 z-50 flex-shrink-0">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
@@ -1580,7 +1580,7 @@ const ComicsTrackerApp = () => {
 
         {/* Поиск по своим комиксовам */}
         <div className="w-full">
-          <div className="bg-gray-800/25 backdrop-blur-sm rounded-lg p-4 border border-green-500/15">
+          <div className="bg-gray-800/25 backdrop-blur-sm rounded-lg p-4 border border-violet-500/15">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -1659,9 +1659,9 @@ const ComicsTrackerApp = () => {
       {/* Модальное окно статистики */}
       {showStatistics && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={() => setShowStatistics(false)}>
-          <div className="bg-[#1a0f2e]/95 backdrop-blur-xl border border-[#8458B3]/50 modal-bg rounded-2xl p-6 w-full max-w-2xl border border-green-500/30 max-h-[90vh] overflow-y-auto elevation-3" onClick={e => e.stopPropagation()}>
+          <div className="bg-[#2d1b69]/95 backdrop-blur-xl border border-[#8B5CF6]/50 modal-bg rounded-2xl p-6 w-full max-w-2xl border border-violet-500/30 max-h-[90vh] overflow-y-auto elevation-3" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-white" style={{textShadow: '0 2px 4px rgba(16, 185, 129, 0.3)'}}>Статистика комиксов</h2>
+              <h2 className="text-2xl font-bold text-white" style={{textShadow: '0 2px 4px rgba(139, 92, 246, 0.3)'}}>Статистика комиксов</h2>
               <button onClick={() => setShowStatistics(false)} className="p-2 hover:bg-gray-800 rounded-lg">
                 <Icon name="x" className="w-5 h-5 text-gray-400" />
               </button>
@@ -1739,8 +1739,8 @@ const ComicsTrackerApp = () => {
       {/* Модальное окно настроек */}
       {showProfile && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={() => setShowProfile(false)}>
-          <div className="bg-[#1a0f2e]/95 backdrop-blur-xl border border-[#8458B3]/50 modal-bg rounded-2xl p-6 w-full max-w-md border border-green-500/30 max-h-[90vh] overflow-y-auto elevation-3" onClick={e => e.stopPropagation()}>
-            <h2 className="text-2xl font-bold text-white mb-4" style={{textShadow: '0 2px 4px rgba(16, 185, 129, 0.3)'}}>Настройки профиля</h2>
+          <div className="bg-[#2d1b69]/95 backdrop-blur-xl border border-[#8B5CF6]/50 modal-bg rounded-2xl p-6 w-full max-w-md border border-violet-500/30 max-h-[90vh] overflow-y-auto elevation-3" onClick={e => e.stopPropagation()}>
+            <h2 className="text-2xl font-bold text-white mb-4" style={{textShadow: '0 2px 4px rgba(139, 92, 246, 0.3)'}}>Настройки профиля</h2>
             <div className="space-y-4">
               <div className="flex flex-col items-center gap-3">
                 <Avatar src={user?.avatar} size="xl" />
@@ -1790,9 +1790,9 @@ const ComicsTrackerApp = () => {
       {/* Модальное окно друзей */}
       {showUserHub && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={() => setShowUserHub(false)}>
-          <div className="bg-[#1a0f2e]/95 backdrop-blur-xl border border-[#8458B3]/50 modal-bg rounded-2xl p-6 w-full max-w-3xl border border-green-500/30 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="bg-[#2d1b69]/95 backdrop-blur-xl border border-[#8B5CF6]/50 modal-bg rounded-2xl p-6 w-full max-w-3xl border border-violet-500/30 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
-              <h2 className="text-2xl font-bold text-white" style={{textShadow: '0 2px 4px rgba(16, 185, 129, 0.3)'}}>Сообщество</h2>
+              <h2 className="text-2xl font-bold text-white" style={{textShadow: '0 2px 4px rgba(139, 92, 246, 0.3)'}}>Сообщество</h2>
               <button onClick={() => setShowUserHub(false)} className="p-2 hover:bg-gray-800 rounded-lg">
                 <Icon name="x" className="w-5 h-5 text-gray-400" />
               </button>
