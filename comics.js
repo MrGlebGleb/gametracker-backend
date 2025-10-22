@@ -152,9 +152,9 @@ const ComicSearchModal = ({ isOpen, onClose, onAddComic, status = 'want_to_read'
             <div className="grid gap-4">
               {results.map((comic) => (
                 <div
-                  key={book.id}
+                  key={comic.id}
                   className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                    selectedComic?.id === book.id 
+                    selectedComic?.id === comic.id 
                       ? 'border-green-500 bg-green-500/10' 
                       : 'border-gray-600 hover:border-gray-500 bg-gray-800'
                   }`}
@@ -162,18 +162,18 @@ const ComicSearchModal = ({ isOpen, onClose, onAddComic, status = 'want_to_read'
                 >
                   <div className="flex gap-4">
                     <img
-                      src={book.coverUrl}
-                      alt={book.title}
+                      src={comic.coverUrl}
+                      alt={comic.title}
                       className="w-16 h-20 object-cover rounded border"
                       onError={(e) => {
                         e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="80" viewBox="0 0 64 80"><rect width="64" height="80" fill="%23f3f4f6"/><text x="32" y="45" text-anchor="middle" fill="%236b7280" font-size="12">📚</text></svg>';
                       }}
                     />
                     <div className="flex-1">
-                      <h3 className="font-semibold text-white line-clamp-2">{book.title}</h3>
-                      <p className="text-gray-300 text-sm">{book.publisher}</p>
-                      {book.year && <p className="text-gray-400 text-sm">{book.year}</p>}
-                      {book.pages && <p className="text-gray-400 text-sm">{book.pages} стр.</p>}
+                      <h3 className="font-semibold text-white line-clamp-2">{comic.title}</h3>
+                      <p className="text-gray-300 text-sm">{comic.publisher}</p>
+                      {comic.year && <p className="text-gray-400 text-sm">{comic.year}</p>}
+                      {comic.issueCount && <p className="text-gray-400 text-sm">{comic.issueCount} выпусков</p>}
                     </div>
                   </div>
                 </div>
@@ -337,12 +337,12 @@ const NotificationsPanel = ({ token, onNavigateToUser }) => {
                     Отметить все как прочитанные
                   </button>
                 )}
-                <button
-                  onClick={() => setShowPanel(false)}
+              <button
+                onClick={() => setShowPanel(false)}
                   className="text-gray-400 hover:text-green-400 transition-colors"
-                >
-                  <Icon name="x" className="w-5 h-5" />
-                </button>
+              >
+                <Icon name="x" className="w-5 h-5" />
+              </button>
               </div>
             </div>
           </div>
@@ -364,7 +364,7 @@ const NotificationsPanel = ({ token, onNavigateToUser }) => {
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-sm">{notification.message}</p>
                       <p className="text-green-400/70 text-xs mt-1">{formatTime(notification.created_at)}</p>
-                    </div>
+                        </div>
                   </div>
                 </div>
               ))
@@ -388,21 +388,21 @@ function ComicActivityFeed({ token, onNavigateToUser }) {
 
   useEffect(() => {
     const fetchActivities = async () => {
-      if (!token) return;
-      setLoading(true);
-      try {
-        const response = await fetch(`${API_URL}/api/friends/activity?type=book`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (response.ok) {
-          const data = await response.json();
+    if (!token) return;
+    setLoading(true);
+    try {
+        const response = await fetch(`${API_URL}/api/friends/activity?type=comic`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
           setActivities(data.activities || []);
         }
       } catch (err) {
         console.error("Failed to fetch comic activities", err);
-      } finally {
-        setLoading(false);
-      }
+    } finally {
+      setLoading(false);
+    }
     };
     fetchActivities();
     const interval = setInterval(fetchActivities, 60000);
@@ -420,12 +420,12 @@ function ComicActivityFeed({ token, onNavigateToUser }) {
     const { username, action_type, details, user_id } = act;
     const bookName = <span className="font-bold text-green-300">{details.title}</span>;
     const clickableUsername = (
-      <button 
+            <button
         onClick={() => onNavigateToUser && onNavigateToUser(user_id)}
         className="text-blue-400 hover:text-blue-300 underline cursor-pointer font-semibold"
-      >
+            >
         {username}
-      </button>
+            </button>
     );
     
     switch (action_type) {
@@ -441,7 +441,7 @@ function ComicActivityFeed({ token, onNavigateToUser }) {
         return <>{clickableUsername} выполнил действие с комиксовой {bookName}</>;
     }
   };
-  
+
   return (
     <div className="bg-gradient-to-br from-[#10b981]/30 to-[#059669]/25 backdrop-blur-xl rounded-xl border border-[#10b981]/40 p-6">
       <h3 className="text-xl font-bold text-white mb-4">Активность друзей по комиксовам</h3>
@@ -455,9 +455,9 @@ function ComicActivityFeed({ token, onNavigateToUser }) {
             <div key={act.id} className="text-sm text-gray-300 p-4 bg-[#1a0f2e]/60 rounded-lg border border-[#10b981]/30 hover:border-[#a8e6cf] hover:-translate-y-1 transition-all">
               <p>{formatActivity(act)}</p>
               <div className="text-xs text-gray-500 mt-2 text-right">{new Date(act.created_at).toLocaleString('ru-RU')}</div>
-            </div>
-          ))}
         </div>
+          ))}
+                  </div>
       ) : (
         <p className="text-gray-400 text-center py-8">Пока нет активности от ваших друзей по комиксовам.</p>
       )}
@@ -466,38 +466,38 @@ function ComicActivityFeed({ token, onNavigateToUser }) {
 }
 
 // Компонент модального окна для деталей комиксови
-function ComicDetailsModal({ book, onClose, onUpdate, onReact, user }) {
-  if (!book) return null;
-  const userReaction = (book.reactions || []).find(r => r.user_id === user?.id);
+function ComicDetailsModal({ comic, onClose, onUpdate, onReact, user }) {
+  if (!comic) return null;
+  const userReaction = (comic.reactions || []).find(r => r.user_id === user?.id);
   
   // Локальное состояние для мгновенного обновления рейтинга
-  const [localRating, setLocalRating] = useState(book.user_rating || 0);
+  const [localRating, setLocalRating] = useState(comic.user_rating || 0);
 
   // Синхронизируем локальное состояние с обновленной комиксовой
   useEffect(() => {
-    setLocalRating(book.user_rating || 0);
-  }, [book.user_rating]);
+    setLocalRating(comic.user_rating || 0);
+  }, [comic.user_rating]);
 
   const handleRatingClick = (rating) => {
     // Мгновенно обновляем локальное состояние
     setLocalRating(rating);
     // Вызываем onUpdate с правильным полем user_rating
-    onUpdate(book, { user_rating: rating });
+    onUpdate(comic, { user_rating: rating });
   };
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={onClose}>
       <div className="bg-[#1a0f2e]/95 backdrop-blur-xl border border-[#8458B3]/50 modal-bg rounded-2xl p-6 w-full max-w-md border border-purple-500/30 max-h-[90vh] overflow-y-auto elevation-3" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-white">{book.title}</h2>
+          <h2 className="text-xl font-bold text-white">{comic.title}</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-lg"><Icon name="x" className="w-5 h-5 text-gray-400" /></button>
-        </div>
+    </div>
         <div className="space-y-4">
           <div>
             <p className="text-gray-400 text-sm mb-2">Рейтинг:</p>
             <div className="flex gap-1">
               {[1, 2, 3, 4, 5].map((star) => (
-                <button
+      <button
                   key={star}
                   onClick={() => handleRatingClick(star)}
                   className={`w-6 h-6 transition-all duration-200 hover:scale-110 ${
@@ -508,7 +508,7 @@ function ComicDetailsModal({ book, onClose, onUpdate, onReact, user }) {
                   style={star <= localRating ? {filter: 'drop-shadow(0 0 6px rgba(255, 193, 7, 0.6))'} : {}}
                 >
                   <Icon name="star" className="w-full h-full" />
-                </button>
+      </button>
               ))}
             </div>
             <p className="text-gray-500 text-xs mt-1">
@@ -518,8 +518,8 @@ function ComicDetailsModal({ book, onClose, onUpdate, onReact, user }) {
           <div>
             <label className="text-gray-400 text-sm">Отзыв:</label>
             <textarea 
-              defaultValue={book.review || ''} 
-              onBlur={(e) => onUpdate(book, { review: e.target.value })} 
+              defaultValue={comic.review || ''} 
+              onBlur={(e) => onUpdate(comic, { review: e.target.value })} 
               className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white mt-1" 
               rows="4" 
               placeholder="Ваши впечатления..."
@@ -530,37 +530,37 @@ function ComicDetailsModal({ book, onClose, onUpdate, onReact, user }) {
             <p className="text-gray-400 text-sm mb-2">Ваша реакция:</p>
             <div className="flex flex-wrap gap-2">
               {REACTION_EMOJIS.map(emoji => (
-                <button 
+            <button
                   key={emoji} 
                   data-reaction-emoji={emoji}
-                  onClick={() => onReact(book, emoji)} 
+                  onClick={() => onReact(comic, emoji)} 
                   className={`text-2xl reaction-button p-1 rounded-full ${userReaction?.emoji === emoji ? 'bg-purple-500/30' : 'hover:bg-gray-700/50'}`}
                 >
                   {emoji}
-                </button>
+            </button>
               ))}
             </div>
           </div>
-          {book.reactions && book.reactions.length > 0 && (
+          {comic.reactions && comic.reactions.length > 0 && (
             <div>
               <p className="text-gray-400 text-sm mb-2">Все реакции:</p>
               <div className="flex flex-wrap gap-2">
-                {book.reactions.map((reaction, index) => (
+                {comic.reactions.map((reaction, index) => (
                   <span key={index} className="text-sm text-gray-300">
                     {reaction.emoji} {reaction.username}
                   </span>
                 ))}
-              </div>
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
+    </div>
+    </div>
     </div>
   );
 }
 
 // Компонент карточки комиксови (скопирован с MediaCard из movies.js)
-function ComicCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect }) {
+function ComicCard({ comic, onEdit, onDelete, onRate, onReact, onMove, onSelect }) {
   return (
     <div
       draggable={true}
@@ -571,7 +571,7 @@ function ComicCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect }
         // Открываем модальное окно для редактирования/оценки
         onSelect(comic);
       }}
-      data-card-id={book.id}
+      data-card-id={comic.id}
       className="bg-[#1a0f2e]/70 rounded-xl border border-[#8458B3]/30 hover:border-[#a0d2eb] hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(160,210,235,0.4)] transition-all duration-200 cursor-pointer flex gap-3 p-2 group relative elevation-1 hover:elevation-2 shadow-transition media-card backdrop-blur-xl"
     >
       {/* Цветная полоска слева */}
@@ -581,13 +581,13 @@ function ComicCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect }
       ></div>
       <div className="relative flex-shrink-0">
         <img 
-          src={book.coverUrl ? `${book.coverUrl}?t=${Date.now()}` : 'https://placehold.co/96x128/1f2937/ffffff?text=📚'} 
-          alt={book.title} 
+          src={comic.coverUrl ? `${comic.coverUrl}?t=${Date.now()}` : 'https://placehold.co/96x128/1f2937/ffffff?text=📚'} 
+          alt={comic.title} 
           className="w-16 h-24 object-cover rounded-lg flex-shrink-0" 
           onError={(e) => {
             console.log('❌ Image failed to load:', {
-              coverUrl: book.coverUrl,
-              title: book.title,
+              coverUrl: comic.coverUrl,
+              title: comic.title,
               error: e.target.error,
               currentSrc: e.target.currentSrc
             });
@@ -595,38 +595,38 @@ function ComicCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect }
           }}
           onLoad={() => {
             console.log('✅ Image loaded successfully:', {
-              coverUrl: book.coverUrl,
-              title: book.title,
-              currentSrc: book.coverUrl
+              coverUrl: comic.coverUrl,
+              title: comic.title,
+              currentSrc: comic.coverUrl
             });
           }}
         />
       </div>
       <div className="flex flex-col justify-between flex-grow min-w-0 py-1">
         <div>
-          <h3 className="text-white font-semibold text-sm line-clamp-2 mb-1" style={{fontWeight: '600'}}>{book.title}</h3>
-          {book.year && <p className="text-xs" style={{color: 'rgba(208, 189, 244, 0.8)'}}>{book.year}</p>}
-          <p className="text-xs text-gray-400 mb-1">{book.publisher}</p>
+          <h3 className="text-white font-semibold text-sm line-clamp-2 mb-1" style={{fontWeight: '600'}}>{comic.title}</h3>
+          {comic.year && <p className="text-xs" style={{color: 'rgba(208, 189, 244, 0.8)'}}>{comic.year}</p>}
+          <p className="text-xs text-gray-400 mb-1">{comic.publisher}</p>
           {/* Рейтинг под названием */}
-          {book.user_rating && book.user_rating > 0 && (
+          {comic.user_rating && comic.user_rating > 0 && (
             <div className="flex gap-0.5 mt-1">
               {[...Array(5)].map((_, i) => (
                 <Icon 
                   key={i} 
                   name="star" 
-                  className={`w-3 h-3 ${i < book.user_rating ? 'text-yellow-400' : 'text-gray-500'}`} 
-                  style={i < book.user_rating ? {filter: 'drop-shadow(0 0 4px rgba(255, 193, 7, 0.5))'} : {}} 
+                  className={`w-3 h-3 ${i < comic.user_rating ? 'text-yellow-400' : 'text-gray-500'}`} 
+                  style={i < comic.user_rating ? {filter: 'drop-shadow(0 0 4px rgba(255, 193, 7, 0.5))'} : {}} 
                 />
               ))}
             </div>
           )}
         </div>
-        {book.reactions && book.reactions.length > 0 && (
+        {comic.reactions && comic.reactions.length > 0 && (
           <div className="flex gap-1.5 mt-1 flex-wrap items-center">
             {(() => {
               // Группируем реакции по emoji
               const groupedReactions = {};
-              book.reactions.forEach(r => {
+              comic.reactions.forEach(r => {
                 if (!groupedReactions[r.emoji]) {
                   groupedReactions[r.emoji] = [];
                 }
@@ -650,7 +650,7 @@ function ComicCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect }
             })()}
             {(() => {
               const groupedReactions = {};
-              book.reactions.forEach(r => {
+              comic.reactions.forEach(r => {
                 if (!groupedReactions[r.emoji]) {
                   groupedReactions[r.emoji] = [];
                 }
@@ -665,12 +665,12 @@ function ComicCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect }
       <button 
         onClick={(e) => {
           e.stopPropagation();
-          onDelete(book.id);
+          onDelete(comic.id);
         }} 
         className="absolute top-1 right-1 p-1.5 bg-red-600/80 hover:bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity self-start flex-shrink-0 z-10"
       >
         <Icon name="x" className="w-3 h-3 text-white" />
-      </button>
+            </button>
     </div>
   );
 }
@@ -744,31 +744,31 @@ const ComicColumn = ({ title, status, comics, onDrop, onEdit, onDelete, onRate, 
   };
 
   const colors = getColumnColors(status);
-
+  
   return (
-    <div
+    <div 
       className={`board-column ${colors.bg} ${colors.border} border rounded-lg p-4 min-h-96 backdrop-blur-sm ${
         isDragOver ? 'drag-over-column' : ''
-      }`}
+      }`} 
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4">
         <h2 className={`text-lg font-semibold ${colors.text}`}>{title}</h2>
-        <button
+                    <button 
           onClick={onAddComic}
           className={`${colors.button} text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors hover:scale-105 active:scale-95`}
           title="Добавить комикс"
         >
           +
-        </button>
-      </div>
+                    </button>
+            </div>
       <div className="space-y-4">
         {comics.map((comic) => (
           <ComicCard
-            key={book.id}
-            book={book}
+            key={comic.id}
+            comic={comic}
             onEdit={onEdit}
             onDelete={onDelete}
             onRate={onRate}
@@ -783,7 +783,7 @@ const ComicColumn = ({ title, status, comics, onDrop, onEdit, onDelete, onRate, 
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
             <p className="text-sm">Перетащите комикс сюда</p>
-          </div>
+        </div>
         )}
       </div>
     </div>
@@ -839,7 +839,7 @@ const ComicsTrackerApp = () => {
         window.location.href = '/';
         return;
       }
-    } else {
+        } else {
       // Если пользователь не найден в localStorage, перенаправляем на главную
       window.location.href = '/';
       return;
@@ -866,12 +866,12 @@ const ComicsTrackerApp = () => {
     
     try {
       const response = await fetch(`${API_URL}/api/comics`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
       
       console.log('Books API response status:', response.status);
       
-      if (response.ok) {
+                if (response.ok) {
         const booksData = await response.json();
         console.log('Loaded comics:', booksData.length);
         console.log('Books data:', booksData);
@@ -889,10 +889,10 @@ const ComicsTrackerApp = () => {
       }
     } catch (error) {
       console.error('Error loading comics:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+            } finally {
+                setLoading(false);
+            }
+        };
 
   const loadFriends = async () => {
     const token = localStorage.getItem('token');
@@ -920,7 +920,7 @@ const ComicsTrackerApp = () => {
   };
 
   const loadUserBooks = async (userId = null) => {
-    const token = localStorage.getItem('token');
+  const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
@@ -931,7 +931,7 @@ const ComicsTrackerApp = () => {
       
       if (response.ok) {
         const booksData = await response.json();
-        if (userId) {
+      if (userId) {
           // Загружаем комиксови друга
           // Сначала загружаем данные пользователя
           const userResponse = await fetch(`${API_URL}/api/users/${userId}`, {
@@ -941,11 +941,11 @@ const ComicsTrackerApp = () => {
           if (userResponse.ok) {
             const userData = await userResponse.json();
             setViewingUser({ id: userId, username: userData.username || userData.nickname || 'Друг' });
-          } else {
+      } else {
             setViewingUser({ id: userId, username: 'Друг' });
-          }
+      }
           setComics(comicsData);
-        } else {
+      } else {
           // Загружаем свои комиксови
           setViewingUser(null);
           setComics(comicsData);
@@ -988,11 +988,11 @@ const ComicsTrackerApp = () => {
   const addComic = async (bookData, status = 'want_to_read') => {
     const token = localStorage.getItem('token');
     if (!token) {
-      console.error('No token found for adding book');
+      console.error('No token found for adding comic');
       return;
     }
 
-    console.log('Adding book:', bookData, 'with status:', status);
+    console.log('Adding comic:', bookData, 'with status:', status);
     
     try {
       const response = await fetch(`${API_URL}/api/comics`, {
@@ -1027,7 +1027,7 @@ const ComicsTrackerApp = () => {
         showToast('Ошибка при добавлении комиксови', 'error');
       }
     } catch (error) {
-      console.error('Error adding book:', error);
+      console.error('Error adding comic:', error);
       showToast('Ошибка при добавлении комиксови', 'error');
     }
   };
@@ -1047,8 +1047,8 @@ const ComicsTrackerApp = () => {
       });
 
       if (response.ok) {
-        setComics(prev => prev.map(book => 
-          book.id === bookId ? { ...book, status: newStatus } : book
+        setComics(prev => prev.map(comic => 
+          comic.id === bookId ? { ...comic, status: newStatus } : comic
         ));
         showToast('Статус комиксови обновлен!', 'success');
       }
@@ -1069,11 +1069,11 @@ const ComicsTrackerApp = () => {
       });
 
       if (response.ok) {
-        setComics(prev => prev.filter(book => book.id !== bookId));
+        setComics(prev => prev.filter(comic => comic.id !== bookId));
         showToast('Книга удалена', 'info');
       }
     } catch (error) {
-      console.error('Error deleting book:', error);
+      console.error('Error deleting comic:', error);
       showToast('Ошибка при удалении комиксови', 'error');
     }
   };
@@ -1093,13 +1093,13 @@ const ComicsTrackerApp = () => {
       });
 
       if (response.ok) {
-        setComics(prev => prev.map(book => 
-          book.id === bookId ? { ...book, rating } : book
+        setComics(prev => prev.map(comic => 
+          comic.id === bookId ? { ...comic, rating } : comic
         ));
         showToast('Рейтинг сохранен!', 'success');
       }
     } catch (error) {
-      console.error('Error rating book:', error);
+      console.error('Error rating comic:', error);
       showToast('Ошибка при сохранении рейтинга', 'error');
     }
   };
@@ -1122,19 +1122,19 @@ const ComicsTrackerApp = () => {
         showToast('Реакция добавлена!', 'success');
       }
     } catch (error) {
-      console.error('Error reacting to book:', error);
+      console.error('Error reacting to comic:', error);
       showToast('Ошибка при добавлении реакции', 'error');
     }
   };
 
-  const updateComic = async (book, updates) => {
+  const updateComic = async (comic, updates) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
       // Если обновляется рейтинг, используем специальный endpoint
       if (updates.user_rating !== undefined) {
-        const response = await fetch(`${API_URL}/api/comics/${book.id}/rate`, {
+        const response = await fetch(`${API_URL}/api/comics/${comic.id}/rate`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1145,7 +1145,7 @@ const ComicsTrackerApp = () => {
 
         if (response.ok) {
           const updatedBook = await response.json();
-          setComics(prev => prev.map(b => b.id === book.id ? updatedBook : b));
+          setComics(prev => prev.map(c => c.id === comic.id ? updatedBook : c));
           showToast('Рейтинг сохранен!', 'success');
         } else {
           showToast('Ошибка при сохранении рейтинга', 'error');
@@ -1154,7 +1154,7 @@ const ComicsTrackerApp = () => {
       }
 
       // Для других обновлений используем обычный PATCH
-      const response = await fetch(`${API_URL}/api/comics/${book.id}`, {
+      const response = await fetch(`${API_URL}/api/comics/${comic.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1165,11 +1165,11 @@ const ComicsTrackerApp = () => {
 
       if (response.ok) {
         const updatedBook = await response.json();
-        setComics(prev => prev.map(b => b.id === book.id ? updatedBook : b));
+        setComics(prev => prev.map(c => c.id === comic.id ? updatedBook : c));
         showToast('Книга обновлена!', 'success');
       }
     } catch (error) {
-      console.error('Error updating book:', error);
+      console.error('Error updating comic:', error);
       showToast('Ошибка при обновлении комиксови', 'error');
     }
   };
@@ -1334,10 +1334,10 @@ const ComicsTrackerApp = () => {
 
   // Группировка комиксов по статусам
   const comicsByStatus = {
-    want_to_read: comics.filter(book => book.status === 'want_to_read'),
-    reading: comics.filter(book => book.status === 'reading'),
-    read: comics.filter(book => book.status === 'read'),
-    dropped: comics.filter(book => book.status === 'dropped')
+    want_to_read: comics.filter(comic => comic.status === 'want_to_read'),
+    reading: comics.filter(comic => comic.status === 'reading'),
+    read: comics.filter(comic => comic.status === 'read'),
+    dropped: comics.filter(comic => comic.status === 'dropped')
   };
 
   if (loading) {
@@ -1361,7 +1361,7 @@ const ComicsTrackerApp = () => {
       </div>
     );
   }
-
+  
   return (
     <div className={`min-h-screen bg-gradient-to-br from-[#1a1625] to-[#2d1b4e] ${theme} flex flex-col`}>
       <header className="bg-[#1a0f2e]/85 backdrop-blur-xl border-b border-[#8458B3]/30 sticky top-0 z-50 flex-shrink-0">
@@ -1399,18 +1399,18 @@ const ComicsTrackerApp = () => {
                         <Avatar src={user.avatar} size="sm" />
                         <span className="text-white font-semibold text-sm md:text-base block">{user.username}</span>
                     </div>
-                    <Fragment>
+                       <Fragment>
                         <button onClick={handleStatistics} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Статистика комиксов">
                             <Icon name="barChart" className="w-4 h-4 md:w-5 md:h-5 text-green-400 hover:text-green-300 hover:scale-110 transition-all header-icon" />
-                        </button>
+                         </button>
                         <button onClick={handleProfile} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30">
                             <Icon name="settings" className="w-4 h-4 md:w-5 md:h-5 text-green-400 hover:text-green-300 hover:scale-110 transition-all header-icon" />
-                        </button>
+                           </button>
                         <button onClick={handleUserHub} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30 relative">
                             <Icon name="users" className="w-4 h-4 md:w-5 md:h-5 text-green-400 hover:text-green-300 hover:scale-110 transition-all header-icon" />
-                            {friendRequests.length > 0 && <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white badge-notification"></span>}
-                        </button>
-                    </Fragment>
+                               {friendRequests.length > 0 && <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white badge-notification"></span>}
+                           </button>
+                       </Fragment>
                     <NotificationsPanel 
                       token={localStorage.getItem('token')} 
                       onNavigateToUser={(userId) => {
@@ -1423,7 +1423,7 @@ const ComicsTrackerApp = () => {
           </div>
         </div>
       </header>
-
+      
       <main className="flex-grow container mx-auto px-4 py-6 space-y-8">
         {/* Кнопка "Назад" при просмотре доски друга */}
         {viewingUser && (
@@ -1449,7 +1449,7 @@ const ComicsTrackerApp = () => {
             title="📖 Хочу прочитать"
             status="want_to_read"
             comics={comicsByStatus.want_to_read}
-            onDrop={(comic) => updateComicStatus(book.id, 'want_to_read')}
+            onDrop={(comic) => updateComicStatus(comic.id, 'want_to_read')}
             onEdit={(comic) => {
               setEditingComic(comic);
               setShowEditModal(true);
@@ -1469,7 +1469,7 @@ const ComicsTrackerApp = () => {
             title="📚 Читаю"
             status="reading"
             comics={comicsByStatus.reading}
-            onDrop={(comic) => updateComicStatus(book.id, 'reading')}
+            onDrop={(comic) => updateComicStatus(comic.id, 'reading')}
             onEdit={(comic) => {
               setEditingComic(comic);
               setShowEditModal(true);
@@ -1489,7 +1489,7 @@ const ComicsTrackerApp = () => {
             title="✅ Прочитал"
             status="read"
             comics={comicsByStatus.read}
-            onDrop={(comic) => updateComicStatus(book.id, 'read')}
+            onDrop={(comic) => updateComicStatus(comic.id, 'read')}
             onEdit={(comic) => {
               setEditingComic(comic);
               setShowEditModal(true);
@@ -1509,7 +1509,7 @@ const ComicsTrackerApp = () => {
             title="❌ Бросил"
             status="dropped"
             comics={comicsByStatus.dropped}
-            onDrop={(comic) => updateComicStatus(book.id, 'dropped')}
+            onDrop={(comic) => updateComicStatus(comic.id, 'dropped')}
             onEdit={(comic) => {
               setEditingComic(comic);
               setShowEditModal(true);
@@ -1524,7 +1524,7 @@ const ComicsTrackerApp = () => {
             }}
             onSelect={setSelectedComic}
           />
-        </div>
+            </div>
 
         {/* Поиск по своим комиксовам */}
         <div className="w-full">
@@ -1546,32 +1546,32 @@ const ComicsTrackerApp = () => {
             {myBooksSearchResults.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
                 {myBooksSearchResults.map((comic) => (
-                  <div key={book.id} className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
+                  <div key={comic.id} className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
                     <div className="flex gap-3">
                       <img
-                        src={book.coverUrl}
-                        alt={book.title}
+                        src={comic.coverUrl}
+                        alt={comic.title}
                         className="w-12 h-16 object-cover rounded"
                         onError={(e) => {
                           e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="64" viewBox="0 0 48 64"><rect width="48" height="64" fill="%23374151"/><text x="24" y="35" text-anchor="middle" fill="%239ca3af" font-size="12">📚</text></svg>';
                         }}
                       />
                       <div className="flex-1">
-                        <h3 className="font-semibold text-white text-sm line-clamp-2">{book.title}</h3>
-                        <p className="text-gray-400 text-xs">{book.publisher}</p>
+                        <h3 className="font-semibold text-white text-sm line-clamp-2">{comic.title}</h3>
+                        <p className="text-gray-400 text-xs">{comic.publisher}</p>
                         <span className="inline-block px-2 py-1 bg-green-600 text-white text-xs rounded mt-1">
-                          {book.status === 'want_to_read' && 'Хочу прочитать'}
-                          {book.status === 'reading' && 'Читаю'}
-                          {book.status === 'read' && 'Прочитал'}
-                          {book.status === 'dropped' && 'Бросил'}
+                          {comic.status === 'want_to_read' && 'Хочу прочитать'}
+                          {comic.status === 'reading' && 'Читаю'}
+                          {comic.status === 'read' && 'Прочитал'}
+                          {comic.status === 'dropped' && 'Бросил'}
                         </span>
                       </div>
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
-          </div>
+                      </div>
+                    )}
+                      </div>
         </div>
 
         {/* Активность друзей */}
@@ -1595,7 +1595,7 @@ const ComicsTrackerApp = () => {
       />
       
       <ComicDetailsModal
-        book={selectedComic}
+        comic={selectedComic}
         onClose={() => setSelectedComic(null)}
         onUpdate={updateComic}
         onReact={reactToComic}
@@ -1611,14 +1611,14 @@ const ComicsTrackerApp = () => {
               <button onClick={() => setShowStatistics(false)} className="p-2 hover:bg-gray-800 rounded-lg">
                 <Icon name="x" className="w-5 h-5 text-gray-400" />
               </button>
-            </div>
+                  </div>
             <div className="space-y-6">
               {/* Основная статистика */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg p-4 border border-green-500/30">
                   <h3 className="text-lg font-semibold text-white mb-2">Всего комиксов</h3>
                   <p className="text-3xl font-bold text-green-400">{comics.length}</p>
-                </div>
+                  </div>
                 <div className="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-lg p-4 border border-blue-500/30">
                   <h3 className="text-lg font-semibold text-white mb-2">Прочитано</h3>
                   <p className="text-3xl font-bold text-blue-400">{comics.filter(b => b.status === 'read').length}</p>
@@ -1631,19 +1631,19 @@ const ComicsTrackerApp = () => {
                   <h3 className="text-lg font-semibold text-white mb-2">Хочу прочитать</h3>
                   <p className="text-3xl font-bold text-purple-400">{comics.filter(b => b.status === 'want_to_read').length}</p>
                 </div>
-              </div>
+            </div>
 
               {/* Дополнительная статистика */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-gray-800/50 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-white mb-2">Брошено</h3>
                   <p className="text-3xl font-bold text-red-400">{comics.filter(b => b.status === 'dropped').length}</p>
-                </div>
+              </div>
                 <div className="bg-gray-800/50 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-white mb-2">С рейтингом</h3>
                   <p className="text-3xl font-bold text-yellow-400">{comics.filter(b => b.user_rating && b.user_rating > 0).length}</p>
+          </div>
                 </div>
-              </div>
 
               {/* Прогресс чтения */}
               {comics.length > 0 && (
@@ -1654,7 +1654,7 @@ const ComicsTrackerApp = () => {
                       <div className="flex justify-between text-sm text-gray-400 mb-1">
                         <span>Прочитано</span>
                         <span>{Math.round((comics.filter(b => b.status === 'read').length / comics.length) * 100)}%</span>
-                      </div>
+            </div>
                       <div className="w-full bg-gray-700 rounded-full h-2">
                         <div 
                           className="bg-green-500 h-2 rounded-full transition-all duration-500" 
@@ -1673,14 +1673,14 @@ const ComicsTrackerApp = () => {
                           style={{ width: `${(comics.filter(b => b.status === 'reading').length / comics.length) * 100}%` }}
                         ></div>
                       </div>
-                    </div>
-                  </div>
                 </div>
-              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+            </div>
+          </div>
+          </div>
+        )}
 
       {/* Модальное окно настроек */}
       {showProfile && (
