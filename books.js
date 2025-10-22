@@ -587,7 +587,7 @@ function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect })
         onSelect(book);
       }}
       data-card-id={book.id}
-      className="bg-[#1a0f2e]/70 rounded-xl border border-[#8458B3]/30 hover:border-[#a0d2eb] hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(160,210,235,0.4)] transition-all duration-200 cursor-pointer flex gap-3 p-2 group relative elevation-1 hover:elevation-2 shadow-transition media-card backdrop-blur-xl"
+      className="bg-[#1a0f2e]/70 rounded-xl border-2 border-[#8458B3]/40 hover:border-[#a0d2eb] hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(160,210,235,0.4)] transition-all duration-200 cursor-pointer flex gap-3 p-2 group relative elevation-1 hover:elevation-2 shadow-transition media-card backdrop-blur-xl"
     >
       {/* Цветная полоска слева */}
       <div 
