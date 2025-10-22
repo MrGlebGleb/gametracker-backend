@@ -446,7 +446,7 @@ function ComicActivityFeed({ token, onNavigateToUser }) {
 
   return (
     <div className="bg-gradient-to-br from-[#10b981]/30 to-[#059669]/25 backdrop-blur-xl rounded-xl border border-[#10b981]/40 p-6">
-      <h3 className="text-xl font-bold text-white mb-4">Активность друзей по комиксовам</h3>
+      <h3 className="text-xl font-bold text-white mb-4">Активность друзей</h3>
       {loading ? (
         <div className="w-full flex items-center justify-center p-10">
           <Icon name="loader" className="w-8 h-8 text-green-400 animate-spin"/>
@@ -461,7 +461,9 @@ function ComicActivityFeed({ token, onNavigateToUser }) {
           ))}
                   </div>
       ) : (
-        <p className="text-gray-400 text-center py-8">Пока нет активности от ваших друзей по комиксовам.</p>
+        <div className="flex items-center justify-center py-12">
+          <p className="text-gray-400 text-center">Пока нет активности от ваших друзей</p>
+        </div>
       )}
     </div>
   );
