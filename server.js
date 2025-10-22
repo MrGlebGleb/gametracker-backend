@@ -2580,6 +2580,29 @@ app.get('/api/users', authenticateToken, async (req, res) => {
   }
 });
 
+// Получить данные конкретного пользователя
+app.get('/api/users/:id', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const result = await client.query(
+      'SELECT id, username, nickname, avatar, bio FROM users WHERE id = $1',
+      [id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Ошибка получения пользователя:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
 app.post('/api/friends/request', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {

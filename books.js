@@ -932,7 +932,17 @@ const BookTrackerApp = () => {
         const booksData = await response.json();
         if (userId) {
           // Загружаем книги друга
-          setViewingUser({ id: userId, username: 'Друг' }); // Можно расширить, загрузив данные пользователя
+          // Сначала загружаем данные пользователя
+          const userResponse = await fetch(`${API_URL}/api/users/${userId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          if (userResponse.ok) {
+            const userData = await userResponse.json();
+            setViewingUser({ id: userId, username: userData.username || userData.nickname || 'Друг' });
+          } else {
+            setViewingUser({ id: userId, username: 'Друг' });
+          }
           setBooks(booksData);
         } else {
           // Загружаем свои книги
