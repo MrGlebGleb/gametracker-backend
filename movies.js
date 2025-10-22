@@ -1250,6 +1250,8 @@ function MediaCard({ item, onSelect, onRemove, onDragStart, onDragEnd, isViewing
 }
 
 function Column({ title, emoji, items, columnKey, isExpanded, onToggleExpand, isViewingFriend, onAddItem, ...handlers }) {
+  const [isDragOver, setIsDragOver] = useState(false);
+  
   // Определяем boardId на основе columnKey
   const boardId = columnKey.includes('wishlist') ? 'wishlist' : 'watched';
   const visibleItems = isExpanded ? items : items.slice(0, MEDIA_PER_COLUMN);
@@ -1257,9 +1259,38 @@ function Column({ title, emoji, items, columnKey, isExpanded, onToggleExpand, is
   const cardClass = boardId === 'wishlist' 
     ? 'bg-gradient-to-br from-[#a0d2eb]/15 to-[#8458B3]/25 border-2 border-[#a0d2eb]/40 backdrop-blur-xl' 
     : 'bg-gradient-to-br from-[#8458B3]/25 to-[#d0bdf4]/15 border-2 border-[#8458B3]/50 backdrop-blur-xl';
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setIsDragOver(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    // Вызываем оригинальный onDrop
+    if (handlers.onDrop) {
+      handlers.onDrop(e, columnKey);
+    }
+  };
   
   return (
-    <div className={`${cardClass} backdrop-blur-xl rounded-xl p-4 flex flex-col h-full elevation-1 board-column`} data-column-key={columnKey}>
+    <div 
+      className={`${cardClass} backdrop-blur-xl rounded-xl p-4 flex flex-col h-full elevation-1 board-column ${
+        isDragOver ? 'drag-over-column' : ''
+      }`} 
+      data-column-key={columnKey}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
         <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-extrabold text-white flex items-center gap-2 tracking-wide whitespace-nowrap" style={{textShadow: '0 1px 4px rgba(160, 210, 235, 0.25)', fontWeight: '800'}}>
                 <span className="text-xl">{emoji}</span>
@@ -1902,29 +1933,8 @@ function MovieApp() {
     console.log('Определена целевая колонка:', targetColumnKey);
     console.log('Логика: карточка из', item.board, '→ цель', targetColumnKey);
     
-    // Добавляем класс к ЦЕЛЕВОЙ КОЛОНКЕ с небольшой задержкой
-    if (targetColumnKey) {
-      console.log('Ищем целевую колонку:', targetColumnKey);
-      
-      // Небольшая задержка чтобы DOM успел обновиться
-      setTimeout(() => {
-        const targetColumn = document.querySelector(`[data-column-key="${targetColumnKey}"]`);
-        console.log('Найдена целевая колонка:', targetColumn);
-        if (targetColumn) {
-          targetColumn.classList.add('drag-over-column');
-          setDragOverColumn(targetColumn);
-          console.log('Добавлен класс drag-over-column к:', targetColumn);
-        } else {
-          console.error('Целевая колонка не найдена!');
-          // Попробуем найти все колонки для отладки
-          const allColumns = document.querySelectorAll('[data-column-key]');
-          console.log('Все найденные колонки:', allColumns);
-          allColumns.forEach(col => {
-            console.log('Колонка:', col.getAttribute('data-column-key'), col);
-          });
-        }
-      }, 10);
-    }
+    // Анимация теперь управляется через onDragEnterColumn/onDragLeaveColumn
+    // Не добавляем класс сразу - пусть пользователь сам наведет мышь на нужную колонку
     
     setTimeout(() => {
       e.currentTarget.classList.add('dragging-card');
@@ -1940,14 +1950,7 @@ function MovieApp() {
     setIsDragging(false);
     setDragOverColumn(null);
     
-    // Убираем все drag-over-column классы
-    document.querySelectorAll('.drag-over-column').forEach(el => {
-      el.classList.remove('drag-over-column');
-      console.log('Удален класс drag-over-column с:', el);
-    });
-    document.querySelectorAll('.board-column').forEach(col => {
-      col.removeAttribute('data-position');
-    });
+    // Анимация теперь управляется через React state в компонентах Column
   };
 
   const toggleColumnExpansion = (columnKey) => {
@@ -1955,16 +1958,6 @@ function MovieApp() {
   };
 
   const onDragOver = (e) => e.preventDefault();
-  const onDragEnterColumn = (e) => {
-    e.preventDefault();
-    // Просто предотвращаем стандартное поведение
-    // Анимация управляется через onDragStart
-  };
-
-  const onDragLeaveColumn = (e) => {
-    // Просто предотвращаем стандартное поведение
-    // Анимация управляется через onDragStart
-  };
   
   const onDrop = async (e, targetColumnKey) => {
     e.preventDefault();
@@ -1984,14 +1977,7 @@ function MovieApp() {
     
     await updateItem(item, { board: targetBoard });
     
-    // Очищаем все классы после успешного drop
-    document.querySelectorAll('.drag-over-column').forEach(el => {
-      el.classList.remove('drag-over-column');
-      console.log('onDrop: удален класс drag-over-column с:', el);
-    });
-    document.querySelectorAll('.board-column').forEach(col => {
-      col.removeAttribute('data-position');
-    });
+    // Анимация теперь управляется через React state в компонентах Column
   };
   
   const movies = boards.movies || { wishlist: [], watched: [] };
@@ -2159,24 +2145,16 @@ function MovieApp() {
             <div className="hidden lg:block absolute left-1/2 -ml-px top-0 h-full bg-gradient-to-b from-transparent via-[#a0d2eb]/30 to-transparent w-px"></div>
             <div className="space-y-4">
                 <h2 className="text-center text-3xl font-semibold tracking-wider text-white mb-4" style={{textShadow: '0 0 15px rgba(160, 210, 235, 0.3), 0 0 30px rgba(132, 88, 179, 0.2)', fontWeight: '700', letterSpacing: '0.05em'}}>Фильмы</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6" onDragOver={onDragOver}>
-                    <div onDrop={(e) => onDrop(e, 'movie:wishlist')} onDragEnter={onDragEnterColumn} onDragLeave={onDragLeaveColumn}>
-                        <Column title="Хочу посмотреть" emoji="🎬" items={movies.wishlist} columnKey="movie:wishlist" isExpanded={!!expandedColumns['movie:wishlist']} onToggleExpand={toggleColumnExpansion} onSelect={setSelectedMedia} onRemove={removeItem} onDragStart={onDragStart} onDragEnd={onDragEnd} isViewingFriend={!!viewingUser} onAddItem={handleAddToColumn} />
-                    </div>
-                    <div onDrop={(e) => onDrop(e, 'movie:watched')} onDragEnter={onDragEnterColumn} onDragLeave={onDragLeaveColumn}>
-                        <Column title="Посмотрел" emoji="🍿" items={movies.watched} columnKey="movie:watched" isExpanded={!!expandedColumns['movie:watched']} onToggleExpand={toggleColumnExpansion} onSelect={setSelectedMedia} onRemove={removeItem} onDragStart={onDragStart} onDragEnd={onDragEnd} isViewingFriend={!!viewingUser} onAddItem={handleAddToColumn} />
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <Column title="Хочу посмотреть" emoji="🎬" items={movies.wishlist} columnKey="movie:wishlist" isExpanded={!!expandedColumns['movie:wishlist']} onToggleExpand={toggleColumnExpansion} onSelect={setSelectedMedia} onRemove={removeItem} onDragStart={onDragStart} onDragEnd={onDragEnd} isViewingFriend={!!viewingUser} onAddItem={handleAddToColumn} onDrop={onDrop} />
+                    <Column title="Посмотрел" emoji="🍿" items={movies.watched} columnKey="movie:watched" isExpanded={!!expandedColumns['movie:watched']} onToggleExpand={toggleColumnExpansion} onSelect={setSelectedMedia} onRemove={removeItem} onDragStart={onDragStart} onDragEnd={onDragEnd} isViewingFriend={!!viewingUser} onAddItem={handleAddToColumn} onDrop={onDrop} />
                 </div>
             </div>
              <div className="space-y-4">
                 <h2 className="text-center text-3xl font-semibold tracking-wider text-white mb-4" style={{textShadow: '0 0 15px rgba(160, 210, 235, 0.3), 0 0 30px rgba(132, 88, 179, 0.2)', fontWeight: '700', letterSpacing: '0.05em'}}>Сериалы</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6" onDragOver={onDragOver}>
-                    <div onDrop={(e) => onDrop(e, 'tv:wishlist')} onDragEnter={onDragEnterColumn} onDragLeave={onDragLeaveColumn}>
-                        <Column title="Хочу посмотреть" emoji="📺" items={tv.wishlist} columnKey="tv:wishlist" isExpanded={!!expandedColumns['tv:wishlist']} onToggleExpand={toggleColumnExpansion} onSelect={setSelectedMedia} onRemove={removeItem} onDragStart={onDragStart} onDragEnd={onDragEnd} isViewingFriend={!!viewingUser} onAddItem={handleAddToColumn} />
-                    </div>
-                    <div onDrop={(e) => onDrop(e, 'tv:watched')} onDragEnter={onDragEnterColumn} onDragLeave={onDragLeaveColumn}>
-                        <Column title="Посмотрел" emoji="✅" items={tv.watched} columnKey="tv:watched" isExpanded={!!expandedColumns['tv:watched']} onToggleExpand={toggleColumnExpansion} onSelect={setSelectedMedia} onRemove={removeItem} onDragStart={onDragStart} onDragEnd={onDragEnd} isViewingFriend={!!viewingUser} onAddItem={handleAddToColumn} />
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <Column title="Хочу посмотреть" emoji="📺" items={tv.wishlist} columnKey="tv:wishlist" isExpanded={!!expandedColumns['tv:wishlist']} onToggleExpand={toggleColumnExpansion} onSelect={setSelectedMedia} onRemove={removeItem} onDragStart={onDragStart} onDragEnd={onDragEnd} isViewingFriend={!!viewingUser} onAddItem={handleAddToColumn} onDrop={onDrop} />
+                    <Column title="Посмотрел" emoji="✅" items={tv.watched} columnKey="tv:watched" isExpanded={!!expandedColumns['tv:watched']} onToggleExpand={toggleColumnExpansion} onSelect={setSelectedMedia} onRemove={removeItem} onDragStart={onDragStart} onDragEnd={onDragEnd} isViewingFriend={!!viewingUser} onAddItem={handleAddToColumn} onDrop={onDrop} />
                 </div>
             </div>
           </div>
