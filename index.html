@@ -3610,15 +3610,11 @@
       
       // Хранение информации о перетаскиваемом элементе
       const draggedElement = React.useRef(null);
-      const [draggedCardId, setDraggedCardId] = React.useState(null);
 
       const handleDragStart = (e, card, boardId, index) => {
         console.log('Drag start:', card.name, boardId, index);
-        console.log('Card ID:', card.id);
         dragItem.current = { card, sourceBoardId: boardId, sourceIndex: index };
         draggedElement.current = e.currentTarget;
-        setDraggedCardId(card.id);
-        console.log('Set draggedCardId to:', card.id);
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/html', e.currentTarget.outerHTML);
         // Добавляем класс для отключения анимаций карточек во время drag
@@ -3691,7 +3687,6 @@
       };
 
       const handleDragEnd = () => {
-        console.log('Drag end: clearing draggedCardId');
         // Убираем класс is-dragging для включения анимаций обратно
         document.body.classList.remove('is-dragging');
         document.querySelectorAll('.dragging-card').forEach(el => el.classList.remove('dragging-card'));
@@ -3699,7 +3694,6 @@
         document.querySelectorAll('.drag-over-card').forEach(el => el.classList.remove('drag-over-card'));
         dragItem.current = null;
         draggedElement.current = null;
-        setDraggedCardId(null);
       };
 
       const handleLogout = () => {
@@ -4633,13 +4627,7 @@
                                   onDrop={(e) => !viewingUser && handleDrop(e, board.id, index)}
                                   onDragEnter={handleDragEnterCard}
                                   onDragLeave={handleDragLeaveCard}
-                                  className={`bg-gray-800/80 rounded-xl border border-gray-700 hover:border-purple-500 hover:-translate-y-1 transition-all duration-200 cursor-pointer flex gap-3 p-2 group relative elevation-1 hover:elevation-2 shadow-transition game-card ${
-                                    draggedCardId === card.id ? 'opacity-0 pointer-events-none' : ''
-                                  }`}
-                                  style={{
-                                    opacity: draggedCardId === card.id ? 0 : 1,
-                                    pointerEvents: draggedCardId === card.id ? 'none' : 'auto'
-                                  }} 
+                                  className="bg-gray-800/80 rounded-xl border border-gray-700 hover:border-purple-500 hover:-translate-y-1 transition-all duration-200 cursor-pointer flex gap-3 p-2 group relative elevation-1 hover:elevation-2 shadow-transition game-card" 
                                   onClick={() => setSelectedGame(card)}>
                                   
                                   {/* Цветная полоска слева */}
