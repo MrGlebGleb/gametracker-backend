@@ -591,16 +591,19 @@ function ComicCard({ comic, onEdit, onDelete, onRate, onReact, onMove, onSelect 
               coverUrl: comic.coverUrl,
               title: comic.title,
               error: e.target.error,
-              currentSrc: e.target.currentSrc
+              currentSrc: e.target.currentSrc,
+              attemptedSrc: e.target.src
             });
             e.target.src = 'https://placehold.co/96x128/1f2937/ffffff?text=📚';
             e.target.onerror = null; // Предотвращаем бесконечный цикл
           }}
-          onLoad={() => {
+          onLoad={(e) => {
             console.log('✅ Image loaded successfully:', {
               coverUrl: comic.coverUrl,
               title: comic.title,
-              currentSrc: e.target.src
+              currentSrc: e.target.src,
+              naturalWidth: e.target.naturalWidth,
+              naturalHeight: e.target.naturalHeight
             });
           }}
         />
@@ -878,6 +881,13 @@ const ComicsTrackerApp = () => {
         const comicsData = await response.json();
         console.log('Loaded comics:', comicsData.length);
         console.log('Comics data:', comicsData);
+        comicsData.forEach((comic, index) => {
+          console.log(`Comic ${index + 1}:`, {
+            title: comic.title,
+            coverUrl: comic.cover_url,
+            publisher: comic.publisher
+          });
+        });
         setComics(comicsData);
       } else if (response.status === 401) {
         console.log('Token invalid, redirecting to login');
@@ -996,6 +1006,7 @@ const ComicsTrackerApp = () => {
     }
 
     console.log('Adding comic:', comicData, 'with status:', status);
+    console.log('Comic coverUrl:', comicData.coverUrl);
     
     try {
       const response = await fetch(`${API_URL}/api/comics`, {
