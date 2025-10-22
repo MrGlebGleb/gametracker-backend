@@ -2045,21 +2045,6 @@ function MovieApp() {
       </header>
       
       <main className="flex-grow container mx-auto px-4 py-6 space-y-8">
-        {/* Поиск по своим фильмам/сериалам */}
-        {!viewingUser && (
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Найти в моих фильмах/сериалах..."
-              value={myMediaSearchQuery}
-              onChange={(e) => {
-                setMyMediaSearchQuery(e.target.value);
-                debouncedSearchMyMedia(e.target.value);
-              }}
-              className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white placeholder-gray-500 backdrop-blur-xl"
-            />
-          </div>
-        )}
 
         {showMyMediaSearch ? (
           // Показываем результаты поиска по своим фильмам/сериалам
@@ -2134,6 +2119,22 @@ function MovieApp() {
                     <Column title="Посмотрел" emoji="✅" items={tv.watched} columnKey="tv:watched" isExpanded={!!expandedColumns['tv:watched']} onToggleExpand={toggleColumnExpansion} onSelect={setSelectedMedia} onRemove={removeItem} onDragStart={onDragStart} onDragEnd={onDragEnd} isViewingFriend={!!viewingUser} onAddItem={handleAddToColumn} onDrop={onDrop} />
                 </div>
             </div>
+          </div>
+        )}
+
+        {/* Поиск по своим фильмам/сериалам */}
+        {!viewingUser && (
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Найти в моих фильмах/сериалах..."
+              value={myMediaSearchQuery}
+              onChange={(e) => {
+                setMyMediaSearchQuery(e.target.value);
+                debouncedSearchMyMedia(e.target.value);
+              }}
+              className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white placeholder-gray-500 backdrop-blur-xl"
+            />
           </div>
         )}
 

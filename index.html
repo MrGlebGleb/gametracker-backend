@@ -4403,58 +4403,7 @@
                   {/* Поиск по своим играм */}
                   {!viewingUser && (
                     <>
-                      {/* Мобильный поиск */}
-                      <div className="md:hidden px-4 mb-4">
-                        <div className="relative">
-                          <Icon 
-                            name="search" 
-                            className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" 
-                          />
-                          <input
-                            type="text"
-                            placeholder="Найти в моих играх..."
-                            value={myGamesSearchQuery}
-                            onChange={(e) => {
-                              setMyGamesSearchQuery(e.target.value);
-                              debouncedSearchMyGames(e.target.value);
-                            }}
-                            className="w-full pl-10 pr-4 py-2.5 bg-gray-800/80 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:border-purple-500 focus:outline-none"
-                          />
-                        </div>
-                      </div>
 
-                      {/* Десктопный поиск */}
-                      <div className="hidden md:block mb-6">
-                        <div className="relative">
-                          <input
-                            type="text"
-                            placeholder="Найти в моих играх..."
-                            value={myGamesSearchQuery}
-                            onChange={(e) => {
-                              setMyGamesSearchQuery(e.target.value);
-                              debouncedSearchMyGames(e.target.value);
-                            }}
-                            className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white placeholder-gray-500 backdrop-blur-xl"
-                          />
-                        {myGamesSearchQuery && (
-                          <button
-                            onClick={() => {
-                              setMyGamesSearchQuery('');
-                              setMyGamesSearchResults([]);
-                              setShowMyGamesSearch(false);
-                            }}
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                          >
-                            <Icon name="x" className="w-5 h-5" />
-                          </button>
-                        )}
-                        {myGamesSearching && (
-                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                            <Icon name="loader" className="w-5 h-5 text-purple-400 animate-spin" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
                     </>
                   )}
 
@@ -4924,6 +4873,41 @@
                       </div>
                     ))}
                   </div>
+                  
+                  {/* Поиск по своим играм */}
+                  {!viewingUser && (
+                    <div className="mt-8">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Найти в моих играх..."
+                          value={myGamesSearchQuery}
+                          onChange={(e) => {
+                            setMyGamesSearchQuery(e.target.value);
+                            debouncedSearchMyGames(e.target.value);
+                          }}
+                          className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white placeholder-gray-500 backdrop-blur-xl"
+                        />
+                        {myGamesSearchQuery && (
+                          <button
+                            onClick={() => {
+                              setMyGamesSearchQuery('');
+                              setMyGamesSearchResults([]);
+                              setShowMyGamesSearch(false);
+                            }}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                          >
+                            <Icon name="x" className="w-5 h-5" />
+                          </button>
+                        )}
+                        {myGamesSearching && (
+                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <Icon name="loader" className="w-5 h-5 text-purple-400 animate-spin" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   
                   {!viewingUser && <ActivityFeed 
                     token={localStorage.getItem('token')} 
