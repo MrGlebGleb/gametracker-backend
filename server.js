@@ -3216,7 +3216,7 @@ app.post('/api/books', authenticateToken, [
         user_id, title, author, year, isbn, cover_url, description, 
         pages, subjects, language, status, created_at, updated_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
-      RETURNING *
+      RETURNING *, cover_url as "coverUrl"
     `, [
       req.user.id, title, author, year, isbn, coverUrl, description,
       pages, JSON.stringify(subjects || []), language || 'ru', status

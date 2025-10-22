@@ -155,8 +155,8 @@ const BookSearchModal = ({ isOpen, onClose, onAddBook, status = 'want_to_read' }
                   key={book.id}
                   className={`p-4 border rounded-lg cursor-pointer transition-all ${
                     selectedBook?.id === book.id 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-green-500 bg-green-500/10' 
+                      : 'border-gray-600 hover:border-gray-500 bg-gray-800'
                   }`}
                   onClick={() => setSelectedBook(book)}
                 >
@@ -170,10 +170,10 @@ const BookSearchModal = ({ isOpen, onClose, onAddBook, status = 'want_to_read' }
                       }}
                     />
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 line-clamp-2">{book.title}</h3>
-                      <p className="text-gray-600 text-sm">{book.author}</p>
-                      {book.year && <p className="text-gray-500 text-sm">{book.year}</p>}
-                      {book.pages && <p className="text-gray-500 text-sm">{book.pages} стр.</p>}
+                      <h3 className="font-semibold text-white line-clamp-2">{book.title}</h3>
+                      <p className="text-gray-300 text-sm">{book.author}</p>
+                      {book.year && <p className="text-gray-400 text-sm">{book.year}</p>}
+                      {book.pages && <p className="text-gray-400 text-sm">{book.pages} стр.</p>}
                     </div>
                   </div>
                 </div>
@@ -187,12 +187,12 @@ const BookSearchModal = ({ isOpen, onClose, onAddBook, status = 'want_to_read' }
         </div>
 
         {selectedBook && (
-          <div className="p-6 border-t border-gray-200 bg-gray-50">
+          <div className="p-6 border-t border-gray-600 bg-gray-800">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Выбрана книга:</p>
-                <p className="font-semibold text-gray-900">{selectedBook.title}</p>
-                <p className="text-sm text-gray-600">{selectedBook.author}</p>
+                <p className="text-sm text-gray-300">Выбрана книга:</p>
+                <p className="font-semibold text-white">{selectedBook.title}</p>
+                <p className="text-sm text-gray-300">{selectedBook.author}</p>
               </div>
               <button
                 onClick={handleAddBook}
@@ -581,7 +581,7 @@ function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect })
       ></div>
       <div className="relative flex-shrink-0">
         <img 
-          src={book.coverUrl || 'https://placehold.co/96x128/1f2937/ffffff?text=📚'} 
+          src={book.coverUrl ? `${book.coverUrl}?t=${Date.now()}` : 'https://placehold.co/96x128/1f2937/ffffff?text=📚'} 
           alt={book.title} 
           className="w-16 h-24 object-cover rounded-lg flex-shrink-0" 
           onError={(e) => {
@@ -1001,7 +1001,14 @@ const BookTrackerApp = () => {
       if (response.ok) {
         const newBook = await response.json();
         console.log('Book added successfully:', newBook);
-        setBooks(prev => [...prev, newBook]);
+        
+        // Принудительно обновляем состояние
+        setBooks(prev => {
+          const updatedBooks = [...prev, newBook];
+          console.log('Updated books state:', updatedBooks);
+          return updatedBooks;
+        });
+        
         showToast('Книга добавлена!', 'success');
       } else {
         const errorText = await response.text();
