@@ -10,7 +10,7 @@ const API_URL = getApiUrl();
 const REACTION_EMOJIS = ['😍', '🔥', '👍', '😮', '😂', '👎', '❤️', '🤔', '😢', '🤯'];
 const COMICS_PER_COLUMN = 5;
 
-// --- OpenLibrary API интеграция через наш сервер ---
+// --- Comics Vine API интеграция через наш сервер ---
 const ComicsVineAPI = {
   // Поиск комиксов по названию или автору через наш прокси
   async searchComics(query, limit = 10) {
@@ -18,9 +18,9 @@ const ComicsVineAPI = {
       const response = await fetch(`${API_URL}/api/comics/search?q=${encodeURIComponent(query)}&limit=${limit}`);
       if (!response.ok) throw new Error('Search failed');
       const data = await response.json();
-      return data.books || [];
+      return data.comics || [];
     } catch (error) {
-      console.error('OpenLibrary search error:', error);
+      console.error('Comics Vine search error:', error);
       return [];
     }
   }
