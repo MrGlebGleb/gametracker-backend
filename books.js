@@ -567,6 +567,7 @@ function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect, i
     <div
       draggable={true}
       onDragStart={(e) => {
+        console.log('BookCard onDragStart:', book.title);
         e.dataTransfer.setData('text/plain', JSON.stringify(book));
         // Уведомляем родительский компонент о начале перетаскивания
         if (onDragStart) {
@@ -791,7 +792,7 @@ const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, on
             isDragging={isDragging}
             draggedBookId={draggedBookId}
             onDragStart={handleDragStart}
-            onDragEnd={onDragEnd}
+            onDragEnd={handleDragEnd}
           />
         ))}
         {books.length === 0 && (
@@ -1209,11 +1210,13 @@ const BookTrackerApp = () => {
 
   // Обработчики drag & drop
   const handleDragStart = (book) => {
+    console.log('Book drag start:', book.title, book.id);
     setDraggedBookId(book.id);
     setIsDragging(true);
   };
 
   const handleDragEnd = () => {
+    console.log('Book drag end: clearing state');
     setDraggedBookId(null);
     setIsDragging(false);
   };

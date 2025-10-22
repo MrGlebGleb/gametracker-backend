@@ -3624,7 +3624,9 @@
         // Добавляем класс для отключения анимаций карточек во время drag
         document.body.classList.add('is-dragging');
         setTimeout(() => {
-          e.currentTarget.classList.add('dragging-card');
+          if (e.currentTarget) {
+            e.currentTarget.classList.add('dragging-card');
+          }
         }, 0);
       };
 
@@ -3635,17 +3637,27 @@
 
       const handleDragEnterColumn = (e) => {
         e.preventDefault();
-        e.currentTarget.classList.add('drag-over-column');
+        if (e.currentTarget) {
+          e.currentTarget.classList.add('drag-over-column');
+        }
       };
 
       const handleDragLeaveColumn = (e) => {
-        if (!e.currentTarget.contains(e.relatedTarget)) {
+        if (e.currentTarget && !e.currentTarget.contains(e.relatedTarget)) {
           e.currentTarget.classList.remove('drag-over-column');
         }
       };
 
-      const handleDragEnterCard = (e) => e.currentTarget.classList.add('drag-over-card');
-      const handleDragLeaveCard = (e) => e.currentTarget.classList.remove('drag-over-card');
+      const handleDragEnterCard = (e) => {
+        if (e.currentTarget) {
+          e.currentTarget.classList.add('drag-over-card');
+        }
+      };
+      const handleDragLeaveCard = (e) => {
+        if (e.currentTarget) {
+          e.currentTarget.classList.remove('drag-over-card');
+        }
+      };
 
       const handleDrop = (e, targetBoardId, targetIndex) => {
         e.preventDefault();

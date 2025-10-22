@@ -1928,7 +1928,9 @@ function MovieApp() {
     console.log('mediaType:', item.mediaType, 'board:', item.board);
     
     setTimeout(() => {
-      e.currentTarget.classList.add('dragging-card');
+      if (e.currentTarget) {
+        e.currentTarget.classList.add('dragging-card');
+      }
     }, 0);
   };
 
