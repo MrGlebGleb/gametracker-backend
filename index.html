@@ -3033,10 +3033,10 @@
       const gameInstance = useRef(null);
 
       const [boards, setBoards] = useState({
-        backlog: { id: 'backlog', title: 'Беклог', emoji: '📋', color: 'from-blue-500/20 to-cyan-500/20', borderColor: 'border-blue-500/30', accentColor: '#3B82F6', cards: [] },
-        playing: { id: 'playing', title: 'Играю', emoji: '🎮', color: 'from-orange-500/20 to-amber-500/20', borderColor: 'border-orange-500/30', accentColor: '#F59E0B', cards: [] },
-        completed: { id: 'completed', title: 'Прошёл', emoji: '✅', color: 'from-green-500/20 to-emerald-500/20', borderColor: 'border-green-500/30', accentColor: '#10B981', cards: [] },
-        dropped: { id: 'dropped', title: 'Бросил', emoji: '❌', color: 'from-gray-500/20 to-slate-500/20', borderColor: 'border-gray-500/30', accentColor: '#6B7280', cards: [] }
+        backlog: { id: 'backlog', title: 'Беклог', emoji: '📋', color: 'from-blue-500/20 to-cyan-500/20', borderColor: 'border-2 border-blue-500/40', accentColor: '#3B82F6', cards: [] },
+        playing: { id: 'playing', title: 'Играю', emoji: '🎮', color: 'from-orange-500/20 to-amber-500/20', borderColor: 'border-2 border-orange-500/40', accentColor: '#F59E0B', cards: [] },
+        completed: { id: 'completed', title: 'Прошёл', emoji: '✅', color: 'from-green-500/20 to-emerald-500/20', borderColor: 'border-2 border-green-500/40', accentColor: '#10B981', cards: [] },
+        dropped: { id: 'dropped', title: 'Бросил', emoji: '❌', color: 'from-gray-500/20 to-slate-500/20', borderColor: 'border-2 border-gray-500/40', accentColor: '#6B7280', cards: [] }
       });
       
       // Debounce для предотвращения частых обновлений
