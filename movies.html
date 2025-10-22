@@ -466,8 +466,6 @@
       transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
-    /* УДАЛЕНО: Пульсация границы */
-
     /* Эффект "дыхания" для целевой доски */
     @keyframes breathe {
       0%, 100% {
@@ -477,10 +475,6 @@
         transform: scale(1.08);
       }
     }
-
-    /* УДАЛЕНО: Дублирующиеся анимации */
-
-    /* УДАЛЕНО: Анимация соседних досок (эффект "разъезжания") */
 
     /* Плавный возврат всех досок */
     .board-column:not(.drag-over-column) {
@@ -751,11 +745,6 @@
     /* Световые лучи имеют z-index: 9989 - ниже постера */
 
 
-    /* Эффект "магнитного притяжения" */
-    .drag-over-column {
-      /* Дополнительное увеличение при близости */
-      transform: scale(1.08) translateZ(25px);
-    }
 
     /* Ripple эффект от точки входа */
     @keyframes rippleEffect {
@@ -780,28 +769,6 @@
       animation: rippleEffect 0.8s ease-out;
     }
 
-    /* Плавный переход между досками */
-    .board-column {
-      transition: 
-        transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
-        opacity 0.3s ease,
-        filter 0.3s ease,
-        box-shadow 0.4s ease,
-        background 0.3s ease,
-        border-color 0.3s ease,
-        z-index 0s linear 0.4s;
-    }
-
-    .drag-over-column {
-      transition: 
-        transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
-        opacity 0.3s ease,
-        filter 0.3s ease,
-        box-shadow 0.4s ease,
-        background 0.3s ease,
-        border-color 0.3s ease,
-        z-index 0s linear 0s;
-    }
 
     /* УПРОЩЕННАЯ АНИМАЦИЯ ЦЕЛЕВОЙ КОЛОНКИ */
     .drag-over-column {
@@ -1083,12 +1050,6 @@
       opacity: 0.3;
       transform: scale(0.95);
       transition: none;
-    }
-    
-    .drag-over-column {
-      background-color: rgba(139, 92, 246, 0.1);
-      transform: scale(1.02);
-      transition: all 200ms ease;
     }
     
     /* Prevent layout shifts during drag */
