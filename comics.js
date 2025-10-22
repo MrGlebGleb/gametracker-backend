@@ -774,7 +774,7 @@ const ComicColumn = ({ title, status, comics, onDrop, onEdit, onDelete, onRate, 
   
   return (
     <div 
-      className={`board-column ${colors.bg} ${colors.border} border rounded-lg p-4 min-h-96 backdrop-blur-sm ${
+      className={`board-column ${colors.bg} ${colors.border} border rounded-xl p-5 min-h-96 backdrop-blur-xl ${
         isDragOver ? 'drag-over-column' : ''
       }`} 
       onDragOver={handleDragOver}
