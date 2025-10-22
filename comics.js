@@ -735,35 +735,35 @@ const ComicColumn = ({ title, status, comics, onDrop, onEdit, onDelete, onRate, 
       case 'want_to_read':
         return {
           bg: 'bg-gradient-to-b from-violet-500/15 to-purple-500/15',
-          border: 'border-violet-500/25',
+          border: 'border-2 border-violet-500/40',
           text: 'text-violet-200',
           button: 'bg-violet-500/80 hover:bg-violet-600/80'
         };
       case 'reading':
         return {
           bg: 'bg-gradient-to-b from-purple-500/15 to-orange-500/15',
-          border: 'border-purple-500/25',
+          border: 'border-2 border-purple-500/40',
           text: 'text-purple-200',
           button: 'bg-purple-500/80 hover:bg-purple-600/80'
         };
       case 'read':
         return {
           bg: 'bg-gradient-to-b from-indigo-500/15 to-violet-500/15',
-          border: 'border-indigo-500/25',
+          border: 'border-2 border-indigo-500/40',
           text: 'text-indigo-200',
           button: 'bg-indigo-500/80 hover:bg-indigo-600/80'
         };
       case 'dropped':
         return {
           bg: 'bg-gradient-to-b from-slate-500/15 to-gray-500/15',
-          border: 'border-slate-500/25',
+          border: 'border-2 border-slate-500/40',
           text: 'text-slate-200',
           button: 'bg-slate-500/80 hover:bg-slate-600/80'
         };
       default:
         return {
           bg: 'bg-gradient-to-b from-gray-500/20 to-gray-600/20',
-          border: 'border-gray-500/30',
+          border: 'border-2 border-gray-500/40',
           text: 'text-gray-300',
           button: 'bg-gray-600 hover:bg-gray-700'
         };
