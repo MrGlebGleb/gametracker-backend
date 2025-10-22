@@ -560,7 +560,7 @@ function BookDetailsModal({ book, onClose, onUpdate, onReact, user }) {
 }
 
 // Компонент карточки книги (скопирован с MediaCard из movies.js)
-function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect, isDragging, draggedBookId, onDragEnd }) {
+function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect, isDragging, draggedBookId, onDragStart, onDragEnd }) {
   const isBeingDragged = isDragging && draggedBookId === book.id;
   
   return (
@@ -568,7 +568,10 @@ function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect, i
       draggable={true}
       onDragStart={(e) => {
         e.dataTransfer.setData('text/plain', JSON.stringify(book));
-        onSelect(book); // Уведомляем родительский компонент о начале перетаскивания
+        // Уведомляем родительский компонент о начале перетаскивания
+        if (onDragStart) {
+          onDragStart(book);
+        }
       }}
       onDragEnd={onDragEnd}
       onClick={() => {
@@ -784,9 +787,10 @@ const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, on
             onRate={onRate}
             onReact={onReact}
             onMove={onMove}
-            onSelect={handleDragStart}
+            onSelect={onSelect}
             isDragging={isDragging}
             draggedBookId={draggedBookId}
+            onDragStart={handleDragStart}
             onDragEnd={onDragEnd}
           />
         ))}

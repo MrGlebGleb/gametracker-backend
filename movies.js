@@ -1256,7 +1256,7 @@ function MediaCard({ item, onSelect, onRemove, onDragStart, onDragEnd, isViewing
   );
 }
 
-function Column({ title, emoji, items, columnKey, isExpanded, onToggleExpand, isViewingFriend, onAddItem, ...handlers }) {
+function Column({ title, emoji, items, columnKey, isExpanded, onToggleExpand, isViewingFriend, onAddItem, isDragging, draggedItemId, ...handlers }) {
   const [isDragOver, setIsDragOver] = useState(false);
   
   // Определяем boardId на основе columnKey
@@ -1314,7 +1314,7 @@ function Column({ title, emoji, items, columnKey, isExpanded, onToggleExpand, is
             </div>
         </div>
         <div className="space-y-2 flex-grow min-h-[150px]">
-            {visibleItems.map(it => <MediaCard key={it.id} item={it} isViewingFriend={isViewingFriend} boardId={boardId} isDragging={handlers.isDragging} draggedItemId={handlers.draggedItemId} {...handlers} />)}
+            {visibleItems.map(it => <MediaCard key={it.id} item={it} isViewingFriend={isViewingFriend} boardId={boardId} isDragging={isDragging} draggedItemId={draggedItemId} {...handlers} />)}
         </div>
         {items.length > MEDIA_PER_COLUMN && (
           <button onClick={() => onToggleExpand(columnKey)} className="w-full text-center mt-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-[#8458B3] to-[#a0d2eb] hover:bg-gradient-to-r hover:from-[#a0d2eb] hover:to-[#8458B3] rounded-lg flex items-center justify-center gap-1 transition-all hover:scale-105 shadow-lg" style={{boxShadow: '0 2px 8px rgba(132, 88, 179, 0.3)', fontWeight: '600'}}>
