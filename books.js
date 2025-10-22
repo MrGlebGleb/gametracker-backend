@@ -560,19 +560,25 @@ function BookDetailsModal({ book, onClose, onUpdate, onReact, user }) {
 }
 
 // Компонент карточки книги (скопирован с MediaCard из movies.js)
-function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect }) {
+function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect, isDragging, draggedBookId, onDragEnd }) {
+  const isBeingDragged = isDragging && draggedBookId === book.id;
+  
   return (
     <div
       draggable={true}
       onDragStart={(e) => {
         e.dataTransfer.setData('text/plain', JSON.stringify(book));
+        onSelect(book); // Уведомляем родительский компонент о начале перетаскивания
       }}
+      onDragEnd={onDragEnd}
       onClick={() => {
         // Открываем модальное окно для редактирования/оценки
         onSelect(book);
       }}
       data-card-id={book.id}
-      className="bg-[#1a0f2e]/70 rounded-xl border border-[#8458B3]/30 hover:border-[#a0d2eb] hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(160,210,235,0.4)] transition-all duration-200 cursor-pointer flex gap-3 p-2 group relative elevation-1 hover:elevation-2 shadow-transition media-card backdrop-blur-xl"
+      className={`bg-[#1a0f2e]/70 rounded-xl border border-[#8458B3]/30 hover:border-[#a0d2eb] hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(160,210,235,0.4)] transition-all duration-200 cursor-pointer flex gap-3 p-2 group relative elevation-1 hover:elevation-2 shadow-transition media-card backdrop-blur-xl ${
+        isBeingDragged ? 'opacity-0 pointer-events-none' : ''
+      }`}
     >
       {/* Цветная полоска слева */}
       <div 
@@ -676,7 +682,7 @@ function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect })
 }
 
 // Компонент колонки
-const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, onReact, onMove, onAddBook, onSelect }) => {
+const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, onReact, onMove, onAddBook, onSelect, isDragging, draggedBookId, onDragStart, onDragEnd }) => {
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDragOver = (e) => {
@@ -700,6 +706,10 @@ const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, on
     } catch (error) {
       console.error('Drop error:', error);
     }
+  };
+
+  const handleDragStart = (book) => {
+    onDragStart(book);
   };
 
   // Определяем цвета для разных статусов
@@ -774,7 +784,10 @@ const BookColumn = ({ title, status, books, onDrop, onEdit, onDelete, onRate, on
             onRate={onRate}
             onReact={onReact}
             onMove={onMove}
-            onSelect={onSelect}
+            onSelect={handleDragStart}
+            isDragging={isDragging}
+            draggedBookId={draggedBookId}
+            onDragEnd={onDragEnd}
           />
         ))}
         {books.length === 0 && (
@@ -815,6 +828,10 @@ const BookTrackerApp = () => {
   const fileInputRef = useRef(null);
   const [allUsers, setAllUsers] = useState([]);
   const [userSearchQuery, setUserSearchQuery] = useState('');
+  
+  // Состояние для drag & drop
+  const [draggedBookId, setDraggedBookId] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Загрузка данных при монтировании
   useEffect(() => {
@@ -1186,6 +1203,17 @@ const BookTrackerApp = () => {
     }, 3000);
   };
 
+  // Обработчики drag & drop
+  const handleDragStart = (book) => {
+    setDraggedBookId(book.id);
+    setIsDragging(true);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedBookId(null);
+    setIsDragging(false);
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -1455,6 +1483,10 @@ const BookTrackerApp = () => {
               setShowSearchModal(true);
             }}
             onSelect={setSelectedBook}
+            isDragging={isDragging}
+            draggedBookId={draggedBookId}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
           />
           
           <BookColumn
@@ -1475,6 +1507,10 @@ const BookTrackerApp = () => {
               setShowSearchModal(true);
             }}
             onSelect={setSelectedBook}
+            isDragging={isDragging}
+            draggedBookId={draggedBookId}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
           />
           
           <BookColumn
@@ -1495,6 +1531,10 @@ const BookTrackerApp = () => {
               setShowSearchModal(true);
             }}
             onSelect={setSelectedBook}
+            isDragging={isDragging}
+            draggedBookId={draggedBookId}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
           />
           
           <BookColumn
@@ -1515,6 +1555,10 @@ const BookTrackerApp = () => {
               setShowSearchModal(true);
             }}
             onSelect={setSelectedBook}
+            isDragging={isDragging}
+            draggedBookId={draggedBookId}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
           />
         </div>
 
