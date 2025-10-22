@@ -581,7 +581,7 @@ function ComicCard({ comic, onEdit, onDelete, onRate, onReact, onMove, onSelect 
       ></div>
       <div className="relative flex-shrink-0">
         <img 
-          src={comic.coverUrl ? `${comic.coverUrl}?t=${Date.now()}` : 'https://placehold.co/96x128/1f2937/ffffff?text=📚'} 
+          src={comic.coverUrl || 'https://placehold.co/96x128/1f2937/ffffff?text=📚'} 
           alt={comic.title} 
           className="w-16 h-24 object-cover rounded-lg flex-shrink-0" 
           onError={(e) => {
@@ -869,12 +869,12 @@ const ComicsTrackerApp = () => {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
       
-      console.log('Books API response status:', response.status);
+      console.log('Comics API response status:', response.status);
       
                 if (response.ok) {
-        const booksData = await response.json();
-        console.log('Loaded comics:', booksData.length);
-        console.log('Books data:', booksData);
+        const comicsData = await response.json();
+        console.log('Loaded comics:', comicsData.length);
+        console.log('Comics data:', comicsData);
         setComics(comicsData);
       } else if (response.status === 401) {
         console.log('Token invalid, redirecting to login');
@@ -883,7 +883,7 @@ const ComicsTrackerApp = () => {
         window.location.href = '/';
         return;
       } else {
-        console.error('Books API error:', response.status, response.statusText);
+        console.error('Comics API error:', response.status, response.statusText);
         const errorText = await response.text();
         console.error('Error response:', errorText);
       }
