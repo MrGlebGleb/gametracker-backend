@@ -881,14 +881,23 @@ const ComicsTrackerApp = () => {
         const comicsData = await response.json();
         console.log('Loaded comics:', comicsData.length);
         console.log('Comics data:', comicsData);
-        comicsData.forEach((comic, index) => {
+        
+        // Преобразуем данные из базы в формат для компонентов
+        const normalizedComics = comicsData.map(comic => ({
+          ...comic,
+          coverUrl: comic.cover_url, // Преобразуем cover_url в coverUrl
+          user_rating: comic.user_rating || 0,
+          reactions: comic.reactions || []
+        }));
+        
+        normalizedComics.forEach((comic, index) => {
           console.log(`Comic ${index + 1}:`, {
             title: comic.title,
-            coverUrl: comic.cover_url,
+            coverUrl: comic.coverUrl,
             publisher: comic.publisher
           });
         });
-        setComics(comicsData);
+        setComics(normalizedComics);
       } else if (response.status === 401) {
         console.log('Token invalid, redirecting to login');
         localStorage.removeItem('token');
@@ -958,7 +967,7 @@ const ComicsTrackerApp = () => {
             setViewingUser({ id: userId, username: 'Друг' });
       }
           setComics(comicsData);
-      } else {
+    } else {
           // Загружаем свои комиксови
           setViewingUser(null);
           setComics(comicsData);
@@ -1027,9 +1036,17 @@ const ComicsTrackerApp = () => {
         const newComic = await response.json();
         console.log('Comic added successfully:', newComic);
         
+        // Нормализуем данные нового комикса
+        const normalizedNewComic = {
+          ...newComic,
+          coverUrl: newComic.cover_url,
+          user_rating: newComic.user_rating || 0,
+          reactions: newComic.reactions || []
+        };
+        
         // Принудительно обновляем состояние
         setComics(prev => {
-          const updatedComics = [...prev, newComic];
+          const updatedComics = [...prev, normalizedNewComic];
           console.log('Updated comics state:', updatedComics);
           return updatedComics;
         });
@@ -1161,8 +1178,14 @@ const ComicsTrackerApp = () => {
         });
 
         if (response.ok) {
-          const updatedBook = await response.json();
-          setComics(prev => prev.map(c => c.id === comic.id ? updatedBook : c));
+          const updatedComic = await response.json();
+          const normalizedUpdatedComic = {
+            ...updatedComic,
+            coverUrl: updatedComic.cover_url,
+            user_rating: updatedComic.user_rating || 0,
+            reactions: updatedComic.reactions || []
+          };
+          setComics(prev => prev.map(c => c.id === comic.id ? normalizedUpdatedComic : c));
           showToast('Рейтинг сохранен!', 'success');
         } else {
           showToast('Ошибка при сохранении рейтинга', 'error');
@@ -1181,9 +1204,15 @@ const ComicsTrackerApp = () => {
       });
 
       if (response.ok) {
-        const updatedBook = await response.json();
-        setComics(prev => prev.map(c => c.id === comic.id ? updatedBook : c));
-        showToast('Книга обновлена!', 'success');
+        const updatedComic = await response.json();
+        const normalizedUpdatedComic = {
+          ...updatedComic,
+          coverUrl: updatedComic.cover_url,
+          user_rating: updatedComic.user_rating || 0,
+          reactions: updatedComic.reactions || []
+        };
+        setComics(prev => prev.map(c => c.id === comic.id ? normalizedUpdatedComic : c));
+        showToast('Комикс обновлен!', 'success');
       }
     } catch (error) {
       console.error('Error updating comic:', error);
