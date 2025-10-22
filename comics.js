@@ -886,7 +886,7 @@ const ComicsTrackerApp = () => {
         const normalizedComics = comicsData.map(comic => ({
           ...comic,
           coverUrl: comic.cover_url, // Преобразуем cover_url в coverUrl
-          user_rating: comic.user_rating || 0,
+          user_rating: comic.user_rating || null, // Используем null вместо 0
           reactions: comic.reactions || []
         }));
         
@@ -1040,7 +1040,7 @@ const ComicsTrackerApp = () => {
         const normalizedNewComic = {
           ...newComic,
           coverUrl: newComic.cover_url,
-          user_rating: newComic.user_rating || 0,
+          user_rating: newComic.user_rating || null, // Используем null вместо 0
           reactions: newComic.reactions || []
         };
         
@@ -1182,7 +1182,7 @@ const ComicsTrackerApp = () => {
           const normalizedUpdatedComic = {
             ...updatedComic,
             coverUrl: updatedComic.cover_url,
-            user_rating: updatedComic.user_rating || 0,
+            user_rating: updatedComic.user_rating || null, // Используем null вместо 0
             reactions: updatedComic.reactions || []
           };
           setComics(prev => prev.map(c => c.id === comic.id ? normalizedUpdatedComic : c));
@@ -1208,7 +1208,7 @@ const ComicsTrackerApp = () => {
         const normalizedUpdatedComic = {
           ...updatedComic,
           coverUrl: updatedComic.cover_url,
-          user_rating: updatedComic.user_rating || 0,
+          user_rating: updatedComic.user_rating || null, // Используем null вместо 0
           reactions: updatedComic.reactions || []
         };
         setComics(prev => prev.map(c => c.id === comic.id ? normalizedUpdatedComic : c));
