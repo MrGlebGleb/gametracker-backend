@@ -315,10 +315,10 @@ const NotificationsPanel = ({ token, onNavigateToUser }) => {
     <div className="relative">
       <button
         onClick={() => setShowPanel(!showPanel)}
-        className="p-2 hover:bg-green-500/10 rounded-lg border border-green-500/20 relative transition-all duration-200 hover:border-green-500/40"
+        className="p-2 hover:bg-violet-500/10 rounded-lg border border-violet-500/20 relative transition-all duration-200 hover:border-violet-500/40"
         title="Уведомления"
       >
-        <Icon name="bell" className="w-4 h-4 md:w-5 md:h-5 text-green-400 hover:text-green-300 transition-colors" />
+        <Icon name="bell" className="w-4 h-4 md:w-5 md:h-5 text-violet-400 hover:text-violet-300 transition-colors" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 block h-3 w-3 rounded-full bg-red-500 ring-1 ring-white animate-pulse"></span>
         )}
@@ -449,7 +449,7 @@ function ComicActivityFeed({ token, onNavigateToUser }) {
   };
 
   return (
-    <div className="bg-gradient-to-br from-[#8B5CF6]/30 to-[#7C3AED]/25 backdrop-blur-xl rounded-xl border border-[#8B5CF6]/40 p-6">
+    <div className="bg-gradient-to-br from-[#2d1b69]/60 to-[#1a0f2e]/50 backdrop-blur-xl rounded-xl border border-[#8B5CF6]/40 p-6">
       <h3 className="text-xl font-bold text-white mb-4">Активность друзей</h3>
       {loading ? (
         <div className="w-full flex items-center justify-center p-10">
@@ -1438,7 +1438,7 @@ const ComicsTrackerApp = () => {
   
   return (
     <div className={`min-h-screen bg-gradient-to-br from-[#1a0f2e] to-[#2d1b69] ${theme} flex flex-col`}>
-      <header className="bg-[#2d1b69]/85 backdrop-blur-xl border-b border-[#8B5CF6]/30 sticky top-0 z-50 flex-shrink-0">
+      <header className="bg-[#1a0f2e]/95 backdrop-blur-xl border-b border-[#8B5CF6]/30 sticky top-0 z-50 flex-shrink-0">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
@@ -1474,14 +1474,14 @@ const ComicsTrackerApp = () => {
                         <span className="text-white font-semibold text-sm md:text-base block">{user.username}</span>
                     </div>
                        <Fragment>
-                        <button onClick={handleStatistics} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30" title="Статистика комиксов">
-                            <Icon name="barChart" className="w-4 h-4 md:w-5 md:h-5 text-green-400 hover:text-green-300 hover:scale-110 transition-all header-icon" />
+                        <button onClick={handleStatistics} className="p-2 hover:bg-gray-800 rounded-lg border border-violet-500/30" title="Статистика комиксов">
+                            <Icon name="barChart" className="w-4 h-4 md:w-5 md:h-5 text-violet-400 hover:text-violet-300 hover:scale-110 transition-all header-icon" />
                          </button>
-                        <button onClick={handleProfile} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30">
-                            <Icon name="settings" className="w-4 h-4 md:w-5 md:h-5 text-green-400 hover:text-green-300 hover:scale-110 transition-all header-icon" />
+                        <button onClick={handleProfile} className="p-2 hover:bg-gray-800 rounded-lg border border-violet-500/30">
+                            <Icon name="settings" className="w-4 h-4 md:w-5 md:h-5 text-violet-400 hover:text-violet-300 hover:scale-110 transition-all header-icon" />
                            </button>
-                        <button onClick={handleUserHub} className="p-2 hover:bg-gray-800 rounded-lg border border-green-500/30 relative">
-                            <Icon name="users" className="w-4 h-4 md:w-5 md:h-5 text-green-400 hover:text-green-300 hover:scale-110 transition-all header-icon" />
+                        <button onClick={handleUserHub} className="p-2 hover:bg-gray-800 rounded-lg border border-violet-500/30 relative">
+                            <Icon name="users" className="w-4 h-4 md:w-5 md:h-5 text-violet-400 hover:text-violet-300 hover:scale-110 transition-all header-icon" />
                                {friendRequests.length > 0 && <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white badge-notification"></span>}
                            </button>
                        </Fragment>
@@ -1622,7 +1622,7 @@ const ComicsTrackerApp = () => {
                 placeholder="Найти в моих комиксовах..."
                 className="flex-1 px-4 py-3 bg-gray-700/30 border border-gray-600/50 rounded-lg text-white/80 placeholder-gray-500 focus:border-green-500/50 focus:outline-none"
               />
-              {myBooksSearching && <Icon name="loader" className="w-6 h-6 text-green-500 animate-spin" />}
+              {myBooksSearching && <Icon name="loader" className="w-6 h-6 text-violet-500 animate-spin" />}
             </div>
               
             {myBooksSearchResults.length > 0 && (
