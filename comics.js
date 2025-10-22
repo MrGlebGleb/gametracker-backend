@@ -460,10 +460,10 @@ function ComicActivityFeed({ token, onNavigateToUser }) {
         </div>
           ))}
                   </div>
-      ) : (
+            ) : (
         <div className="flex items-center justify-center py-12">
           <p className="text-gray-400 text-center">Пока нет активности от ваших друзей</p>
-        </div>
+          </div>
       )}
     </div>
   );
@@ -1422,22 +1422,22 @@ const ComicsTrackerApp = () => {
                   href="/index.html"
                   className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 hover:scale-105 transition-transform cursor-pointer"
                 >
-                  🎮 GameTracker
+                  🎮 Game
                 </a>
                 <a
                   href="/movies.html"
                   className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 hover:scale-105 transition-transform cursor-pointer"
                 >
-                  🎬 MovieTracker
+                  🎬 Movie
                 </a>
                 <a
                   href="/books.html"
                   className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 hover:scale-105 transition-transform cursor-pointer"
                 >
-                  📚 BookTracker
+                  📚 Book
                 </a>
                 <span className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-red-400 to-pink-400">
-                  📚 ComicsTracker
+                  📚 Comic
                 </span>
               </div>
             </div>

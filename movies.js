@@ -1972,22 +1972,22 @@ function MovieApp() {
                   href="/index.html"
                   className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 hover:scale-105 transition-transform cursor-pointer"
                 >
-                  🎮 GameTracker
+                  🎮 Game
                 </a>
                 <span className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400">
-                  🎬 MovieTracker
+                  🎬 Movie
                 </span>
                 <a
                   href="/books.html"
                   className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 hover:scale-105 transition-transform cursor-pointer"
                 >
-                  📚 BookTracker
+                  📚 Book
                 </a>
                 <a
                   href="/comics.html"
                   className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 hover:scale-105 transition-transform cursor-pointer"
                 >
-                  📚 ComicsTracker
+                  📚 Comic
                 </a>
               </div>
             </div>
