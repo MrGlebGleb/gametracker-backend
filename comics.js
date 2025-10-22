@@ -398,7 +398,11 @@ function ComicActivityFeed({ token, onNavigateToUser }) {
       });
       if (response.ok) {
         const data = await response.json();
-          setActivities(data.activities || []);
+        // Фильтруем только активность по комиксам
+        const comicActivities = (data.activities || []).filter(act => 
+          act.action_type && act.action_type.includes('comic')
+        );
+        setActivities(comicActivities);
         }
       } catch (err) {
         console.error("Failed to fetch comic activities", err);
@@ -431,13 +435,13 @@ function ComicActivityFeed({ token, onNavigateToUser }) {
     );
     
     switch (action_type) {
-      case 'add_book':
+      case 'add_comic':
         return <>{clickableUsername} добавил комикс {bookName} в <span className="italic">{boardTitles[details.status]}</span></>;
-      case 'move_book':
+      case 'move_comic':
         return <>{clickableUsername} переместил комикс {bookName} в <span className="italic">{boardTitles[details.status]}</span></>;
-      case 'rate_book':
+      case 'rate_comic':
         return <>{clickableUsername} оценил комикс {bookName} на {details.rating}⭐</>;
-      case 'remove_book':
+      case 'remove_comic':
         return <>{clickableUsername} удалил комикс {bookName}</>;
       default:
         return <>{clickableUsername} выполнил действие с комиксовой {bookName}</>;
