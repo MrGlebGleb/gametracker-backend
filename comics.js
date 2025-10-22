@@ -162,11 +162,13 @@ const ComicSearchModal = ({ isOpen, onClose, onAddComic, status = 'want_to_read'
                 >
                   <div className="flex gap-4">
                     <img
-                      src={comic.coverUrl}
+                      src={comic.coverUrl || 'https://placehold.co/64x80/1f2937/ffffff?text=📚'}
                       alt={comic.title}
                       className="w-16 h-20 object-cover rounded border"
                       onError={(e) => {
-                        e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="80" viewBox="0 0 64 80"><rect width="64" height="80" fill="%23f3f4f6"/><text x="32" y="45" text-anchor="middle" fill="%236b7280" font-size="12">📚</text></svg>';
+                        console.log('❌ Search modal image failed:', comic.coverUrl);
+                        e.target.src = 'https://placehold.co/64x80/1f2937/ffffff?text=📚';
+                        e.target.onerror = null;
                       }}
                     />
                     <div className="flex-1">
@@ -581,7 +583,7 @@ function ComicCard({ comic, onEdit, onDelete, onRate, onReact, onMove, onSelect 
       ></div>
       <div className="relative flex-shrink-0">
         <img 
-          src={comic.coverUrl ? `${comic.coverUrl}?v=${Date.now()}` : 'https://placehold.co/96x128/1f2937/ffffff?text=📚'} 
+          src={comic.coverUrl || 'https://placehold.co/96x128/1f2937/ffffff?text=📚'} 
           alt={comic.title} 
           className="w-16 h-24 object-cover rounded-lg flex-shrink-0" 
           onError={(e) => {
@@ -592,12 +594,13 @@ function ComicCard({ comic, onEdit, onDelete, onRate, onReact, onMove, onSelect 
               currentSrc: e.target.currentSrc
             });
             e.target.src = 'https://placehold.co/96x128/1f2937/ffffff?text=📚';
+            e.target.onerror = null; // Предотвращаем бесконечный цикл
           }}
           onLoad={() => {
             console.log('✅ Image loaded successfully:', {
               coverUrl: comic.coverUrl,
               title: comic.title,
-              currentSrc: comic.coverUrl
+              currentSrc: e.target.src
             });
           }}
         />
@@ -985,14 +988,14 @@ const ComicsTrackerApp = () => {
     }
   };
 
-  const addComic = async (bookData, status = 'want_to_read') => {
+  const addComic = async (comicData, status = 'want_to_read') => {
     const token = localStorage.getItem('token');
     if (!token) {
       console.error('No token found for adding comic');
       return;
     }
 
-    console.log('Adding comic:', bookData, 'with status:', status);
+    console.log('Adding comic:', comicData, 'with status:', status);
     
     try {
       const response = await fetch(`${API_URL}/api/comics`, {
@@ -1002,7 +1005,7 @@ const ComicsTrackerApp = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          ...bookData,
+          ...comicData,
           status: status
         })
       });
@@ -1010,17 +1013,17 @@ const ComicsTrackerApp = () => {
       console.log('Add comic response status:', response.status);
       
       if (response.ok) {
-        const newBook = await response.json();
-        console.log('Book added successfully:', newBook);
+        const newComic = await response.json();
+        console.log('Comic added successfully:', newComic);
         
         // Принудительно обновляем состояние
         setComics(prev => {
-          const updatedBooks = [...prev, newBook];
-          console.log('Updated comics state:', updatedBooks);
-          return updatedBooks;
+          const updatedComics = [...prev, newComic];
+          console.log('Updated comics state:', updatedComics);
+          return updatedComics;
         });
         
-        showToast('Книга добавлена!', 'success');
+        showToast('Комикс добавлен!', 'success');
       } else {
         const errorText = await response.text();
         console.error('Add comic error:', response.status, errorText);
@@ -1071,7 +1074,7 @@ const ComicsTrackerApp = () => {
       if (response.ok) {
         setComics(prev => prev.filter(comic => comic.id !== comicId));
         showToast('Комикс удален', 'info');
-      } else {
+    } else {
         console.error('Delete comic error:', response.status, response.statusText);
         showToast('Ошибка при удалении комиксови', 'error');
       }
@@ -1552,11 +1555,13 @@ const ComicsTrackerApp = () => {
                   <div key={comic.id} className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
                     <div className="flex gap-3">
                       <img
-                        src={comic.coverUrl}
+                        src={comic.coverUrl || 'https://placehold.co/48x64/1f2937/ffffff?text=📚'}
                         alt={comic.title}
                         className="w-12 h-16 object-cover rounded"
                         onError={(e) => {
-                          e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="64" viewBox="0 0 48 64"><rect width="48" height="64" fill="%23374151"/><text x="24" y="35" text-anchor="middle" fill="%239ca3af" font-size="12">📚</text></svg>';
+                          console.log('❌ Activity feed image failed:', comic.coverUrl);
+                          e.target.src = 'https://placehold.co/48x64/1f2937/ffffff?text=📚';
+                          e.target.onerror = null;
                         }}
                       />
                       <div className="flex-1">
