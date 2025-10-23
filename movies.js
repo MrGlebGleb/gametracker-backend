@@ -1386,16 +1386,23 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
     if (text.length <= 1000) {
       setReviewText(text);
       checkSpelling(text);
+      
+      if (text.length > 0) {
+        // Автоматически сохраняем как черновик при изменении
+        onUpdate(item, { 
+          review: text, 
+          is_published: false 
+        });
+        setIsPublished(false);
+      } else {
+        // Если текст полностью стерт, удаляем черновик
+        onUpdate(item, { 
+          review: '', 
+          is_published: false 
+        });
+        setIsPublished(false);
+      }
     }
-  };
-
-  // Сохранение как черновик
-  const saveAsDraft = () => {
-    onUpdate(item, { 
-      review: reviewText, 
-      is_published: false 
-    });
-    setIsPublished(false);
   };
 
   // Публикация рецензии
@@ -1503,27 +1510,21 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
                       </div>
                     )}
                     
-                    {/* Кнопки управления */}
-                    <div className="flex gap-2 mt-3">
-                      <button
-                        onClick={saveAsDraft}
-                        className="flex-1 px-4 py-2 bg-gradient-to-r from-[#a28089] to-[#8458B3] hover:from-[#8458B3] hover:to-[#a28089] text-white rounded-lg transition-all duration-200 font-medium text-sm shadow-lg hover:shadow-xl hover:scale-105 transform"
-                        style={{boxShadow: '0 4px 12px rgba(132, 88, 179, 0.3)'}}
-                      >
-                        💾 Сохранить черновик
-                      </button>
-                      <button
-                        onClick={publishReview}
-                        disabled={reviewText.length === 0}
-                        className="flex-1 px-4 py-2 bg-gradient-to-r from-[#a0d2eb] to-[#8458B3] hover:from-[#8458B3] hover:to-[#a0d2eb] disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-all duration-200 font-medium text-sm shadow-lg hover:shadow-xl hover:scale-105 transform disabled:scale-100 disabled:shadow-lg"
-                        style={{boxShadow: '0 4px 12px rgba(160, 210, 235, 0.3)'}}
-                      >
-                        📢 Опубликовать
-                      </button>
-                    </div>
+                    {/* Кнопка публикации */}
+                    {reviewText.length > 0 && (
+                      <div className="flex justify-end mt-3">
+                        <button
+                          onClick={publishReview}
+                          className="px-4 py-2 bg-gray-700/50 hover:bg-gray-600/60 text-gray-300 hover:text-white rounded-lg transition-all duration-200 font-medium text-sm border border-gray-600/50 hover:border-gray-500/70"
+                        >
+                          <span className="text-gray-400 mr-1">📝</span>
+                          Опубликовать
+                        </button>
+                      </div>
+                    )}
                     
                     {/* Статус публикации */}
-                    {reviewText && (
+                    {reviewText && reviewText.length > 0 && (
                       <div className="mt-2 text-xs">
                         {isPublished ? (
                           <span className="text-green-400 flex items-center gap-1">
