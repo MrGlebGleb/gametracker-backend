@@ -1198,6 +1198,26 @@ function MediaCard({ item, onSelect, onRemove, onDragStart, onDragEnd, isViewing
               ))}
             </div>
           )}
+          
+          {/* Статус отзыва */}
+          {item.review && (
+            <div className="flex items-center gap-1 mt-1">
+              {item.is_published ? (
+                <span className="text-xs text-green-400 flex items-center gap-1">
+                  ✅ Опубликовано
+                </span>
+              ) : (
+                <span className="text-xs text-yellow-400 flex items-center gap-1">
+                  📝 Черновик
+                </span>
+              )}
+              {item.review.length > 200 && (
+                <span className="text-xs text-gray-400">
+                  ({item.review.length} симв.)
+                </span>
+              )}
+            </div>
+          )}
         </div>
         {item.reactions && item.reactions.length > 0 && (
           <div className="flex gap-1.5 mt-1 flex-wrap items-center">
@@ -1324,6 +1344,68 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
   const userReaction = (item.reactions || []).find(r => r.user_id === user?.id);
   const [triggerAnimation, setTriggerAnimation] = useState(false);
   const [previousRating, setPreviousRating] = useState(item?.rating || 0);
+  
+  // Состояние для системы комментариев
+  const [reviewText, setReviewText] = useState(item.review || '');
+  const [isPublished, setIsPublished] = useState(item.is_published || false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [spellCheckSuggestions, setSpellCheckSuggestions] = useState([]);
+
+  // Простая проверка правописания для русского языка
+  const checkSpelling = (text) => {
+    const commonMistakes = {
+      'привет': ['привет', 'приветсвие'],
+      'спасибо': ['спасибо', 'спосибо'],
+      'хорошо': ['хорошо', 'хорошо'],
+      'отлично': ['отлично', 'отлично'],
+      'интересно': ['интересно', 'интересно'],
+      'плохо': ['плохо', 'плохо'],
+      'ужасно': ['ужасно', 'ужасно'],
+      'замечательно': ['замечательно', 'замечательно'],
+      'потрясающе': ['потрясающе', 'потрясающе'],
+      'восхитительно': ['восхитительно', 'восхитительно']
+    };
+    
+    const words = text.toLowerCase().split(/\s+/);
+    const suggestions = [];
+    
+    words.forEach(word => {
+      if (commonMistakes[word]) {
+        suggestions.push({
+          word,
+          suggestions: commonMistakes[word]
+        });
+      }
+    });
+    
+    setSpellCheckSuggestions(suggestions);
+  };
+
+  // Обработка изменения текста рецензии
+  const handleReviewChange = (text) => {
+    if (text.length <= 1000) {
+      setReviewText(text);
+      checkSpelling(text);
+    }
+  };
+
+  // Сохранение как черновик
+  const saveAsDraft = () => {
+    onUpdate(item, { 
+      review: reviewText, 
+      is_published: false 
+    });
+    setIsPublished(false);
+  };
+
+  // Публикация рецензии
+  const publishReview = () => {
+    onUpdate(item, { 
+      review: reviewText, 
+      is_published: true 
+    });
+    setIsPublished(true);
+  };
 
   // Обработка изменения рейтинга
   const handleRatingChange = (rating) => {
@@ -1389,13 +1471,108 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
                   </div>
                   <div>
                     <label className="text-gray-400 text-sm">Отзыв:</label>
-                    <textarea defaultValue={item.review || ''} onBlur={(e) => onUpdate(item, { review: e.target.value })} className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white mt-1" rows="4" placeholder="Ваши впечатления..."/>
+                    <textarea 
+                      value={reviewText} 
+                      onChange={(e) => handleReviewChange(e.target.value)}
+                      className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white mt-1" 
+                      rows="4" 
+                      placeholder="Ваши впечатления..."
+                      maxLength="1000"
+                    />
+                    {/* Счетчик символов */}
+                    <div className="flex justify-between items-center mt-1">
+                      <div className="text-xs text-gray-500">
+                        {reviewText.length}/1000 символов
+                      </div>
+                      {reviewText.length > 800 && (
+                        <div className="text-xs text-yellow-400">
+                          Осталось {1000 - reviewText.length} символов
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Подсказки по правописанию */}
+                    {spellCheckSuggestions.length > 0 && (
+                      <div className="mt-2 p-2 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+                        <div className="text-xs text-yellow-300 mb-1">Возможные исправления:</div>
+                        {spellCheckSuggestions.map((suggestion, idx) => (
+                          <div key={idx} className="text-xs text-yellow-200">
+                            "{suggestion.word}" → {suggestion.suggestions.join(', ')}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Кнопки управления */}
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={saveAsDraft}
+                        className="flex-1 px-4 py-2 bg-gradient-to-r from-[#a28089] to-[#8458B3] hover:from-[#8458B3] hover:to-[#a28089] text-white rounded-lg transition-all duration-200 font-medium text-sm shadow-lg hover:shadow-xl hover:scale-105 transform"
+                        style={{boxShadow: '0 4px 12px rgba(132, 88, 179, 0.3)'}}
+                      >
+                        💾 Сохранить черновик
+                      </button>
+                      <button
+                        onClick={publishReview}
+                        disabled={reviewText.length === 0}
+                        className="flex-1 px-4 py-2 bg-gradient-to-r from-[#a0d2eb] to-[#8458B3] hover:from-[#8458B3] hover:to-[#a0d2eb] disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-all duration-200 font-medium text-sm shadow-lg hover:shadow-xl hover:scale-105 transform disabled:scale-100 disabled:shadow-lg"
+                        style={{boxShadow: '0 4px 12px rgba(160, 210, 235, 0.3)'}}
+                      >
+                        📢 Опубликовать
+                      </button>
+                    </div>
+                    
+                    {/* Статус публикации */}
+                    {reviewText && (
+                      <div className="mt-2 text-xs">
+                        {isPublished ? (
+                          <span className="text-green-400 flex items-center gap-1">
+                            ✅ Опубликовано
+                          </span>
+                        ) : (
+                          <span className="text-yellow-400 flex items-center gap-1">
+                            📝 Черновик
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
               </Fragment>
           ) : (
              <Fragment>
                 {item.rating && <div><p className="text-gray-400 text-sm mb-2">Рейтинг от {item.owner.username}:</p><div className="flex gap-1">{[...Array(5)].map((_, i) => (<Icon key={i} name="star" className={`w-6 h-6 ${i < item.rating ? 'text-[#a0d2eb] star-active' : 'text-[#8458B3]/30 star-inactive'}`} />))}</div></div>}
-                {item.review && <div><p className="text-gray-400 text-sm mb-1">Отзыв от {item.owner.username}:</p><p className="text-white bg-gray-800 p-3 rounded-lg border border-gray-700">{item.review}</p></div>}
+                {item.review && (
+                  <div>
+                    <p className="text-gray-400 text-sm mb-1">Отзыв от {item.owner.username}:</p>
+                    <div className="text-white bg-gray-800 p-3 rounded-lg border border-gray-700">
+                      {item.review.length > 200 && !isExpanded ? (
+                        <>
+                          <p>{item.review.substring(0, 200)}...</p>
+                          <button
+                            onClick={() => setIsExpanded(true)}
+                            className="mt-2 px-3 py-1 bg-gradient-to-r from-[#a0d2eb]/20 to-[#8458B3]/20 hover:from-[#a0d2eb]/30 hover:to-[#8458B3]/30 text-[#a0d2eb] hover:text-white text-sm font-medium transition-all duration-200 rounded-lg border border-[#a0d2eb]/30 hover:border-[#a0d2eb]/50"
+                            style={{boxShadow: '0 2px 8px rgba(160, 210, 235, 0.2)'}}
+                          >
+                            📖 Раскрыть полностью
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <p>{item.review}</p>
+                          {item.review.length > 200 && (
+                            <button
+                              onClick={() => setIsExpanded(false)}
+                              className="mt-2 px-3 py-1 bg-gradient-to-r from-[#8458B3]/20 to-[#a28089]/20 hover:from-[#8458B3]/30 hover:to-[#a28089]/30 text-[#8458B3] hover:text-white text-sm font-medium transition-all duration-200 rounded-lg border border-[#8458B3]/30 hover:border-[#8458B3]/50"
+                              style={{boxShadow: '0 2px 8px rgba(132, 88, 179, 0.2)'}}
+                            >
+                              📖 Свернуть
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
                 {!item.rating && !item.review && <p className="text-gray-400 italic">Пользователь не оставил отзыва.</p>}
              </Fragment>
           )}
