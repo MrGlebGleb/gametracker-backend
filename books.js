@@ -1065,7 +1065,6 @@ const BookTrackerApp = () => {
         setBooks(prev => prev.map(book => 
           book.id === bookId ? { ...book, status: newStatus } : book
         ));
-        showToast('Статус книги обновлен!', 'success');
       }
     } catch (error) {
       console.error('Error updating book status:', error);

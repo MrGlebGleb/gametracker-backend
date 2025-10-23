@@ -1116,7 +1116,6 @@ const ComicsTrackerApp = () => {
         setComics(prev => prev.map(comic => 
           comic.id === comicId ? { ...comic, status: newStatus } : comic
         ));
-        showToast('Статус комиксови обновлен!', 'success');
       }
     } catch (error) {
       console.error('Error updating comic status:', error);
