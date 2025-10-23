@@ -472,6 +472,11 @@ function BookDetailsModal({ book, onClose, onUpdate, onReact, user }) {
   
   // Локальное состояние для мгновенного обновления рейтинга
   const [localRating, setLocalRating] = useState(book.user_rating || 0);
+  
+  // Состояние для системы комментариев
+  const [reviewText, setReviewText] = useState(book.review || '');
+  const [isPublished, setIsPublished] = useState(book.is_published || false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Синхронизируем локальное состояние с обновленной книгой
   useEffect(() => {
@@ -483,6 +488,38 @@ function BookDetailsModal({ book, onClose, onUpdate, onReact, user }) {
     setLocalRating(rating);
     // Вызываем onUpdate с правильным полем user_rating
     onUpdate(book, { user_rating: rating });
+  };
+
+  // Обработка изменения текста рецензии
+  const handleReviewChange = (text) => {
+    if (text.length <= 1000) {
+      setReviewText(text);
+      
+      if (text.length > 0) {
+        // Автоматически сохраняем как черновик при изменении
+        onUpdate(book, { 
+          review: text, 
+          is_published: false 
+        });
+        setIsPublished(false);
+      } else {
+        // Если текст полностью стерт, удаляем черновик
+        onUpdate(book, { 
+          review: '', 
+          is_published: false 
+        });
+        setIsPublished(false);
+      }
+    }
+  };
+
+  // Публикация рецензии
+  const publishReview = () => {
+    onUpdate(book, { 
+      review: reviewText, 
+      is_published: true 
+    });
+    setIsPublished(true);
   };
 
   return (
@@ -518,12 +555,51 @@ function BookDetailsModal({ book, onClose, onUpdate, onReact, user }) {
           <div>
             <label className="text-gray-400 text-sm">Отзыв:</label>
             <textarea 
-              defaultValue={book.review || ''} 
-              onBlur={(e) => onUpdate(book, { review: e.target.value })} 
+              value={reviewText} 
+              onChange={(e) => handleReviewChange(e.target.value)}
               className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white mt-1" 
               rows="4" 
               placeholder="Ваши впечатления..."
+              maxLength="1000"
             />
+            {/* Счетчик символов */}
+            <div className="flex justify-between items-center mt-1">
+              <div className="text-xs text-gray-500">
+                {reviewText.length}/1000 символов
+              </div>
+              {reviewText.length > 800 && (
+                <div className="text-xs text-yellow-400">
+                  Осталось {1000 - reviewText.length} символов
+                </div>
+              )}
+            </div>
+            
+            {/* Кнопка публикации */}
+            {reviewText.length > 0 && (
+              <div className="flex justify-end mt-3">
+                <button
+                  onClick={publishReview}
+                  className="px-4 py-2 bg-gray-700/30 hover:bg-gray-600/40 text-gray-300 hover:text-white rounded-lg transition-all duration-200 font-medium text-sm border border-gray-600/30 hover:border-gray-500/50"
+                >
+                  Опубликовать
+                </button>
+              </div>
+            )}
+            
+            {/* Статус публикации */}
+            {reviewText && reviewText.length > 0 && (
+              <div className="mt-2 text-xs">
+                {isPublished ? (
+                  <span className="text-green-400 flex items-center gap-1">
+                    ✅ Опубликовано
+                  </span>
+                ) : (
+                  <span className="text-yellow-400 flex items-center gap-1">
+                    📝 Черновик
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <div>
@@ -633,6 +709,26 @@ function BookCard({ book, onEdit, onDelete, onRate, onReact, onMove, onSelect })
                   style={i < book.user_rating ? {filter: 'drop-shadow(0 0 4px rgba(255, 193, 7, 0.5))'} : {}} 
                 />
               ))}
+            </div>
+          )}
+          
+          {/* Статус отзыва */}
+          {book.review && (
+            <div className="flex items-center gap-1 mt-1">
+              {book.is_published ? (
+                <span className="text-xs text-green-400 flex items-center gap-1">
+                  ✅ Опубликовано
+                </span>
+              ) : (
+                <span className="text-xs text-yellow-400 flex items-center gap-1">
+                  📝 Черновик
+                </span>
+              )}
+              {book.review.length > 200 && (
+                <span className="text-xs text-gray-400">
+                  ({book.review.length} симв.)
+                </span>
+              )}
             </div>
           )}
         </div>
