@@ -1350,6 +1350,7 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
   const [isPublished, setIsPublished] = useState(item.is_published || false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [spellCheckSuggestions, setSpellCheckSuggestions] = useState([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Синхронизируем состояние с обновленным элементом
   useEffect(() => {
@@ -1388,41 +1389,77 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
   };
 
   // Обработка изменения текста рецензии
-  const handleReviewChange = (text) => {
+  const handleReviewChange = useCallback((text) => {
     if (text.length <= 1000) {
       setReviewText(text);
       checkSpelling(text);
       
-      if (text.length > 0) {
-        // Автоматически сохраняем как черновик при изменении
-        onUpdate(item, { 
-          review: text, 
-          is_published: false 
-        });
-        setIsPublished(false);
-      } else {
-        // Если текст полностью стерт, удаляем черновик
-        onUpdate(item, { 
-          review: '', 
-          is_published: false 
-        });
-        setIsPublished(false);
+      // Сохраняем черновик только если текст изменился и не пустой
+      if (text !== (item.review || '') && text.length > 0) {
+        // Очищаем предыдущий таймер
+        if (handleReviewChange.timeoutId) {
+          clearTimeout(handleReviewChange.timeoutId);
+        }
+        
+        // Устанавливаем новый таймер
+        handleReviewChange.timeoutId = setTimeout(() => {
+          onUpdate(item, { 
+            review: text, 
+            is_published: false 
+          });
+          setIsPublished(false);
+        }, 1000); // Задержка 1 секунда
       }
     }
-  };
+  }, [item.review, item, onUpdate]);
 
   // Публикация/изменение рецензии
-  const publishReview = () => {
+  const publishReview = useCallback(() => {
     const updateData = { 
       review: reviewText, 
-      is_published: true,
-      published: true,
-      isPublished: true
+      is_published: true
     };
     console.log('Publishing review with data:', updateData);
     onUpdate(item, updateData);
     setIsPublished(true);
-  };
+  }, [reviewText, item, onUpdate]);
+
+  // Показать подтверждение удаления
+  const showDeleteConfirmation = useCallback(() => {
+    setShowDeleteConfirm(true);
+  }, []);
+
+  // Удаление отзыва
+  const deleteReview = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/user/media/${item.id}/review`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        // Обновляем локальное состояние
+        setReviewText('');
+        setIsPublished(false);
+        onUpdate(item, { review: null, is_published: false });
+        setShowDeleteConfirm(false);
+        alert('Отзыв успешно удален');
+      } else {
+        throw new Error('Failed to delete review');
+      }
+    } catch (error) {
+      console.error('Ошибка удаления отзыва:', error);
+      alert('Не удалось удалить отзыв. Попробуйте еще раз.');
+    }
+  }, [item.id, item, token, onUpdate]);
+
+  // Отмена удаления
+  const cancelDelete = useCallback(() => {
+    setShowDeleteConfirm(false);
+  }, []);
 
   // Обработка изменения рейтинга
   const handleRatingChange = (rating) => {
@@ -1509,15 +1546,23 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
                     </div>
                     
                     
-                    {/* Кнопка публикации/изменения */}
+                    {/* Кнопки управления отзывом */}
                     {reviewText.length > 0 && (
-                      <div className="flex justify-end mt-3">
-                        <button
-                          onClick={publishReview}
-                          className="px-4 py-2 bg-gray-700/30 hover:bg-gray-600/40 text-gray-300 hover:text-white rounded-lg transition-all duration-200 font-medium text-sm border border-gray-600/30 hover:border-gray-500/50"
-                        >
-                          {isPublished ? 'Изменить' : 'Опубликовать'}
-                        </button>
+                      <div className="flex justify-between items-center mt-3">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={publishReview}
+                            className="px-4 py-2 bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 text-purple-300 hover:text-white rounded-lg transition-all duration-200 font-medium text-sm border border-purple-500/30 hover:border-purple-400/50"
+                          >
+                            {isPublished ? 'Изменить' : 'Опубликовать'}
+                          </button>
+                          <button
+                            onClick={showDeleteConfirmation}
+                            className="px-4 py-2 bg-gradient-to-r from-red-600/20 to-pink-600/20 hover:from-red-600/30 hover:to-pink-600/30 text-red-300 hover:text-white rounded-lg transition-all duration-200 font-medium text-sm border border-red-500/30 hover:border-red-400/50"
+                          >
+                            🗑️ Удалить
+                          </button>
+                        </div>
                       </div>
                     )}
                     
@@ -1540,7 +1585,7 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
           ) : (
              <Fragment>
                 {item.rating && <div><p className="text-gray-400 text-sm mb-2">Рейтинг от {item.owner.username}:</p><div className="flex gap-1">{[...Array(5)].map((_, i) => (<Icon key={i} name="star" className={`w-6 h-6 ${i < item.rating ? 'text-[#a0d2eb] star-active' : 'text-[#8458B3]/30 star-inactive'}`} />))}</div></div>}
-                {item.review && (
+                {item.review && item.is_published && (
                   <div>
                     <p className="text-gray-400 text-sm mb-1">Отзыв от {item.owner.username}:</p>
                     <div className="text-white bg-gray-800 p-3 rounded-lg border border-gray-700">
@@ -1649,6 +1694,35 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
         </div>
       </div>
     </div>
+    
+    {/* Модальное окно подтверждения удаления */}
+    {showDeleteConfirm && (
+      <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[200]">
+        <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-red-500/30 mx-4">
+          <div className="text-center">
+            <div className="text-red-400 text-4xl mb-4">⚠️</div>
+            <h3 className="text-xl font-bold text-white mb-2">Удалить отзыв?</h3>
+            <p className="text-gray-300 mb-6">
+              Вы уверены, что хотите удалить свой отзыв? Это действие нельзя отменить.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={cancelDelete}
+                className="px-6 py-2 bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 hover:text-white rounded-lg transition-all duration-200 font-medium border border-gray-600/30 hover:border-gray-500/50"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={deleteReview}
+                className="px-6 py-2 bg-gradient-to-r from-red-600/80 to-pink-600/80 hover:from-red-600 hover:to-pink-600 text-white rounded-lg transition-all duration-200 font-medium border border-red-500/50 hover:border-red-400/70"
+              >
+                🗑️ Удалить
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 }

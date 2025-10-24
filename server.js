@@ -627,6 +627,7 @@ async function initDatabase() {
       ALTER TABLE games ADD COLUMN IF NOT EXISTS deep_review_answers JSONB;
       ALTER TABLE games ADD COLUMN IF NOT EXISTS review TEXT;
       ALTER TABLE games ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT false;
+      ALTER TABLE media_items ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT false;
 
       -- MEDIA (movies/series)
       CREATE TABLE IF NOT EXISTS media_items (
@@ -2239,6 +2240,52 @@ app.delete('/api/games/:gameId/deep-review', authenticateToken, validateIdParam(
   }
 });
 
+// Удаление обычного отзыва
+app.delete('/api/games/:gameId/review', authenticateToken, validateIdParam('gameId'), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { gameId } = req.params;
+    const result = await client.query(
+      'UPDATE games SET review = NULL, is_published = false WHERE id = $1 AND user_id = $2 RETURNING *',
+      [gameId, req.user.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Игра не найдена или не принадлежит вам' });
+    }
+    
+    res.json({ message: 'Отзыв удален', game: result.rows[0] });
+  } catch (error) {
+    console.error('Ошибка удаления отзыва:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// Удаление отзыва медиа
+app.delete('/api/user/media/:id/review', authenticateToken, validateIdParam('id'), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const result = await client.query(
+      'UPDATE media_items SET review = NULL, is_published = false WHERE id = $1 AND user_id = $2 RETURNING *',
+      [id, req.user.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Медиа не найдено или не принадлежит вам' });
+    }
+    
+    res.json({ message: 'Отзыв удален', media: result.rows[0] });
+  } catch (error) {
+    console.error('Ошибка удаления отзыва медиа:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
 app.post('/api/games/:gameId/reactions', authenticateToken, validateIdParam('gameId'), validateReaction, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -2479,7 +2526,7 @@ app.get('/api/user/media/boards', authenticateToken, async (req, res) => {
       const card = {
         id: row.id.toString(), tmdbId: row.tmdb_id, mediaType: row.media_type,
         title: row.title, poster: row.poster, rating: row.rating, review: row.review,
-        seasonsWatched: row.seasons_watched, episodesWatched: row.episodes_watched,
+        is_published: row.is_published, seasonsWatched: row.seasons_watched, episodesWatched: row.episodes_watched,
         addedDate: row.added_at, reactions: row.reactions, tags: row.tags
       };
       const scope = row.media_type === 'tv' ? boards.tv : boards.movies;
@@ -2498,11 +2545,12 @@ app.put('/api/user/media/:id', authenticateToken, validateIdParam('id'), sanitiz
   const client = await pool.connect();
   try {
     const { id } = req.params;
-    const { board, rating, review, seasonsWatched, episodesWatched } = req.body;
+    const { board, rating, review, seasonsWatched, episodesWatched, is_published } = req.body;
     let updateFields = [], values = [], n = 1;
     if (board) { updateFields.push(`board = $${n++}`); values.push(board === 'watched' ? 'watched' : 'wishlist'); }
     if (rating !== undefined) { updateFields.push(`rating = $${n++}`); values.push(rating); }
     if (review !== undefined) { updateFields.push(`review = $${n++}`); values.push(review); }
+    if (is_published !== undefined) { updateFields.push(`is_published = $${n++}`); values.push(is_published); }
     if (seasonsWatched !== undefined) { updateFields.push(`seasons_watched = $${n++}`); values.push(seasonsWatched); }
     if (episodesWatched !== undefined) { updateFields.push(`episodes_watched = $${n++}`); values.push(episodesWatched); }
     updateFields.push('updated_at = CURRENT_TIMESTAMP');
@@ -2861,7 +2909,7 @@ app.get('/api/user/:userId/media/boards', authenticateToken, validateIdParam('us
       const card = {
         id: row.id.toString(), tmdbId: row.tmdb_id, mediaType: row.media_type,
         title: row.title, poster: row.poster, rating: row.rating, review: row.review,
-        seasonsWatched: row.seasons_watched, episodesWatched: row.episodes_watched,
+        is_published: row.is_published, seasonsWatched: row.seasons_watched, episodesWatched: row.episodes_watched,
         addedDate: row.added_at, reactions: row.reactions,
         owner: { username: row.username, avatar: row.avatar }
       };
