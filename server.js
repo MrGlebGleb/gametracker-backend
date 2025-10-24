@@ -625,6 +625,8 @@ async function initDatabase() {
       ALTER TABLE friendships ADD COLUMN IF NOT EXISTS nickname VARCHAR(100);
       ALTER TABLE games ADD COLUMN IF NOT EXISTS video_id VARCHAR(255);
       ALTER TABLE games ADD COLUMN IF NOT EXISTS deep_review_answers JSONB;
+      ALTER TABLE games ADD COLUMN IF NOT EXISTS review TEXT;
+      ALTER TABLE games ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT false;
 
       -- MEDIA (movies/series)
       CREATE TABLE IF NOT EXISTS media_items (
@@ -1206,7 +1208,7 @@ app.put('/api/user/games/:gameId', authenticateToken, validateIdParam('gameId'),
   const client = await pool.connect();
   try {
     const { gameId } = req.params;
-    const { board, rating, notes, hoursPlayed } = req.body;
+    const { board, rating, notes, hoursPlayed, review, is_published } = req.body;
 
     let oldGameData = null;
     if (board) {
@@ -1219,6 +1221,8 @@ app.put('/api/user/games/:gameId', authenticateToken, validateIdParam('gameId'),
     if (rating !== undefined) { updateFields.push(`rating = $${paramCount++}`); values.push(rating); }
     if (notes !== undefined) { updateFields.push(`notes = $${paramCount++}`); values.push(notes); }
     if (hoursPlayed !== undefined) { updateFields.push(`hours_played = $${paramCount++}`); values.push(hoursPlayed); }
+    if (review !== undefined) { updateFields.push(`review = $${paramCount++}`); values.push(review); }
+    if (is_published !== undefined) { updateFields.push(`is_published = $${paramCount++}`); values.push(is_published); }
     updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
     values.push(gameId, req.user.id);
     
@@ -1356,6 +1360,7 @@ app.get('/api/user/boards', authenticateToken, async (req, res) => {
         hoursPlayed: game.hours_played, addedDate: game.added_at,
         reactions: game.reactions, videoId: game.video_id,
         deep_review_answers: game.deep_review_answers,
+        review: game.review, is_published: game.is_published,
         tags: game.tags
       };
       if (boards[game.board]) boards[game.board].push(card);
@@ -2775,7 +2780,8 @@ app.get('/api/user/:userId/boards', authenticateToken, validateIdParam('userId')
       const card = {
         id: game.id.toString(), gameId: game.game_id, name: game.name, cover: game.cover, rating: game.rating, notes: game.notes,
         hoursPlayed: game.hours_played, addedDate: game.added_at, reactions: game.reactions, videoId: game.video_id,
-        deep_review_answers: game.deep_review_answers, owner: { username: game.username, avatar: game.avatar }
+        deep_review_answers: game.deep_review_answers, review: game.review, is_published: game.is_published,
+        owner: { username: game.username, avatar: game.avatar }
       };
       if (boards[game.board]) boards[game.board].push(card);
     });
