@@ -1351,6 +1351,12 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
   const [isExpanded, setIsExpanded] = useState(false);
   const [spellCheckSuggestions, setSpellCheckSuggestions] = useState([]);
 
+  // Синхронизируем состояние с обновленным элементом
+  useEffect(() => {
+    setReviewText(item.review || '');
+    setIsPublished(item.is_published || false);
+  }, [item.review, item.is_published]);
+
   // Простая проверка правописания для русского языка
   const checkSpelling = (text) => {
     const commonMistakes = {
@@ -1405,7 +1411,7 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
     }
   };
 
-  // Публикация рецензии
+  // Публикация/изменение рецензии
   const publishReview = () => {
     onUpdate(item, { 
       review: reviewText, 
@@ -1499,14 +1505,14 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
                     </div>
                     
                     
-                    {/* Кнопка публикации */}
+                    {/* Кнопка публикации/изменения */}
                     {reviewText.length > 0 && (
                       <div className="flex justify-end mt-3">
                         <button
                           onClick={publishReview}
                           className="px-4 py-2 bg-gray-700/30 hover:bg-gray-600/40 text-gray-300 hover:text-white rounded-lg transition-all duration-200 font-medium text-sm border border-gray-600/30 hover:border-gray-500/50"
                         >
-                          Опубликовать
+                          {isPublished ? 'Изменить' : 'Опубликовать'}
                         </button>
                       </div>
                     )}

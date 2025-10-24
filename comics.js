@@ -486,6 +486,12 @@ function ComicDetailsModal({ comic, onClose, onUpdate, onReact, user }) {
   const [isPublished, setIsPublished] = useState(comic.is_published || false);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Синхронизируем состояние с обновленным комиксом
+  useEffect(() => {
+    setReviewText(comic.review || '');
+    setIsPublished(comic.is_published || false);
+  }, [comic.review, comic.is_published]);
+
   // Синхронизируем локальное состояние с обновленной комиксовой
   useEffect(() => {
     setLocalRating(comic.user_rating || 0);
@@ -582,14 +588,14 @@ function ComicDetailsModal({ comic, onClose, onUpdate, onReact, user }) {
               )}
             </div>
             
-            {/* Кнопка публикации */}
+            {/* Кнопка публикации/изменения */}
             {reviewText.length > 0 && (
               <div className="flex justify-end mt-3">
                 <button
                   onClick={publishReview}
                   className="px-4 py-2 bg-gray-700/30 hover:bg-gray-600/40 text-gray-300 hover:text-white rounded-lg transition-all duration-200 font-medium text-sm border border-gray-600/30 hover:border-gray-500/50"
                 >
-                  Опубликовать
+                  {isPublished ? 'Изменить' : 'Опубликовать'}
                 </button>
               </div>
             )}
