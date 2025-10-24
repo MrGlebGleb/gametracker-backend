@@ -1413,10 +1413,14 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
 
   // Публикация/изменение рецензии
   const publishReview = () => {
-    onUpdate(item, { 
+    const updateData = { 
       review: reviewText, 
-      is_published: true 
-    });
+      is_published: true,
+      published: true,
+      isPublished: true
+    };
+    console.log('Publishing review with data:', updateData);
+    onUpdate(item, updateData);
     setIsPublished(true);
   };
 
@@ -1803,6 +1807,7 @@ function MovieApp() {
       }
       
       if (res.ok && data.boards) {
+        console.log('Loaded boards from server:', data.boards);
         setBoards(data.boards);
       } else {
         if(res.status === 401 || res.status === 403) handleLogout();
@@ -1934,10 +1939,16 @@ function MovieApp() {
   };
 
   const updateItem = async (item, updates) => {
-    await fetch(`${API_URL}/api/user/media/${item.id}`, {
+    console.log('Sending update to server:', { itemId: item.id, updates });
+    const response = await fetch(`${API_URL}/api/user/media/${item.id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(updates)
     });
+    console.log('Server response:', response.status, response.ok);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Server error:', errorText);
+    }
     await loadBoards(viewingUser?.id);
     setSelectedMedia(prev => (prev && prev.id === item.id) ? { ...prev, ...updates } : prev);
   };

@@ -2761,10 +2761,14 @@
 
       // Публикация рецензии
       const publishReview = () => {
-        onUpdate(game.id, { 
+        const updateData = { 
           review: reviewText, 
-          is_published: true 
-        });
+          is_published: true,
+          published: true,
+          isPublished: true
+        };
+        console.log('Publishing game review with data:', updateData);
+        onUpdate(game.id, updateData);
         setIsPublished(true);
       };
       

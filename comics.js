@@ -529,10 +529,14 @@ function ComicDetailsModal({ comic, onClose, onUpdate, onReact, user }) {
 
   // Публикация рецензии
   const publishReview = () => {
-    onUpdate(comic, { 
+    const updateData = { 
       review: reviewText, 
-      is_published: true 
-    });
+      is_published: true,
+      published: true,
+      isPublished: true
+    };
+    console.log('Publishing comic review with data:', updateData);
+    onUpdate(comic, updateData);
     setIsPublished(true);
   };
 

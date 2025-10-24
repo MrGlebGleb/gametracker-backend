@@ -521,10 +521,14 @@ function BookDetailsModal({ book, onClose, onUpdate, onReact, user }) {
 
   // Публикация рецензии
   const publishReview = () => {
-    onUpdate(book, { 
+    const updateData = { 
       review: reviewText, 
-      is_published: true 
-    });
+      is_published: true,
+      published: true,
+      isPublished: true
+    };
+    console.log('Publishing book review with data:', updateData);
+    onUpdate(book, updateData);
     setIsPublished(true);
   };
 
@@ -991,7 +995,12 @@ const BookTrackerApp = () => {
       if (response.ok) {
         const booksData = await response.json();
         console.log('Loaded books:', booksData.length);
-        console.log('Books data:', booksData);
+        console.log('Books data with reviews:', booksData.map(book => ({
+          id: book.id,
+          title: book.title,
+          review: book.review,
+          is_published: book.is_published
+        })));
         setBooks(booksData);
       } else if (response.status === 401) {
         console.log('Token invalid, redirecting to login');
@@ -1270,6 +1279,7 @@ const BookTrackerApp = () => {
       }
 
       // Для других обновлений используем обычный PATCH
+      console.log('Sending book update to server:', { bookId: book.id, updates });
       const response = await fetch(`${API_URL}/api/books/${book.id}`, {
         method: 'PATCH',
         headers: {
@@ -1279,10 +1289,15 @@ const BookTrackerApp = () => {
         body: JSON.stringify(updates)
       });
 
+      console.log('Book update response:', response.status, response.ok);
       if (response.ok) {
         const updatedBook = await response.json();
+        console.log('Updated book from server:', updatedBook);
         setBooks(prev => prev.map(b => b.id === book.id ? updatedBook : b));
         showToast('Книга обновлена!', 'success');
+      } else {
+        const errorText = await response.text();
+        console.error('Book update error:', errorText);
       }
     } catch (error) {
       console.error('Error updating book:', error);
