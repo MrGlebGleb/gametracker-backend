@@ -3210,6 +3210,19 @@
                setViewingUser(null);
             }
             if (data.boards) {
+              console.log('Loaded game boards from server:', data.boards);
+              // Логируем игры с отзывами
+              Object.keys(data.boards).forEach(boardKey => {
+                const gamesWithReviews = data.boards[boardKey]?.filter(game => game.review) || [];
+                if (gamesWithReviews.length > 0) {
+                  console.log(`Games with reviews in ${boardKey}:`, gamesWithReviews.map(game => ({
+                    id: game.id,
+                    name: game.name,
+                    review: game.review,
+                    is_published: game.is_published
+                  })));
+                }
+              });
               setBoards(prev => ({
                 backlog: { ...prev.backlog, cards: data.boards.backlog || [] },
                 playing: { ...prev.playing, cards: data.boards.playing || [] },
@@ -3529,7 +3542,8 @@
         
         const token = localStorage.getItem('token');
         try {
-          await fetch(`${API_URL}/api/user/games/${gameId}`, {
+          console.log('Sending game update to server:', { gameId, updates });
+          const response = await fetch(`${API_URL}/api/user/games/${gameId}`, {
             method: 'PUT',
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -3537,9 +3551,15 @@
             },
             body: JSON.stringify(updates)
           });
+          console.log('Game update response:', response.status, response.ok);
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Game update error:', errorText);
+          }
            // Не перезагружаем доски при изменении board - UI уже обновлен оптимистично
            // Перезагружаем только если нужно обновить ленту (например, при изменении рейтинга/статуса)
-           if(updates.rating !== undefined || updates.status !== undefined) {
+           if(updates.rating !== undefined || updates.status !== undefined || updates.review !== undefined) {
+              console.log('Reloading boards due to review/rating/status change');
               loadBoards(token);
            }
         } catch (err) {
