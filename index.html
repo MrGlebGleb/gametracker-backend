@@ -3791,15 +3791,25 @@
             updateBoardOrder(targetBoardId, orderedIds);
         }
 
+        // Очищаем все drag-классы сразу после drop
+        document.querySelectorAll('.drag-over-column').forEach(el => el.classList.remove('drag-over-column'));
+        document.querySelectorAll('.drag-over-card').forEach(el => el.classList.remove('drag-over-card'));
+        document.querySelectorAll('.dragging-card').forEach(el => el.classList.remove('dragging-card'));
+
         dragItem.current = null;
       };
 
       const handleDragEnd = () => {
         // Убираем класс is-dragging для включения анимаций обратно
         document.body.classList.remove('is-dragging');
-        document.querySelectorAll('.dragging-card').forEach(el => el.classList.remove('dragging-card'));
-        document.querySelectorAll('.drag-over-column').forEach(el => el.classList.remove('drag-over-column'));
-        document.querySelectorAll('.drag-over-card').forEach(el => el.classList.remove('drag-over-card'));
+        
+        // Принудительно убираем все drag-классы с задержкой для плавности
+        setTimeout(() => {
+          document.querySelectorAll('.dragging-card').forEach(el => el.classList.remove('dragging-card'));
+          document.querySelectorAll('.drag-over-column').forEach(el => el.classList.remove('drag-over-column'));
+          document.querySelectorAll('.drag-over-card').forEach(el => el.classList.remove('drag-over-card'));
+        }, 100);
+        
         dragItem.current = null;
         draggedElement.current = null;
       };
