@@ -1339,7 +1339,7 @@ function Column({ title, emoji, items, columnKey, isExpanded, onToggleExpand, is
   );
 }
 
-function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, user, onTriggerAnimation }) {
+function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, user, token, onTriggerAnimation }) {
   if (!item) return null;
   const userReaction = (item.reactions || []).find(r => r.user_id === user?.id);
   const [triggerAnimation, setTriggerAnimation] = useState(false);
