@@ -2612,8 +2612,9 @@ function MovieApp() {
         onClose={() => setSelectedMedia(null)} 
         onUpdate={updateItem} 
         onReact={reactToItem} 
-        isViewingFriend={!!viewingUser} 
+        isViewingFriend={!!viewingUser}
         user={user}
+        token={localStorage.getItem('token')}
         onTriggerAnimation={setAnimatingCard}
       />
       
