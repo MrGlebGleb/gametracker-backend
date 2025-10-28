@@ -1006,6 +1006,7 @@ const ComicsTrackerApp = () => {
   const [showStatistics, setShowStatistics] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showUserHub, setShowUserHub] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [friendRequests, setFriendRequests] = useState([]);
   const [myBooksSearchQuery, setMyBooksSearchQuery] = useState('');
   const [expandedColumns, setExpandedColumns] = useState({
@@ -1627,7 +1628,8 @@ const ComicsTrackerApp = () => {
   
   return (
     <div className={`min-h-screen bg-gradient-to-br from-[#1a0f2e] to-[#2d1b69] ${theme} flex flex-col`}>
-      <header className="bg-[#1a0f2e]/95 backdrop-blur-xl border-b border-[#8B5CF6]/30 sticky top-0 z-50 flex-shrink-0">
+      {/* Desktop Header */}
+      <header className="hidden md:block bg-[#1a0f2e]/95 backdrop-blur-xl border-b border-[#8B5CF6]/30 sticky top-0 z-50 flex-shrink-0">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
@@ -1683,6 +1685,37 @@ const ComicsTrackerApp = () => {
                     />
                 </div>
             )}
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile Header */}
+      <header className="md:hidden bg-[#1a0f2e]/95 backdrop-blur-xl border-b border-[#8B5CF6]/30 sticky top-0 z-50">
+        <div className="flex items-center justify-between px-4 py-3">
+          {/* Левая часть */}
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setShowMobileMenu(true)} 
+              className="p-2 hover:bg-gray-800/50 rounded-lg"
+            >
+              <Icon name="menu" className="w-6 h-6 text-white" />
+            </button>
+            <div className="flex items-center gap-4 nav-container">
+              <a href="/index.html" className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 nav-icon">🎮 <span>Game</span></a>
+              <a href="/movies.html" className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 nav-icon">🎬 <span>Movie</span></a>
+              <a href="/books.html" className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 nav-icon">📚 <span>Book</span></a>
+              <span className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 nav-icon">📚 <span>Comic</span></span>
+            </div>
+          </div>
+
+          {/* Правая часть */}
+          <div className="flex items-center gap-2">
+            <button className="p-2 relative hover:bg-gray-800/50 rounded-lg">
+              <Icon name="bell" className="w-5 h-5 text-orange-400" />
+              {friendRequests.length > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              )}
+            </button>
           </div>
         </div>
       </header>
@@ -2100,6 +2133,82 @@ const ComicsTrackerApp = () => {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Мобильное меню (Sidebar) */}
+      {showMobileMenu && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowMobileMenu(false)}></div>
+          <div className="fixed left-0 top-0 h-full w-80 bg-gray-900/95 backdrop-blur-xl border-r border-orange-500/30 shadow-2xl transform transition-transform duration-300 ease-in-out">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-xl font-bold text-white">Меню</h2>
+                <button 
+                  onClick={() => setShowMobileMenu(false)}
+                  className="p-2 hover:bg-gray-800 rounded-lg"
+                >
+                  <Icon name="x" className="w-6 h-6 text-gray-400" />
+                </button>
+              </div>
+              
+              <div className="space-y-6">
+                <div>
+                  <p className="text-xs text-gray-500 mb-2">ПРИЛОЖЕНИЯ</p>
+                  <button 
+                    onClick={() => {window.location.href = '/index.html'; setShowMobileMenu(false);}}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg mb-2 text-gray-400 hover:bg-gray-800"
+                  >
+                    🎮 <span>Game</span>
+                  </button>
+                  <button 
+                    onClick={() => {window.location.href = '/movies.html'; setShowMobileMenu(false);}}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg mb-2 text-gray-400 hover:bg-gray-800"
+                  >
+                    🎬 <span>Movie</span>
+                  </button>
+                  <button 
+                    onClick={() => {window.location.href = '/books.html'; setShowMobileMenu(false);}}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg mb-2 text-gray-400 hover:bg-gray-800"
+                  >
+                    📚 <span>Book</span>
+                  </button>
+                  <button 
+                    onClick={() => setShowMobileMenu(false)}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg mb-2 bg-orange-500/20 text-orange-400"
+                  >
+                    📚 <span>Comic</span>
+                  </button>
+                </div>
+
+                <div>
+                  <p className="text-xs text-gray-500 mb-2">ФУНКЦИИ</p>
+                  <button 
+                    onClick={() => { handleStatistics(); setShowMobileMenu(false); }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:bg-gray-800"
+                  >
+                    <Icon name="barChart" className="w-5 h-5" />
+                    <span>Статистика</span>
+                  </button>
+                  <button 
+                    onClick={() => { handleProfile(); setShowMobileMenu(false); }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:bg-gray-800"
+                  >
+                    <Icon name="settings" className="w-5 h-5" />
+                    <span>Настройки</span>
+                  </button>
+                  <button 
+                    onClick={() => { handleUserHub(); setShowMobileMenu(false); }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:bg-gray-800"
+                  >
+                    <Icon name="users" className="w-5 h-5" />
+                    <span>Друзья</span>
+                    {friendRequests.length > 0 && <span className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">{friendRequests.length}</span>}
+                  </button>
                 </div>
               </div>
             </div>
