@@ -2212,27 +2212,27 @@ function MovieApp() {
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
               {/* Кнопки навигации */}
-              <div className="flex gap-6">
+              <div className="flex gap-6 nav-container">
                 <a
                   href="/index.html"
-                  className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 hover:scale-105 transition-transform cursor-pointer"
+                  className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 hover:scale-105 transition-transform cursor-pointer nav-icon"
                 >
-                  🎮 Game
+                  🎮 <span>Game</span>
                 </a>
-                <span className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400">
-                  🎬 Movie
+                <span className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 nav-icon">
+                  🎬 <span>Movie</span>
                 </span>
                 <a
                   href="/books.html"
-                  className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 hover:scale-105 transition-transform cursor-pointer"
+                  className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 hover:scale-105 transition-transform cursor-pointer nav-icon"
                 >
-                  📚 Book
+                  📚 <span>Book</span>
                 </a>
                 <a
                   href="/comics.html"
-                  className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 hover:scale-105 transition-transform cursor-pointer"
+                  className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 hover:scale-105 transition-transform cursor-pointer nav-icon"
                 >
-                  📚 Comic
+                  📚 <span>Comic</span>
                 </a>
               </div>
             </div>
