@@ -12,11 +12,380 @@ const { body, param, validationResult } = require('express-validator');
 const { JSDOM } = require('jsdom');
 const DOMPurify = require('dompurify');
 const { Parser } = require('json2csv');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
 const app = express();
 
 // Trust proxy for Railway deployment
 app.set('trust proxy', 1);
+
+// Email configuration - универсальная настройка для всех почтовых сервисов
+function createEmailTransporter() {
+  const emailUser = process.env.EMAIL_USER;
+  const emailPass = process.env.EMAIL_PASS;
+  
+  if (!emailUser || !emailPass) {
+    console.error('❌ EMAIL_USER и EMAIL_PASS не настроены!');
+    return null;
+  }
+  
+  // Определяем сервис по email адресу
+  const emailDomain = emailUser.split('@')[1]?.toLowerCase();
+  
+  let config = {
+    auth: {
+      user: emailUser,
+      pass: emailPass
+    },
+    tls: {
+      rejectUnauthorized: false
+    },
+    // Дополнительные настройки для лучшей доставляемости
+    pool: true,
+    maxConnections: 5,
+    maxMessages: 100,
+    rateDelta: 20000,
+    rateLimit: 5
+  };
+  
+  // Настройки для разных почтовых сервисов
+  if (emailDomain?.includes('gmail')) {
+    config.service = 'gmail';
+    config.host = 'smtp.gmail.com';
+    config.port = 587;
+    config.secure = false;
+  } else if (emailDomain?.includes('yandex')) {
+    config.host = 'smtp.yandex.ru';
+    config.port = 587;
+    config.secure = false;
+  } else if (emailDomain?.includes('mail.ru')) {
+    config.host = 'smtp.mail.ru';
+    config.port = 587;
+    config.secure = false;
+  } else if (emailDomain?.includes('outlook') || emailDomain?.includes('hotmail')) {
+    config.service = 'hotmail';
+    config.host = 'smtp-mail.outlook.com';
+    config.port = 587;
+    config.secure = false;
+  } else if (emailDomain?.includes('yahoo')) {
+    config.service = 'yahoo';
+    config.host = 'smtp.mail.yahoo.com';
+    config.port = 587;
+    config.secure = false;
+  } else {
+    // Универсальная настройка для других сервисов
+    config.host = 'smtp.gmail.com'; // Используем Gmail как fallback
+    config.port = 587;
+    config.secure = false;
+    console.log('⚠️ Используется универсальная настройка SMTP');
+  }
+  
+  console.log(`📧 Email transporter настроен для: ${emailDomain || 'неизвестный домен'}`);
+  return nodemailer.createTransporter(config);
+}
+
+const transporter = createEmailTransporter();
+
+// Функция для генерации токена верификации
+function generateVerificationToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+// Функция для отправки email подтверждения - улучшенная для всех почтовых сервисов
+async function sendVerificationEmail(email, token, username) {
+  const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${token}`;
+  
+  // Определяем домен получателя для персонализации
+  const emailDomain = email.split('@')[1]?.toLowerCase();
+  let serviceName = 'почтовый сервис';
+  
+  if (emailDomain?.includes('gmail')) serviceName = 'Gmail';
+  else if (emailDomain?.includes('yandex')) serviceName = 'Яндекс.Почта';
+  else if (emailDomain?.includes('mail.ru')) serviceName = 'Mail.ru';
+  else if (emailDomain?.includes('outlook') || emailDomain?.includes('hotmail')) serviceName = 'Outlook';
+  else if (emailDomain?.includes('yahoo')) serviceName = 'Yahoo Mail';
+  
+  const mailOptions = {
+    from: {
+      name: 'GameTracker',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: '🎮 Подтверждение регистрации - GameTracker',
+    html: `
+      <!DOCTYPE html>
+      <html lang="ru">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Подтверждение регистрации</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f4f4f4; }
+          .container { background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+          .header { text-align: center; margin-bottom: 30px; }
+          .logo { font-size: 24px; font-weight: bold; color: #007bff; margin-bottom: 10px; }
+          .verify-button { display: inline-block; background-color: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 20px 0; text-align: center; }
+          .verify-button:hover { background-color: #0056b3; }
+          .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #666; }
+          .warning { background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }
+          .service-info { background-color: #e7f3ff; border: 1px solid #b3d9ff; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">🎮 GameTracker</div>
+            <h2>Добро пожаловать!</h2>
+          </div>
+          
+          <p>Привет, <strong>${username}</strong>!</p>
+          
+          <p>Спасибо за регистрацию в GameTracker. Для завершения регистрации и активации вашего аккаунта, пожалуйста, подтвердите ваш email адрес.</p>
+          
+          <div style="text-align: center;">
+            <a href="${verificationUrl}" class="verify-button">
+              ✅ Подтвердить Email
+            </a>
+          </div>
+          
+          <div class="warning">
+            <strong>⚠️ Важно:</strong> Если кнопка не работает, скопируйте и вставьте эту ссылку в браузер:
+            <br><br>
+            <code style="word-break: break-all; background-color: #f8f9fa; padding: 5px; border-radius: 3px;">${verificationUrl}</code>
+          </div>
+          
+          <div class="service-info">
+            <strong>📧 Для пользователей ${serviceName}:</strong><br>
+            Если письмо не пришло, проверьте папку "Спам" или "Промоакции". 
+            Добавьте наш адрес в контакты для надежной доставки.
+          </div>
+          
+          <p><strong>Что дальше?</strong></p>
+          <ul>
+            <li>После подтверждения email вы сможете войти в систему</li>
+            <li>Добавлять игры в свою коллекцию</li>
+            <li>Отслеживать прогресс прохождения</li>
+            <li>Делиться достижениями с друзьями</li>
+          </ul>
+          
+          <div class="footer">
+            <p><strong>Срок действия ссылки:</strong> 24 часа</p>
+            <p>Если вы не регистрировались на нашем сайте, просто проигнорируйте это письмо.</p>
+            <p>С уважением,<br>Команда GameTracker</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    // Добавляем текстовую версию для лучшей совместимости
+    text: `
+Добро пожаловать в GameTracker!
+
+Привет, ${username}!
+
+Спасибо за регистрацию. Для завершения регистрации и активации вашего аккаунта, пожалуйста, подтвердите ваш email адрес.
+
+Перейдите по ссылке: ${verificationUrl}
+
+Если ссылка не работает, скопируйте и вставьте её в браузер.
+
+Срок действия ссылки: 24 часа
+
+Если вы не регистрировались на нашем сайте, просто проигнорируйте это письмо.
+
+С уважением,
+Команда GameTracker
+    `,
+    // Дополнительные заголовки для лучшей доставляемости
+    headers: {
+      'X-Mailer': 'GameTracker',
+      'X-Priority': '3',
+      'X-MSMail-Priority': 'Normal',
+      'Importance': 'Normal'
+    }
+  };
+
+  try {
+    // Проверяем, что transporter создан
+    if (!transporter) {
+      console.error('❌ Email transporter не настроен!');
+      return false;
+    }
+    
+    // Проверяем соединение перед отправкой
+    await transporter.verify();
+    
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Verification email sent successfully to:', email);
+    console.log('Message ID:', info.messageId);
+    return true;
+  } catch (error) {
+    console.error('❌ Error sending verification email to:', email);
+    console.error('Error details:', error.message);
+    
+    // Логируем дополнительную информацию для отладки
+    if (error.code) {
+      console.error('Error code:', error.code);
+    }
+    if (error.response) {
+      console.error('SMTP response:', error.response);
+    }
+    
+    return false;
+  }
+}
+
+// Функция для отправки email сброса пароля
+async function sendPasswordResetEmail(email, token, username) {
+  const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
+  
+  // Определяем домен получателя для персонализации
+  const emailDomain = email.split('@')[1]?.toLowerCase();
+  let serviceName = 'почтовый сервис';
+  
+  if (emailDomain?.includes('gmail')) serviceName = 'Gmail';
+  else if (emailDomain?.includes('yandex')) serviceName = 'Яндекс.Почта';
+  else if (emailDomain?.includes('mail.ru')) serviceName = 'Mail.ru';
+  else if (emailDomain?.includes('outlook') || emailDomain?.includes('hotmail')) serviceName = 'Outlook';
+  else if (emailDomain?.includes('yahoo')) serviceName = 'Yahoo Mail';
+  
+  const mailOptions = {
+    from: {
+      name: 'GameTracker',
+      address: process.env.EMAIL_USER
+    },
+    to: email,
+    subject: '🔐 Сброс пароля - GameTracker',
+    html: `
+      <!DOCTYPE html>
+      <html lang="ru">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Сброс пароля</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f4f4f4; }
+          .container { background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+          .header { text-align: center; margin-bottom: 30px; }
+          .logo { font-size: 24px; font-weight: bold; color: #dc3545; margin-bottom: 10px; }
+          .reset-button { display: inline-block; background-color: #dc3545; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 20px 0; text-align: center; }
+          .reset-button:hover { background-color: #c82333; }
+          .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #666; }
+          .warning { background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }
+          .security-info { background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 5px; margin: 20px 0; }
+          .service-info { background-color: #e7f3ff; border: 1px solid #b3d9ff; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">🔐 GameTracker</div>
+            <h2>Сброс пароля</h2>
+          </div>
+          
+          <p>Привет, <strong>${username}</strong>!</p>
+          
+          <p>Мы получили запрос на сброс пароля для вашего аккаунта GameTracker. Если это были вы, нажмите на кнопку ниже для создания нового пароля.</p>
+          
+          <div style="text-align: center;">
+            <a href="${resetUrl}" class="reset-button">
+              🔑 Сбросить пароль
+            </a>
+          </div>
+          
+          <div class="warning">
+            <strong>⚠️ Важно:</strong> Если кнопка не работает, скопируйте и вставьте эту ссылку в браузер:
+            <br><br>
+            <code style="word-break: break-all; background-color: #f8f9fa; padding: 5px; border-radius: 3px;">${resetUrl}</code>
+          </div>
+          
+          <div class="security-info">
+            <strong>🛡️ Безопасность:</strong><br>
+            • Эта ссылка действительна только 1 час<br>
+            • После использования ссылка станет недействительной<br>
+            • Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо<br>
+            • Ваш текущий пароль останется без изменений
+          </div>
+          
+          <div class="service-info">
+            <strong>📧 Для пользователей ${serviceName}:</strong><br>
+            Если письмо не пришло, проверьте папку "Спам" или "Промоакции". 
+            Добавьте наш адрес в контакты для надежной доставки.
+          </div>
+          
+          <div class="footer">
+            <p><strong>Срок действия ссылки:</strong> 1 час</p>
+            <p>Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.</p>
+            <p>С уважением,<br>Команда GameTracker</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    // Добавляем текстовую версию для лучшей совместимости
+    text: `
+Сброс пароля - GameTracker
+
+Привет, ${username}!
+
+Мы получили запрос на сброс пароля для вашего аккаунта GameTracker. Если это были вы, перейдите по ссылке для создания нового пароля.
+
+Ссылка: ${resetUrl}
+
+ВАЖНО:
+- Эта ссылка действительна только 1 час
+- После использования ссылка станет недействительной
+- Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо
+- Ваш текущий пароль останется без изменений
+
+Если ссылка не работает, скопируйте и вставьте её в браузер.
+
+Срок действия ссылки: 1 час
+
+Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.
+
+С уважением,
+Команда GameTracker
+    `,
+    // Дополнительные заголовки для лучшей доставляемости
+    headers: {
+      'X-Mailer': 'GameTracker',
+      'X-Priority': '3',
+      'X-MSMail-Priority': 'Normal',
+      'Importance': 'Normal'
+    }
+  };
+
+  try {
+    // Проверяем, что transporter создан
+    if (!transporter) {
+      console.error('❌ Email transporter не настроен!');
+      return false;
+    }
+    
+    // Проверяем соединение перед отправкой
+    await transporter.verify();
+    
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Password reset email sent successfully to:', email);
+    console.log('Message ID:', info.messageId);
+    return true;
+  } catch (error) {
+    console.error('❌ Error sending password reset email to:', email);
+    console.error('Error details:', error.message);
+    
+    // Логируем дополнительную информацию для отладки
+    if (error.code) {
+      console.error('Error code:', error.code);
+    }
+    if (error.response) {
+      console.error('SMTP response:', error.response);
+    }
+    
+    return false;
+  }
+}
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -138,7 +507,12 @@ app.get('/api/migrate', async (req, res) => {
       ADD COLUMN IF NOT EXISTS is_profile_public BOOLEAN DEFAULT true,
       ADD COLUMN IF NOT EXISTS show_activity BOOLEAN DEFAULT true,
       ADD COLUMN IF NOT EXISTS show_stats BOOLEAN DEFAULT true,
-      ADD COLUMN IF NOT EXISTS allow_friend_requests BOOLEAN DEFAULT true
+      ADD COLUMN IF NOT EXISTS allow_friend_requests BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS is_email_verified BOOLEAN DEFAULT false,
+      ADD COLUMN IF NOT EXISTS email_verification_token VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS email_verification_expires TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMP
     `);
     
     client.release();
@@ -396,10 +770,15 @@ const validateRegister = [
     .withMessage('Неверный формат email')
     .normalizeEmail(),
   body('password')
-    .isLength({ min: 8 })
-    .withMessage('Пароль должен содержать минимум 8 символов')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('Пароль должен содержать минимум одну строчную букву, одну заглавную букву и одну цифру'),
+    .isLength({ min: 6 })
+    .withMessage('Пароль должен содержать минимум 6 символов'),
+  body('confirmPassword')
+    .custom((value, { req }) => {
+      if (value !== req.body.password) {
+        throw new Error('Пароли не совпадают');
+      }
+      return true;
+    }),
   handleValidationErrors
 ];
 
@@ -563,6 +942,11 @@ async function initDatabase() {
         show_activity BOOLEAN DEFAULT true,
         show_stats BOOLEAN DEFAULT true,
         allow_friend_requests BOOLEAN DEFAULT true,
+        is_email_verified BOOLEAN DEFAULT false,
+        email_verification_token VARCHAR(255),
+        email_verification_expires TIMESTAMP,
+        password_reset_token VARCHAR(255),
+        password_reset_expires TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -828,26 +1212,271 @@ async function createNotification(userId, fromUserId, type, message, referenceId
 app.post('/api/auth/register', registerLimiter, validateRegister, async (req, res) => {
   const client = await pool.connect();
   try {
-    const { username, email, password } = req.body;
-    if (!username || !email || !password) {
+    const { username, email, password, confirmPassword } = req.body;
+    if (!username || !email || !password || !confirmPassword) {
       return res.status(400).json({ error: 'Все поля обязательны' });
     }
     if (password.length < 6) {
       return res.status(400).json({ error: 'Пароль минимум 6 символов' });
     }
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: 'Пароли не совпадают' });
+    }
+    // Генерируем токен верификации
+    const verificationToken = generateVerificationToken();
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 часа
+    
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await client.query(
-      'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, username, email, avatar, bio, theme',
-      [username, email, hashedPassword]
+      'INSERT INTO users (username, email, password, email_verification_token, email_verification_expires) VALUES ($1, $2, $3, $4, $5) RETURNING id, username, email, avatar, bio, theme, is_email_verified',
+      [username, email, hashedPassword, verificationToken, verificationExpires]
     );
     const user = result.rows[0];
-    const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
-    res.status(201).json({ message: 'Регистрация успешна', token, user });
+    
+    // Отправляем email подтверждения
+    const emailSent = await sendVerificationEmail(email, verificationToken, username);
+    
+    if (!emailSent) {
+      console.error('Failed to send verification email for user:', username);
+      // Не возвращаем ошибку, так как пользователь уже создан
+    }
+    
+    res.status(201).json({ 
+      message: 'Регистрация успешна. Проверьте ваш email для подтверждения аккаунта.',
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        avatar: user.avatar,
+        bio: user.bio,
+        theme: user.theme,
+        is_email_verified: user.is_email_verified
+      }
+    });
   } catch (error) {
     if (error.code === '23505') {
       return res.status(400).json({ error: 'Пользователь или email уже существует' });
     }
     console.error('Ошибка регистрации:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// Endpoint для подтверждения email
+app.get('/api/auth/verify-email', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { token } = req.query;
+    
+    if (!token) {
+      return res.status(400).json({ error: 'Токен подтверждения не предоставлен' });
+    }
+    
+    // Находим пользователя по токену
+    const result = await client.query(
+      'SELECT id, username, email, email_verification_expires FROM users WHERE email_verification_token = $1',
+      [token]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Неверный токен подтверждения' });
+    }
+    
+    const user = result.rows[0];
+    
+    // Проверяем, не истек ли токен
+    if (new Date() > new Date(user.email_verification_expires)) {
+      return res.status(400).json({ error: 'Токен подтверждения истек. Запросите новый.' });
+    }
+    
+    // Обновляем статус подтверждения
+    await client.query(
+      'UPDATE users SET is_email_verified = true, email_verification_token = NULL, email_verification_expires = NULL WHERE id = $1',
+      [user.id]
+    );
+    
+    res.status(200).json({ 
+      message: 'Email успешно подтвержден! Теперь вы можете войти в систему.',
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email
+      }
+    });
+    
+  } catch (error) {
+    console.error('Email verification error:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// Endpoint для повторной отправки email подтверждения
+app.post('/api/auth/resend-verification', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email обязателен' });
+    }
+    
+    // Находим пользователя
+    const result = await client.query(
+      'SELECT id, username, email, is_email_verified FROM users WHERE email = $1',
+      [email]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Пользователь с таким email не найден' });
+    }
+    
+    const user = result.rows[0];
+    
+    if (user.is_email_verified) {
+      return res.status(400).json({ error: 'Email уже подтвержден' });
+    }
+    
+    // Генерируем новый токен
+    const verificationToken = generateVerificationToken();
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    
+    // Обновляем токен в базе
+    await client.query(
+      'UPDATE users SET email_verification_token = $1, email_verification_expires = $2 WHERE id = $3',
+      [verificationToken, verificationExpires, user.id]
+    );
+    
+    // Отправляем email
+    const emailSent = await sendVerificationEmail(email, verificationToken, user.username);
+    
+    if (!emailSent) {
+      return res.status(500).json({ error: 'Ошибка отправки email' });
+    }
+    
+    res.status(200).json({ message: 'Письмо с подтверждением отправлено повторно' });
+    
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// Endpoint для запроса сброса пароля
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email обязателен' });
+    }
+    
+    // Находим пользователя
+    const result = await client.query(
+      'SELECT id, username, email FROM users WHERE email = $1',
+      [email]
+    );
+    
+    if (result.rows.length === 0) {
+      // Не раскрываем, существует ли пользователь с таким email
+      return res.status(200).json({ 
+        message: 'Если пользователь с таким email существует, мы отправили инструкции по сбросу пароля.' 
+      });
+    }
+    
+    const user = result.rows[0];
+    
+    // Генерируем токен сброса пароля
+    const resetToken = generateVerificationToken();
+    const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 час
+    
+    // Обновляем токен в базе
+    await client.query(
+      'UPDATE users SET password_reset_token = $1, password_reset_expires = $2 WHERE id = $3',
+      [resetToken, resetExpires, user.id]
+    );
+    
+    // Отправляем email
+    const emailSent = await sendPasswordResetEmail(email, resetToken, user.username);
+    
+    if (!emailSent) {
+      console.error('Failed to send password reset email for user:', user.username);
+      return res.status(500).json({ error: 'Ошибка отправки email' });
+    }
+    
+    res.status(200).json({ 
+      message: 'Если пользователь с таким email существует, мы отправили инструкции по сбросу пароля.' 
+    });
+    
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// Endpoint для подтверждения сброса пароля
+app.post('/api/auth/reset-password', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { token, newPassword, confirmPassword } = req.body;
+    
+    if (!token || !newPassword || !confirmPassword) {
+      return res.status(400).json({ error: 'Все поля обязательны' });
+    }
+    
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Пароль минимум 6 символов' });
+    }
+    
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'Пароли не совпадают' });
+    }
+    
+    // Находим пользователя по токену
+    const result = await client.query(
+      'SELECT id, username, email, password_reset_expires FROM users WHERE password_reset_token = $1',
+      [token]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Неверный токен сброса пароля' });
+    }
+    
+    const user = result.rows[0];
+    
+    // Проверяем, не истек ли токен
+    if (new Date() > new Date(user.password_reset_expires)) {
+      return res.status(400).json({ error: 'Токен сброса пароля истек. Запросите новый.' });
+    }
+    
+    // Хешируем новый пароль
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Обновляем пароль и удаляем токен
+    await client.query(
+      'UPDATE users SET password = $1, password_reset_token = NULL, password_reset_expires = NULL WHERE id = $2',
+      [hashedPassword, user.id]
+    );
+    
+    res.status(200).json({ 
+      message: 'Пароль успешно изменен! Теперь вы можете войти с новым паролем.',
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email
+      }
+    });
+    
+  } catch (error) {
+    console.error('Reset password error:', error);
     res.status(500).json({ error: 'Ошибка сервера' });
   } finally {
     client.release();
@@ -867,11 +1496,29 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
     if (!validPassword) {
       return res.status(401).json({ error: 'Неверные учетные данные' });
     }
+    
+    // Проверяем, подтвержден ли email
+    if (!user.is_email_verified) {
+      return res.status(403).json({ 
+        error: 'Email не подтвержден. Проверьте вашу почту и подтвердите регистрацию.',
+        email: user.email,
+        needsVerification: true
+      });
+    }
+    
     const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
     res.json({
       message: 'Вход выполнен',
       token,
-      user: { id: user.id, username: user.username, email: user.email, avatar: user.avatar, bio: user.bio, theme: user.theme }
+      user: { 
+        id: user.id, 
+        username: user.username, 
+        email: user.email, 
+        avatar: user.avatar, 
+        bio: user.bio, 
+        theme: user.theme,
+        is_email_verified: user.is_email_verified
+      }
     });
   } catch (error) {
     console.error('Ошибка входа:', error);
