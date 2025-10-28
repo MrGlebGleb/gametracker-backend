@@ -1202,15 +1202,9 @@ function MediaCard({ item, onSelect, onRemove, onDragStart, onDragEnd, isViewing
           {/* Статус отзыва */}
           {item.review && (
             <div className="flex items-center gap-1 mt-1">
-              {item.is_published ? (
-                <span className="text-xs text-green-400 flex items-center gap-1">
-                  ✅ Опубликовано
-                </span>
-              ) : (
-                <span className="text-xs text-yellow-400 flex items-center gap-1">
-                  📝 Черновик
-                </span>
-              )}
+              <span className="text-xs text-gray-400 flex items-center gap-1">
+                📝 Отзыв
+              </span>
               {item.review.length > 200 && (
                 <span className="text-xs text-gray-400">
                   ({item.review.length} симв.)
@@ -1569,15 +1563,9 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
                     {/* Статус публикации */}
                     {reviewText && reviewText.length > 0 && (
                       <div className="mt-2 text-xs">
-                        {isPublished ? (
-                          <span className="text-green-400 flex items-center gap-1">
-                            ✅ Опубликовано
-                          </span>
-                        ) : (
-                          <span className="text-yellow-400 flex items-center gap-1">
-                            📝 Черновик
-                          </span>
-                        )}
+                        <span className="text-gray-400 flex items-center gap-1">
+                          📝 Отзыв
+                        </span>
                       </div>
                     )}
                   </div>
@@ -1585,7 +1573,7 @@ function MediaDetailsModal({ item, onClose, onUpdate, onReact, isViewingFriend, 
           ) : (
              <Fragment>
                 {item.rating && <div><p className="text-gray-400 text-sm mb-2">Рейтинг от {item.owner.username}:</p><div className="flex gap-1">{[...Array(5)].map((_, i) => (<Icon key={i} name="star" className={`w-6 h-6 ${i < item.rating ? 'text-[#a0d2eb] star-active' : 'text-[#8458B3]/30 star-inactive'}`} />))}</div></div>}
-                {item.review && item.is_published && (
+                {item.review && (
                   <div>
                     <p className="text-gray-400 text-sm mb-1">Отзыв от {item.owner.username}:</p>
                     <div className="text-white bg-gray-800 p-3 rounded-lg border border-gray-700">

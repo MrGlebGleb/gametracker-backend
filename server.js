@@ -628,6 +628,9 @@ async function initDatabase() {
       ALTER TABLE games ADD COLUMN IF NOT EXISTS review TEXT;
       ALTER TABLE games ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT false;
       ALTER TABLE media_items ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT false;
+      ALTER TABLE books ADD COLUMN IF NOT EXISTS review TEXT;
+      ALTER TABLE books ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT false;
+      ALTER TABLE comics ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT false;
 
       -- MEDIA (movies/series)
       CREATE TABLE IF NOT EXISTS media_items (
@@ -3394,6 +3397,29 @@ app.delete('/api/books/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Удалить отзыв книги
+app.delete('/api/books/:id/review', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const result = await client.query(
+      'UPDATE books SET review = NULL, is_published = false WHERE id = $1 AND user_id = $2 RETURNING *',
+      [id, req.user.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Книга не найдена или не принадлежит вам' });
+    }
+    
+    res.json({ message: 'Отзыв удален', book: result.rows[0] });
+  } catch (error) {
+    console.error('Ошибка удаления отзыва книги:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
 // Оценить книгу
 app.post('/api/books/:id/rate', authenticateToken, [
   body('rating').isInt({ min: 1, max: 5 }).withMessage('Рейтинг должен быть от 1 до 5')
@@ -3586,6 +3612,8 @@ app.post('/api/books/migrate', async (req, res) => {
         subjects JSONB DEFAULT '[]'::jsonb,
         language VARCHAR(10) DEFAULT 'ru',
         status VARCHAR(20) NOT NULL DEFAULT 'want_to_read',
+        review TEXT,
+        is_published BOOLEAN DEFAULT false,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       )
@@ -3817,7 +3845,7 @@ app.patch('/api/comics/:id', authenticateToken, async (req, res) => {
   let client;
   try {
     const { id } = req.params;
-    const { status, review } = req.body;
+    const { status, review, is_published } = req.body;
     
     client = await pool.connect();
     
@@ -3840,6 +3868,11 @@ app.patch('/api/comics/:id', authenticateToken, async (req, res) => {
     if (review !== undefined) {
       updates.push(`review = $${paramCount++}`);
       values.push(review);
+    }
+    
+    if (is_published !== undefined) {
+      updates.push(`is_published = $${paramCount++}`);
+      values.push(is_published);
     }
     
     updates.push(`updated_at = NOW()`);
@@ -3898,6 +3931,29 @@ app.delete('/api/comics/:id', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Ошибка сервера' });
   } finally {
     if (client) client.release();
+  }
+});
+
+// Удалить отзыв комикса
+app.delete('/api/comics/:id/review', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const result = await client.query(
+      'UPDATE comics SET review = NULL, is_published = false WHERE id = $1 AND user_id = $2 RETURNING *',
+      [id, req.user.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Комикс не найден или не принадлежит вам' });
+    }
+    
+    res.json({ message: 'Отзыв удален', comic: result.rows[0] });
+  } catch (error) {
+    console.error('Ошибка удаления отзыва комикса:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
   }
 });
 
@@ -4065,6 +4121,7 @@ app.post('/api/comics/migrate', async (req, res) => {
         description TEXT,
         issue_count INTEGER,
         review TEXT,
+        is_published BOOLEAN DEFAULT false,
         status VARCHAR(20) NOT NULL DEFAULT 'want_to_read',
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
