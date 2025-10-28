@@ -1356,7 +1356,14 @@ const BookTrackerApp = () => {
         const updatedBook = await response.json();
         console.log('Updated book from server:', updatedBook);
         setBooks(prev => prev.map(b => b.id === book.id ? updatedBook : b));
-        showToast('Книга обновлена!', 'success');
+        
+        // Показываем уведомление только для важных обновлений, не для отзывов и статуса
+        const isReviewUpdate = updates.hasOwnProperty('review') || updates.hasOwnProperty('is_published');
+        const isStatusUpdate = updates.hasOwnProperty('status');
+        
+        if (!isReviewUpdate && !isStatusUpdate) {
+          showToast('Книга обновлена!', 'success');
+        }
       } else {
         const errorText = await response.text();
         console.error('Book update error:', errorText);

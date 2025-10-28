@@ -1414,7 +1414,14 @@ const ComicsTrackerApp = () => {
           reactions: updatedComic.reactions || []
         };
         setComics(prev => prev.map(c => c.id === comic.id ? normalizedUpdatedComic : c));
-        showToast('Комикс обновлен!', 'success');
+        
+        // Показываем уведомление только для важных обновлений, не для отзывов и статуса
+        const isReviewUpdate = updates.hasOwnProperty('review') || updates.hasOwnProperty('is_published');
+        const isStatusUpdate = updates.hasOwnProperty('status');
+        
+        if (!isReviewUpdate && !isStatusUpdate) {
+          showToast('Комикс обновлен!', 'success');
+        }
       }
     } catch (error) {
       console.error('Error updating comic:', error);
