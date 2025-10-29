@@ -4838,6 +4838,7 @@ app.post('/api/comics/migrate', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Сервер на порту ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Сервер запущен на порту ${PORT}`);
+  console.log(`🌐 Доступен по адресу: http://0.0.0.0:${PORT}`);
 });
