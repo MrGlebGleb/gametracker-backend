@@ -17,6 +17,23 @@ const crypto = require('crypto');
 
 const app = express();
 
+// Health check endpoint - определяется САМЫМ ПЕРВЫМ, до всех middleware
+// Это критически важно для Railway healthcheck
+app.get('/api/health', (req, res) => {
+  try {
+    res.status(200).json({ 
+      status: 'OK', 
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({ 
+      status: 'ERROR', 
+      error: error.message 
+    });
+  }
+});
+
 // Trust proxy for Railway deployment
 app.set('trust proxy', 1);
 
@@ -342,23 +359,6 @@ async function sendPasswordResetEmail(email, token, username) {
     return false;
   }
 }
-
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  try {
-    res.status(200).json({ 
-      status: 'OK', 
-      timestamp: new Date().toISOString(),
-      sendgrid: SENDGRID_API_KEY ? 'configured' : 'not configured'
-    });
-  } catch (error) {
-    console.error('Health check error:', error);
-    res.status(500).json({ 
-      status: 'ERROR', 
-      error: error.message 
-    });
-  }
-});
 
 // Database test endpoint
 app.get('/api/test-db', async (req, res) => {
@@ -4879,24 +4879,31 @@ console.log('   NODE_ENV:', process.env.NODE_ENV || 'not set');
 console.log('   DATABASE_URL:', process.env.DATABASE_URL ? 'present' : 'missing');
 console.log('   SENDGRID_API_KEY:', SENDGRID_API_KEY ? 'present' : 'missing');
 console.log('   FROM_EMAIL:', FROM_EMAIL || 'not set');
+console.log('   Healthcheck URL: http://0.0.0.0:' + PORT + '/api/health');
 
-try {
-  const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Сервер успешно запущен на порту ${PORT}`);
-    console.log(`🌐 Доступен по адресу: http://0.0.0.0:${PORT}`);
-    console.log(`📊 Healthcheck endpoint: http://0.0.0.0:${PORT}/api/health`);
-    console.log(`✅ Сервер готов принимать запросы`);
-  });
-  
-  server.on('error', (error) => {
-    console.error('❌ Ошибка сервера:', error);
-    if (error.code === 'EADDRINUSE') {
-      console.error(`❌ Порт ${PORT} уже занят!`);
-    }
+// Запускаем сервер
+const server = app.listen(PORT, '0.0.0.0', (err) => {
+  if (err) {
+    console.error('❌ Ошибка запуска:', err);
     process.exit(1);
-  });
-} catch (error) {
-  console.error('❌ Ошибка запуска сервера:', error);
-  console.error('Stack:', error.stack);
+  }
+  console.log(`🚀 Сервер успешно запущен на порту ${PORT}`);
+  console.log(`🌐 Доступен по адресу: http://0.0.0.0:${PORT}`);
+  console.log(`📊 Healthcheck endpoint: http://0.0.0.0:${PORT}/api/health`);
+  console.log(`✅ Сервер готов принимать запросы`);
+});
+
+server.on('error', (error) => {
+  console.error('❌ Ошибка сервера:', error);
+  console.error('Error code:', error.code);
+  console.error('Error message:', error.message);
+  if (error.code === 'EADDRINUSE') {
+    console.error(`❌ Порт ${PORT} уже занят!`);
+  }
   process.exit(1);
-}
+});
+
+// Обработка ошибок на уровне сервера
+server.on('listening', () => {
+  console.log('✅ Сервер начал прослушивать порт', PORT);
+});
