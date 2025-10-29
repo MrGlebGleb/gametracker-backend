@@ -82,10 +82,23 @@ function createEmailTransporter() {
   }
   
   console.log(`📧 Email transporter настроен для: ${emailDomain || 'неизвестный домен'}`);
-  return nodemailer.createTransporter(config);
+  return nodemailer.createTransport(config);
 }
 
-const transporter = createEmailTransporter();
+// Создаем email transporter (может быть null если настройки не заданы)
+let transporter = null;
+try {
+  transporter = createEmailTransporter();
+  if (transporter) {
+    console.log('✅ Email transporter успешно создан');
+  } else {
+    console.warn('⚠️ Email transporter не создан (EMAIL_USER или EMAIL_PASS не настроены)');
+  }
+} catch (error) {
+  console.error('❌ Ошибка создания email transporter:', error.message);
+  console.warn('⚠️ Email функции будут недоступны, но сервер продолжит работу');
+  transporter = null;
+}
 
 // Функция для генерации токена верификации
 function generateVerificationToken() {
@@ -1139,7 +1152,11 @@ async function initDatabase() {
   }
 }
 
-initDatabase();
+// Инициализация базы данных (не блокирует запуск сервера)
+initDatabase().catch(error => {
+  console.error('❌ Ошибка инициализации базы данных:', error.message);
+  console.warn('⚠️ Сервер продолжит работу, но некоторые функции могут быть недоступны');
+});
 
 async function getTwitchToken() {
   if (twitchAccessToken && tokenExpiry && Date.now() < tokenExpiry) {
@@ -4851,4 +4868,6 @@ app.post('/api/comics/migrate', async (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Сервер запущен на порту ${PORT}`);
   console.log(`🌐 Доступен по адресу: http://0.0.0.0:${PORT}`);
+  console.log(`📊 Healthcheck endpoint: http://0.0.0.0:${PORT}/api/health`);
+  console.log(`✅ Сервер готов принимать запросы`);
 });
