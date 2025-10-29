@@ -87,6 +87,25 @@ async function sendVerificationEmail(email, token, username) {
   else if (emailDomain?.includes('outlook') || emailDomain?.includes('hotmail')) serviceName = 'Outlook';
   else if (emailDomain?.includes('yahoo')) serviceName = 'Yahoo Mail';
   
+  // Проверяем конфигурацию ДО создания сообщения
+  if (!sgMail) {
+    console.error('❌ [sendVerificationEmail] Модуль @sendgrid/mail не найден!');
+    console.error('   Проверьте, что пакет установлен: npm install @sendgrid/mail');
+    return false;
+  }
+  
+  if (!SENDGRID_API_KEY) {
+    console.error('❌ [sendVerificationEmail] SENDGRID_API_KEY не настроен!');
+    console.error('   Добавьте SENDGRID_API_KEY в переменные окружения Railway');
+    return false;
+  }
+  
+  if (!FROM_EMAIL) {
+    console.error('❌ [sendVerificationEmail] FROM_EMAIL не настроен!');
+    console.error('   Установите FROM_EMAIL или EMAIL_USER в переменных окружения Railway');
+    return false;
+  }
+  
   const msg = {
     to: email,
     from: FROM_EMAIL || 'noreply@gametracker.app', // Используем FROM_EMAIL или fallback
@@ -178,47 +197,35 @@ async function sendVerificationEmail(email, token, username) {
   };
 
   try {
-    // Проверяем, что SendGrid модуль загружен
-    if (!sgMail) {
-      console.error('❌ Модуль @sendgrid/mail не найден! Установите: npm install @sendgrid/mail');
-      return false;
-    }
-    
-    // Проверяем, что SendGrid настроен
-    if (!SENDGRID_API_KEY) {
-      console.error('❌ SENDGRID_API_KEY не настроен!');
-      return false;
-    }
-    
-    if (!FROM_EMAIL) {
-      console.error('❌ FROM_EMAIL не настроен! Установите FROM_EMAIL или EMAIL_USER в переменных окружения.');
-      return false;
-    }
-    
-    console.log('📧 Отправка email подтверждения через SendGrid:');
+    // Проверки уже выполнены выше, сразу отправляем
+    console.log('📧 [sendVerificationEmail] Отправка email подтверждения через SendGrid:');
     console.log('   От:', FROM_EMAIL);
     console.log('   Кому:', email);
     console.log('   Frontend URL:', process.env.FRONTEND_URL || 'http://localhost:3000');
     
     // Отправляем email через SendGrid
+    console.log('📤 [sendVerificationEmail] Отправка через SendGrid...');
     const [response] = await sgMail.send(msg);
-    console.log('✅ Verification email sent successfully to:', email);
-    console.log('✅ Status Code:', response.statusCode);
-    console.log('✅ Response Headers:', JSON.stringify(response.headers));
+    console.log('✅ [sendVerificationEmail] Email отправлен успешно:', email);
+    console.log('   Status Code:', response?.statusCode || 'N/A');
+    console.log('   Response Headers:', JSON.stringify(response?.headers || {}, null, 2));
     return true;
   } catch (error) {
-    console.error('❌ Error sending verification email to:', email);
-    console.error('Error details:', error.message);
+    console.error('❌ [sendVerificationEmail] Ошибка отправки email:', email);
+    console.error('   Error message:', error.message);
+    console.error('   Error name:', error.name);
     
     // Логируем дополнительную информацию для отладки
     if (error.code) {
-      console.error('Error code:', error.code);
+      console.error('   Error code:', error.code);
     }
     if (error.response) {
-      console.error('SendGrid API response:', JSON.stringify(error.response.body, null, 2));
+      console.error('   SendGrid API Status:', error.response.statusCode);
+      console.error('   SendGrid API Body:', JSON.stringify(error.response.body || {}, null, 2));
+      console.error('   SendGrid API Headers:', JSON.stringify(error.response.headers || {}, null, 2));
     }
     if (error.stack) {
-      console.error('Stack trace:', error.stack);
+      console.error('   Stack trace:', error.stack);
     }
     
     return false;
@@ -1398,14 +1405,41 @@ app.post('/api/auth/resend-verification', async (req, res) => {
     const emailSent = await sendVerificationEmail(email, verificationToken, user.username);
     
     if (!emailSent) {
-      return res.status(500).json({ error: 'Ошибка отправки email' });
+      console.error('❌ Не удалось отправить email подтверждения:', {
+        email,
+        hasSgMail: !!sgMail,
+        hasSENDGRID_API_KEY: !!SENDGRID_API_KEY,
+        hasFROM_EMAIL: !!FROM_EMAIL
+      });
+      
+      // Возвращаем более информативную ошибку
+      if (!sgMail) {
+        return res.status(503).json({ 
+          error: 'Сервис отправки email временно недоступен. Попробуйте позже.' 
+        });
+      }
+      
+      if (!SENDGRID_API_KEY) {
+        return res.status(503).json({ 
+          error: 'Сервис отправки email не настроен. Обратитесь к администратору.' 
+        });
+      }
+      
+      return res.status(500).json({ 
+        error: 'Ошибка отправки email. Попробуйте позже.' 
+      });
     }
     
+    console.log('✅ Email подтверждения отправлен повторно для:', email);
     res.status(200).json({ message: 'Письмо с подтверждением отправлено повторно' });
     
   } catch (error) {
-    console.error('Resend verification error:', error);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    console.error('❌ Resend verification error:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Ошибка сервера',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   } finally {
     client.release();
   }
