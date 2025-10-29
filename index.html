@@ -3793,6 +3793,13 @@
 
       const handleAuth = async (e) => {
         e.preventDefault();
+        
+        // Предотвращаем повторные запросы во время загрузки
+        if (loading) {
+          console.log('Request already in progress, ignoring...');
+          return;
+        }
+        
         setLoading(true);
         setError('');
         
@@ -3806,22 +3813,53 @@
         
         try {
           const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
+          console.log('Sending request to:', endpoint, 'with data:', { username: formData.username, email: formData.email, hasPassword: !!formData.password });
+          
+          // Создаем AbortController для таймаута
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 секунд таймаут
+          
+          try {
           const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-          });
-          const data = await response.json();
-          
-          if (response.ok) {
-            // Для регистрации - показываем сообщение о подтверждении email
-            if (authMode === 'register') {
-              showToast('Регистрация успешна! Проверьте ваш email для подтверждения аккаунта.', 'success');
-              setShowAuth(false);
-              return;
+              body: JSON.stringify(formData),
+              signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            console.log('Response status:', response.status, response.statusText);
+            
+            let data;
+            const contentType = response.headers.get('content-type');
+            
+            if (contentType && contentType.includes('application/json')) {
+              try {
+                data = await response.json();
+              } catch (jsonError) {
+                console.error('Failed to parse JSON response:', jsonError);
+                throw new Error('Неверный ответ от сервера (не удалось распарсить JSON)');
+              }
+            } else {
+              // Если сервер вернул не JSON (например, HTML ошибку), читаем текст
+              const text = await response.text();
+              console.error('Server returned non-JSON response:', text.substring(0, 200));
+              throw new Error(`Сервер вернул ошибку ${response.status}. Попробуйте позже.`);
             }
             
-            // Для логина - обычная авторизация
+            console.log('Response data:', data);
+            
+          if (response.ok) {
+              // Для регистрации - показываем сообщение о подтверждении email
+              if (authMode === 'register') {
+                showToast('Регистрация успешна! Проверьте ваш email для подтверждения аккаунта.', 'success');
+                setShowAuth(false);
+                setLoading(false);
+                return;
+              }
+              
+              // Для логина - обычная авторизация
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
             setUser(data.user);
@@ -3834,21 +3872,35 @@
             });
             setShowAuth(false);
             loadBoards(data.token);
-            showToast('Добро пожаловать!', 'success');
-          } else {
-            // Обработка ошибки "email не подтвержден"
-            if (data.needsVerification) {
-              setError('Email не подтвержден. Проверьте вашу почту и подтвердите регистрацию.');
-              showToast('Email не подтвержден. Проверьте вашу почту.', 'warning');
+              showToast('Добро пожаловать!', 'success');
+              setLoading(false);
+            } else {
+              // Обработка ошибки "email не подтвержден"
+              if (data.needsVerification) {
+                setError('Email не подтвержден. Проверьте вашу почту и подтвердите регистрацию.');
+                showToast('Email не подтвержден. Проверьте вашу почту.', 'warning');
           } else {
             setError(data.error || 'Ошибка авторизации');
             showToast(data.error || 'Ошибка авторизации', 'error');
+              }
+              setLoading(false);
             }
+          } catch (fetchError) {
+            clearTimeout(timeoutId);
+            throw fetchError;
           }
+          
         } catch (err) {
-          setError('Ошибка подключения к серверу');
-          showToast('Ошибка подключения к серверу', 'error');
-        } finally {
+          console.error('Registration/Login error:', err);
+          
+          // Обработка ошибки таймаута
+          if (err.name === 'AbortError') {
+            setError('Превышено время ожидания ответа от сервера. Попробуйте позже.');
+            showToast('Превышено время ожидания ответа от сервера', 'error');
+          } else {
+            setError('Ошибка подключения к серверу: ' + (err.message || 'Неизвестная ошибка'));
+            showToast('Ошибка подключения к серверу', 'error');
+          }
           setLoading(false);
         }
       };
@@ -4551,16 +4603,14 @@
       
       const handleEmailChange = useCallback((e) => {
         const input = e.target;
-        const cursorPos = input.selectionStart;
         const newValue = input.value;
         const wasFocused = document.activeElement === input;
         setFormData(prev => ({ ...prev, email: newValue }));
-        // Восстанавливаем фокус и позицию курсора после обновления
+        // Восстанавливаем фокус после обновления (email поле не поддерживает setSelectionRange)
         if (wasFocused && emailInputRef.current) {
           requestAnimationFrame(() => {
             if (emailInputRef.current) {
               emailInputRef.current.focus();
-              emailInputRef.current.setSelectionRange(cursorPos, cursorPos);
             }
           });
         }
