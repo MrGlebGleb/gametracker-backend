@@ -4538,20 +4538,37 @@
               </div>
               {error && <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 text-sm">{error}</div>}
               <div className="space-y-4">
-                <input type="text" placeholder="Логин" value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} className="w-full px-4 py-3 bg-gray-900/60 border border-gray-800/50 rounded-xl focus:border-purple-800/50 focus:outline-none text-white placeholder-gray-500 backdrop-blur-sm transition-all" />
+                <input 
+                  key="username-input"
+                  type="text" 
+                  placeholder="Логин" 
+                  value={formData.username} 
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    setFormData(prev => ({ ...prev, username: newValue }));
+                  }} 
+                  className="w-full px-4 py-3 bg-gray-900/60 border border-gray-800/50 rounded-xl focus:border-purple-800/50 focus:outline-none text-white placeholder-gray-500 backdrop-blur-sm transition-colors"
+                />
                 
                 {/* Поле пароля с галочкой показать/скрыть */}
-                <div className="relative">
+                <div className="relative" key="password-wrapper">
                   <input 
+                    key="password-input"
                     type={showPassword ? "text" : "password"} 
                     placeholder="Пароль" 
                     value={formData.password} 
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })} 
-                    className="w-full px-4 py-3 pr-12 bg-gray-900/60 border border-gray-800/50 rounded-xl focus:border-purple-800/50 focus:outline-none text-white placeholder-gray-500 backdrop-blur-sm transition-all" 
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      setFormData(prev => ({ ...prev, password: newValue }));
+                    }} 
+                    className="w-full px-4 py-3 pr-12 bg-gray-900/60 border border-gray-800/50 rounded-xl focus:border-purple-800/50 focus:outline-none text-white placeholder-gray-500 backdrop-blur-sm transition-colors" 
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowPassword(!showPassword);
+                    }}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                   >
                     {showPassword ? '🙈' : '👁️'}
@@ -4560,17 +4577,24 @@
                 
                 {/* Поле подтверждения пароля (только для регистрации) */}
                 {authMode === 'register' && (
-                  <div className="relative">
+                  <div className="relative" key="confirm-password-wrapper">
                     <input 
+                      key="confirm-password-input"
                       type={showConfirmPassword ? "text" : "password"} 
                       placeholder="Подтвердите пароль" 
                       value={formData.confirmPassword} 
-                      onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })} 
-                      className="w-full px-4 py-3 pr-12 bg-gray-900/60 border border-gray-800/50 rounded-xl focus:border-purple-800/50 focus:outline-none text-white placeholder-gray-500 backdrop-blur-sm transition-all" 
+                      onChange={(e) => {
+                        const newValue = e.target.value;
+                        setFormData(prev => ({ ...prev, confirmPassword: newValue }));
+                      }} 
+                      className="w-full px-4 py-3 pr-12 bg-gray-900/60 border border-gray-800/50 rounded-xl focus:border-purple-800/50 focus:outline-none text-white placeholder-gray-500 backdrop-blur-sm transition-colors" 
                     />
                     <button
                       type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setShowConfirmPassword(!showConfirmPassword);
+                      }}
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                     >
                       {showConfirmPassword ? '🙈' : '👁️'}
@@ -4578,7 +4602,19 @@
                   </div>
                 )}
                 
-                {authMode === 'register' && <input type="email" placeholder="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-3 bg-gray-900/60 border border-gray-800/50 rounded-xl focus:border-purple-800/50 focus:outline-none text-white placeholder-gray-500 backdrop-blur-sm transition-all" />}
+                {authMode === 'register' && (
+                  <input 
+                    key="email-input"
+                    type="email" 
+                    placeholder="Email" 
+                    value={formData.email} 
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      setFormData(prev => ({ ...prev, email: newValue }));
+                    }} 
+                    className="w-full px-4 py-3 bg-gray-900/60 border border-gray-800/50 rounded-xl focus:border-purple-800/50 focus:outline-none text-white placeholder-gray-500 backdrop-blur-sm transition-colors" 
+                  />
+                )}
                 <button onClick={handleAuth} disabled={loading} className={`w-full py-3 bg-gradient-to-r from-purple-700 via-purple-600 to-purple-700 text-white font-bold rounded-xl hover:from-purple-600 hover:via-purple-500 hover:to-purple-600 transition-all transform hover:scale-105 shadow-xl disabled:opacity-50 flex items-center justify-center gap-2 ${loading ? 'btn-loading' : ''}`} style={{
                   boxShadow: '0 10px 25px -5px rgba(88, 28, 135, 0.3), 0 0 15px rgba(88, 28, 135, 0.15)'
                 }}>
