@@ -106,9 +106,16 @@ async function sendVerificationEmail(email, token, username) {
     return false;
   }
   
+  // Проверяем что FROM_EMAIL валидный email
+  const fromEmail = FROM_EMAIL || 'noreply@gametracker.app';
+  if (!fromEmail.includes('@')) {
+    console.error('❌ [sendVerificationEmail] Неверный формат FROM_EMAIL:', fromEmail);
+    return false;
+  }
+  
   const msg = {
     to: email,
-    from: FROM_EMAIL || 'noreply@gametracker.app', // Используем FROM_EMAIL или fallback
+    from: fromEmail, // Используем FROM_EMAIL или fallback
     subject: '🎮 Подтверждение регистрации - GameTracker',
     html: `
       <!DOCTYPE html>
@@ -203,6 +210,11 @@ async function sendVerificationEmail(email, token, username) {
     console.log('   Кому:', email);
     console.log('   Frontend URL:', process.env.FRONTEND_URL || 'http://localhost:3000');
     
+    // Убеждаемся что API ключ установлен (на случай если была проблема)
+    if (SENDGRID_API_KEY && sgMail) {
+      sgMail.setApiKey(SENDGRID_API_KEY);
+    }
+    
     // Отправляем email через SendGrid
     console.log('📤 [sendVerificationEmail] Отправка через SendGrid...');
     const [response] = await sgMail.send(msg);
@@ -219,11 +231,23 @@ async function sendVerificationEmail(email, token, username) {
     if (error.code) {
       console.error('   Error code:', error.code);
     }
+    
+    // SendGrid возвращает ошибки в error.response.body
     if (error.response) {
       console.error('   SendGrid API Status:', error.response.statusCode);
       console.error('   SendGrid API Body:', JSON.stringify(error.response.body || {}, null, 2));
+      
+      // Если есть массив errors, показываем их подробно
+      if (error.response.body && error.response.body.errors) {
+        console.error('   SendGrid Errors:', JSON.stringify(error.response.body.errors, null, 2));
+      }
+      
       console.error('   SendGrid API Headers:', JSON.stringify(error.response.headers || {}, null, 2));
+    } else if (error.message) {
+      // Если нет response, возможно проблема с подключением
+      console.error('   Возможна проблема с подключением к SendGrid API или неверный API ключ');
     }
+    
     if (error.stack) {
       console.error('   Stack trace:', error.stack);
     }
