@@ -3125,11 +3125,11 @@
       // Загружаем время прохождения при открытии модалки
       useEffect(() => {
         const loadTimeToBeat = async () => {
-          if (!game.id || !token) return;
+          if (!game.game_id || !token) return;
           
           setLoadingTimeToBeat(true);
           try {
-            const response = await fetch(`${API_URL}/api/games/${game.id}/details`, {
+            const response = await fetch(`${API_URL}/api/games/${game.game_id}/details`, {
               headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
@@ -3144,7 +3144,7 @@
         };
         
         loadTimeToBeat();
-      }, [game.id, token]);
+      }, [game.game_id, token]);
       
       // Функция для форматирования секунд в читаемый формат
       const formatTime = (seconds) => {

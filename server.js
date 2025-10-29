@@ -1819,7 +1819,7 @@ app.get('/api/games/search', searchLimiter, authenticateToken, async (req, res) 
     if (!q || q.length < 2) return res.status(400).json({ error: 'Минимум 2 символа' });
     const token = await getTwitchToken();
     const response = await axios.post(
-      'https://api.igdb.com/v4/games', `search "${q}"; fields name, cover.url, summary, rating, genres.name, videos.video_id; limit 20;`,
+      'https://api.igdb.com/v4/games', `search "${q}"; fields name, cover.url, summary, rating, genres.name, videos.video_id, time_to_beat; limit 20;`,
       { headers: { 'Client-ID': TWITCH_CLIENT_ID, 'Authorization': `Bearer ${token}`, 'Content-Type': 'text/plain' } }
     );
     const games = response.data.map(game => ({
@@ -1827,11 +1827,50 @@ app.get('/api/games/search', searchLimiter, authenticateToken, async (req, res) 
       cover: game.cover?.url ? `https:${game.cover.url.replace('t_thumb', 't_cover_big')}` : null,
       summary: game.summary || '', rating: game.rating ? Math.round(game.rating / 20) : null,
       genres: game.genres?.map(g => g.name) || [], videoId: game.videos?.[0]?.video_id || null,
+      time_to_beat: game.time_to_beat || null,
     }));
     res.json({ games });
   } catch (error) {
     console.error('Ошибка поиска:', error.message);
     res.status(500).json({ error: 'Ошибка поиска' });
+  }
+});
+
+// === ПОЛУЧЕНИЕ ДЕТАЛЕЙ ИГРЫ ИЗ IGDB ===
+app.get('/api/games/:gameId/details', authenticateToken, async (req, res) => {
+  try {
+    const { gameId } = req.params; // IGDB ID игры
+    if (!gameId || isNaN(gameId)) {
+      return res.status(400).json({ error: 'Неверный ID игры' });
+    }
+    
+    const token = await getTwitchToken();
+    const response = await axios.post(
+      'https://api.igdb.com/v4/games',
+      `fields name, cover.url, summary, rating, genres.name, videos.video_id, time_to_beat; where id = ${gameId}; limit 1;`,
+      { headers: { 'Client-ID': TWITCH_CLIENT_ID, 'Authorization': `Bearer ${token}`, 'Content-Type': 'text/plain' } }
+    );
+    
+    if (!response.data || response.data.length === 0) {
+      return res.status(404).json({ error: 'Игра не найдена' });
+    }
+    
+    const game = response.data[0];
+    const gameDetails = {
+      id: game.id,
+      name: game.name,
+      cover: game.cover?.url ? `https:${game.cover.url.replace('t_thumb', 't_cover_big')}` : null,
+      summary: game.summary || '',
+      rating: game.rating ? Math.round(game.rating / 20) : null,
+      genres: game.genres?.map(g => g.name) || [],
+      videoId: game.videos?.[0]?.video_id || null,
+      time_to_beat: game.time_to_beat || null
+    };
+    
+    res.json(gameDetails);
+  } catch (error) {
+    console.error('Ошибка получения деталей игры:', error.message);
+    res.status(500).json({ error: 'Ошибка получения деталей игры' });
   }
 });
 
