@@ -12,8 +12,16 @@ const { body, param, validationResult } = require('express-validator');
 const { JSDOM } = require('jsdom');
 const DOMPurify = require('dompurify');
 const { Parser } = require('json2csv');
-const sgMail = require('@sendgrid/mail');
 const crypto = require('crypto');
+
+// Загружаем SendGrid лениво (только когда нужно)
+let sgMail = null;
+try {
+  sgMail = require('@sendgrid/mail');
+} catch (error) {
+  console.warn('⚠️ @sendgrid/mail не найден:', error.message);
+  console.warn('⚠️ Email функции будут недоступны до установки пакета');
+}
 
 const app = express();
 
@@ -41,9 +49,11 @@ app.set('trust proxy', 1);
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
 const FROM_EMAIL = process.env.FROM_EMAIL || process.env.EMAIL_USER; // Email отправителя (должен быть verified в SendGrid)
 
-// Инициализируем SendGrid только если API ключ присутствует
+// Инициализируем SendGrid только если API ключ и модуль присутствуют
 try {
-  if (SENDGRID_API_KEY) {
+  if (!sgMail) {
+    console.warn('⚠️ Модуль @sendgrid/mail не загружен. Email функции будут недоступны.');
+  } else if (SENDGRID_API_KEY) {
     sgMail.setApiKey(SENDGRID_API_KEY);
     console.log('✅ SendGrid инициализирован');
     console.log('📧 FROM_EMAIL:', FROM_EMAIL ? `${FROM_EMAIL.split('@')[0]}@***` : 'НЕ установлен');
@@ -168,6 +178,12 @@ async function sendVerificationEmail(email, token, username) {
   };
 
   try {
+    // Проверяем, что SendGrid модуль загружен
+    if (!sgMail) {
+      console.error('❌ Модуль @sendgrid/mail не найден! Установите: npm install @sendgrid/mail');
+      return false;
+    }
+    
     // Проверяем, что SendGrid настроен
     if (!SENDGRID_API_KEY) {
       console.error('❌ SENDGRID_API_KEY не настроен!');
@@ -321,6 +337,12 @@ async function sendPasswordResetEmail(email, token, username) {
   };
 
   try {
+    // Проверяем, что SendGrid модуль загружен
+    if (!sgMail) {
+      console.error('❌ Модуль @sendgrid/mail не найден! Установите: npm install @sendgrid/mail');
+      return false;
+    }
+    
     // Проверяем, что SendGrid настроен
     if (!SENDGRID_API_KEY) {
       console.error('❌ SENDGRID_API_KEY не настроен!');
