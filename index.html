@@ -3125,11 +3125,11 @@
       // Загружаем время прохождения при открытии модалки
       useEffect(() => {
         const loadTimeToBeat = async () => {
-          if (!game.gameId || !token) return;
+          if (!game.id || !token) return;
           
           setLoadingTimeToBeat(true);
           try {
-            const response = await fetch(`${API_URL}/api/games/${game.gameId}/details`, {
+            const response = await fetch(`${API_URL}/api/games/${game.id}/details`, {
               headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
@@ -3144,7 +3144,7 @@
         };
         
         loadTimeToBeat();
-      }, [game.gameId, token]);
+      }, [game.id, token]);
       
       // Функция для форматирования секунд в читаемый формат
       const formatTime = (seconds) => {
@@ -3274,40 +3274,38 @@
             </div>
             <div className="space-y-4">
               {/* Время прохождения */}
-              {(timeToBeat || loadingTimeToBeat) && (
-                <div className="p-3 bg-purple-500/10 rounded-lg border border-purple-500/30">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-purple-400">⏱️</span>
-                    <span className="text-white font-medium text-sm">Время прохождения</span>
-                  </div>
-                  {loadingTimeToBeat ? (
-                    <p className="text-gray-400 text-xs">Загрузка...</p>
-                  ) : timeToBeat && Array.isArray(timeToBeat) ? (
-                    <div className="space-y-1 text-xs">
-                      {timeToBeat[0] && (
-                        <div className="text-gray-300">
-                          <span className="text-gray-400">Основной сюжет:</span> {formatTime(timeToBeat[0]) || 'Н/Д'}
-                        </div>
-                      )}
-                      {timeToBeat[1] && (
-                        <div className="text-gray-300">
-                          <span className="text-gray-400">На 100%:</span> {formatTime(timeToBeat[1]) || 'Н/Д'}
-                        </div>
-                      )}
-                      {timeToBeat[2] && (
-                        <div className="text-gray-300">
-                          <span className="text-gray-400">HowLongToBeat:</span> {formatTime(timeToBeat[2]) || 'Н/Д'}
-                        </div>
-                      )}
-                      {!timeToBeat[0] && !timeToBeat[1] && !timeToBeat[2] && (
-                        <div className="text-gray-400">Данные недоступны</div>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-gray-400 text-xs">Данные недоступны</p>
-                  )}
+              <div className="p-3 bg-purple-500/10 rounded-lg border border-purple-500/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-purple-400">⏱️</span>
+                  <span className="text-white font-medium text-sm">Время прохождения</span>
                 </div>
-              )}
+                {loadingTimeToBeat ? (
+                  <p className="text-gray-400 text-xs">Загрузка...</p>
+                ) : timeToBeat && Array.isArray(timeToBeat) ? (
+                  <div className="space-y-1 text-xs">
+                    {timeToBeat[0] && (
+                      <div className="text-gray-300">
+                        <span className="text-gray-400">Основной сюжет:</span> {formatTime(timeToBeat[0]) || 'Н/Д'}
+                      </div>
+                    )}
+                    {timeToBeat[1] && (
+                      <div className="text-gray-300">
+                        <span className="text-gray-400">На 100%:</span> {formatTime(timeToBeat[1]) || 'Н/Д'}
+                      </div>
+                    )}
+                    {timeToBeat[2] && (
+                      <div className="text-gray-300">
+                        <span className="text-gray-400">HowLongToBeat:</span> {formatTime(timeToBeat[2]) || 'Н/Д'}
+                      </div>
+                    )}
+                    {!timeToBeat[0] && !timeToBeat[1] && !timeToBeat[2] && (
+                      <div className="text-gray-400">Данные недоступны</div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-gray-400 text-xs">Данные недоступны</p>
+                )}
+              </div>
               {!isViewingFriend ? (
                 <Fragment>
                   <div>
