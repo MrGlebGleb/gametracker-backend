@@ -12,7 +12,7 @@ const { body, param, validationResult } = require('express-validator');
 const { JSDOM } = require('jsdom');
 const DOMPurify = require('dompurify');
 const { Parser } = require('json2csv');
-const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 const crypto = require('crypto');
 
 const app = express();
@@ -20,91 +20,19 @@ const app = express();
 // Trust proxy for Railway deployment
 app.set('trust proxy', 1);
 
-// Email configuration - универсальная настройка для всех почтовых сервисов
-function createEmailTransporter() {
-  const emailUser = process.env.EMAIL_USER;
-  const emailPass = process.env.EMAIL_PASS;
-  
-  if (!emailUser || !emailPass) {
-    console.error('❌ EMAIL_USER и EMAIL_PASS не настроены!');
-    return null;
-  }
-  
-  // Определяем сервис по email адресу
-  const emailDomain = emailUser.split('@')[1]?.toLowerCase();
-  
-  let config = {
-    auth: {
-      user: emailUser,
-      pass: emailPass
-    },
-    tls: {
-      rejectUnauthorized: false
-    },
-    // Дополнительные настройки для лучшей доставляемости
-    pool: true,
-    maxConnections: 5,
-    maxMessages: 100,
-    rateDelta: 20000,
-    rateLimit: 5
-  };
-  
-  // Настройки для разных почтовых сервисов
-  if (emailDomain?.includes('gmail')) {
-    config.service = 'gmail';
-    config.host = 'smtp.gmail.com';
-    config.port = 587;
-    config.secure = false;
-  } else if (emailDomain?.includes('yandex')) {
-    config.host = 'smtp.yandex.ru';
-    config.port = 587;
-    config.secure = false;
-  } else if (emailDomain?.includes('mail.ru')) {
-    config.host = 'smtp.mail.ru';
-    config.port = 587;
-    config.secure = false;
-  } else if (emailDomain?.includes('outlook') || emailDomain?.includes('hotmail')) {
-    config.service = 'hotmail';
-    config.host = 'smtp-mail.outlook.com';
-    config.port = 587;
-    config.secure = false;
-  } else if (emailDomain?.includes('yahoo')) {
-    config.service = 'yahoo';
-    config.host = 'smtp.mail.yahoo.com';
-    config.port = 587;
-    config.secure = false;
-  } else {
-    // Универсальная настройка для других сервисов
-    config.host = 'smtp.gmail.com'; // Используем Gmail как fallback
-    config.port = 587;
-    config.secure = false;
-    console.log('⚠️ Используется универсальная настройка SMTP');
-  }
-  
-  console.log(`📧 Email transporter настроен для: ${emailDomain || 'неизвестный домен'}`);
-  return nodemailer.createTransport(config);
-}
+// SendGrid Email configuration
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+const FROM_EMAIL = process.env.FROM_EMAIL || process.env.EMAIL_USER; // Email отправителя (должен быть verified в SendGrid)
 
-// Создаем email transporter (может быть null если настройки не заданы)
-let transporter = null;
-try {
-  transporter = createEmailTransporter();
-  if (transporter) {
-    console.log('✅ Email transporter успешно создан');
-    console.log('📧 EMAIL_USER:', process.env.EMAIL_USER ? `${process.env.EMAIL_USER.split('@')[0]}@***` : 'НЕ установлен');
-    console.log('📧 EMAIL_PASS:', process.env.EMAIL_PASS ? 'установлен' : 'НЕ установлен');
-    console.log('📧 FRONTEND_URL:', process.env.FRONTEND_URL || 'НЕ установлен (используется localhost:3000)');
-  } else {
-    console.warn('⚠️ Email transporter не создан (EMAIL_USER или EMAIL_PASS не настроены)');
-    console.warn('📧 EMAIL_USER:', process.env.EMAIL_USER ? 'установлен' : 'НЕ установлен');
-    console.warn('📧 EMAIL_PASS:', process.env.EMAIL_PASS ? 'установлен' : 'НЕ установлен');
-  }
-} catch (error) {
-  console.error('❌ Ошибка создания email transporter:', error.message);
-  console.error('📧 EMAIL_USER:', process.env.EMAIL_USER ? 'установлен' : 'НЕ установлен');
-  console.error('📧 EMAIL_PASS:', process.env.EMAIL_PASS ? 'установлен' : 'НЕ установлен');
-  console.warn('⚠️ Email функции будут недоступны, но сервер продолжит работу');
-  transporter = null;
+if (SENDGRID_API_KEY) {
+  sgMail.setApiKey(SENDGRID_API_KEY);
+  console.log('✅ SendGrid инициализирован');
+  console.log('📧 FROM_EMAIL:', FROM_EMAIL ? `${FROM_EMAIL.split('@')[0]}@***` : 'НЕ установлен');
+  console.log('📧 SENDGRID_API_KEY:', SENDGRID_API_KEY ? 'установлен' : 'НЕ установлен');
+  console.log('📧 FRONTEND_URL:', process.env.FRONTEND_URL || 'НЕ установлен (используется localhost:3000)');
+} else {
+  console.warn('⚠️ SENDGRID_API_KEY не настроен! Email функции будут недоступны.');
+  console.warn('📧 Добавьте SENDGRID_API_KEY в переменные окружения Railway');
 }
 
 // Функция для генерации токена верификации
@@ -126,12 +54,9 @@ async function sendVerificationEmail(email, token, username) {
   else if (emailDomain?.includes('outlook') || emailDomain?.includes('hotmail')) serviceName = 'Outlook';
   else if (emailDomain?.includes('yahoo')) serviceName = 'Yahoo Mail';
   
-  const mailOptions = {
-    from: {
-      name: 'GameTracker',
-      address: process.env.EMAIL_USER
-    },
+  const msg = {
     to: email,
+    from: FROM_EMAIL || 'noreply@gametracker.app', // Используем FROM_EMAIL или fallback
     subject: '🎮 Подтверждение регистрации - GameTracker',
     html: `
       <!DOCTYPE html>
@@ -198,7 +123,7 @@ async function sendVerificationEmail(email, token, username) {
       </body>
       </html>
     `,
-    // Добавляем текстовую версию для лучшей совместимости
+    // Текстовая версия для лучшей совместимости
     text: `
 Добро пожаловать в GameTracker!
 
@@ -216,41 +141,31 @@ async function sendVerificationEmail(email, token, username) {
 
 С уважением,
 Команда GameTracker
-    `,
-    // Дополнительные заголовки для лучшей доставляемости
-    headers: {
-      'X-Mailer': 'GameTracker',
-      'X-Priority': '3',
-      'X-MSMail-Priority': 'Normal',
-      'Importance': 'Normal'
-    }
+    `
   };
 
   try {
-    // Проверяем, что transporter создан
-    if (!transporter) {
-      console.error('❌ Email transporter не настроен! EMAIL_USER и EMAIL_PASS не настроены.');
-      console.error('📧 EMAIL_USER:', process.env.EMAIL_USER ? 'установлен' : 'НЕ установлен');
-      console.error('📧 EMAIL_PASS:', process.env.EMAIL_PASS ? 'установлен' : 'НЕ установлен');
+    // Проверяем, что SendGrid настроен
+    if (!SENDGRID_API_KEY) {
+      console.error('❌ SENDGRID_API_KEY не настроен!');
       return false;
     }
     
-    // Проверяем, что EMAIL_USER настроен
-    if (!process.env.EMAIL_USER) {
-      console.error('❌ EMAIL_USER не настроен в переменных окружения!');
+    if (!FROM_EMAIL) {
+      console.error('❌ FROM_EMAIL не настроен! Установите FROM_EMAIL или EMAIL_USER в переменных окружения.');
       return false;
     }
     
-    console.log('📧 Отправка email подтверждения:');
-    console.log('   От:', process.env.EMAIL_USER);
+    console.log('📧 Отправка email подтверждения через SendGrid:');
+    console.log('   От:', FROM_EMAIL);
     console.log('   Кому:', email);
     console.log('   Frontend URL:', process.env.FRONTEND_URL || 'http://localhost:3000');
     
-    // Отправляем email (не проверяем verify, так как это может вызвать проблемы)
-    const info = await transporter.sendMail(mailOptions);
+    // Отправляем email через SendGrid
+    const [response] = await sgMail.send(msg);
     console.log('✅ Verification email sent successfully to:', email);
-    console.log('✅ Message ID:', info.messageId);
-    console.log('✅ Response:', info.response);
+    console.log('✅ Status Code:', response.statusCode);
+    console.log('✅ Response Headers:', JSON.stringify(response.headers));
     return true;
   } catch (error) {
     console.error('❌ Error sending verification email to:', email);
@@ -261,7 +176,7 @@ async function sendVerificationEmail(email, token, username) {
       console.error('Error code:', error.code);
     }
     if (error.response) {
-      console.error('SMTP response:', error.response);
+      console.error('SendGrid API response:', JSON.stringify(error.response.body, null, 2));
     }
     if (error.stack) {
       console.error('Stack trace:', error.stack);
@@ -285,12 +200,9 @@ async function sendPasswordResetEmail(email, token, username) {
   else if (emailDomain?.includes('outlook') || emailDomain?.includes('hotmail')) serviceName = 'Outlook';
   else if (emailDomain?.includes('yahoo')) serviceName = 'Yahoo Mail';
   
-  const mailOptions = {
-    from: {
-      name: 'GameTracker',
-      address: process.env.EMAIL_USER
-    },
+  const msg = {
     to: email,
+    from: FROM_EMAIL || 'noreply@gametracker.app', // Используем FROM_EMAIL или fallback
     subject: '🔐 Сброс пароля - GameTracker',
     html: `
       <!DOCTYPE html>
@@ -358,7 +270,7 @@ async function sendPasswordResetEmail(email, token, username) {
       </body>
       </html>
     `,
-    // Добавляем текстовую версию для лучшей совместимости
+    // Текстовая версия для лучшей совместимости
     text: `
 Сброс пароля - GameTracker
 
@@ -382,29 +294,29 @@ async function sendPasswordResetEmail(email, token, username) {
 
 С уважением,
 Команда GameTracker
-    `,
-    // Дополнительные заголовки для лучшей доставляемости
-    headers: {
-      'X-Mailer': 'GameTracker',
-      'X-Priority': '3',
-      'X-MSMail-Priority': 'Normal',
-      'Importance': 'Normal'
-    }
+    `
   };
 
   try {
-    // Проверяем, что transporter создан
-    if (!transporter) {
-      console.error('❌ Email transporter не настроен!');
+    // Проверяем, что SendGrid настроен
+    if (!SENDGRID_API_KEY) {
+      console.error('❌ SENDGRID_API_KEY не настроен!');
       return false;
     }
     
-    // Проверяем соединение перед отправкой
-    await transporter.verify();
+    if (!FROM_EMAIL) {
+      console.error('❌ FROM_EMAIL не настроен! Установите FROM_EMAIL или EMAIL_USER в переменных окружения.');
+      return false;
+    }
     
-    const info = await transporter.sendMail(mailOptions);
+    console.log('📧 Отправка email сброса пароля через SendGrid:');
+    console.log('   От:', FROM_EMAIL);
+    console.log('   Кому:', email);
+    
+    // Отправляем email через SendGrid
+    const [response] = await sgMail.send(msg);
     console.log('✅ Password reset email sent successfully to:', email);
-    console.log('Message ID:', info.messageId);
+    console.log('✅ Status Code:', response.statusCode);
     return true;
   } catch (error) {
     console.error('❌ Error sending password reset email to:', email);
@@ -415,7 +327,10 @@ async function sendPasswordResetEmail(email, token, username) {
       console.error('Error code:', error.code);
     }
     if (error.response) {
-      console.error('SMTP response:', error.response);
+      console.error('SendGrid API response:', JSON.stringify(error.response.body, null, 2));
+    }
+    if (error.stack) {
+      console.error('Stack trace:', error.stack);
     }
     
     return false;
