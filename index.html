@@ -3630,6 +3630,7 @@
           show_stats: true,
           allow_friend_requests: true
       });
+      const [showPrivacySettings, setShowPrivacySettings] = useState(false);
       const [imageForCrop, setImageForCrop] = useState(null);
       const [gameForReview, setGameForReview] = useState(null);
       const [targetBoardForAdd, setTargetBoardForAdd] = useState(null); // НОВОЕ СОСТОЯНИЕ
@@ -5238,11 +5239,21 @@
                       
                       {/* Секция приватности */}
                       <div className="mt-6">
-                          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                              <Icon name="shield" className="w-5 h-5 text-blue-400" />
-                              Приватность
-                          </h3>
-                          <div className="space-y-4">
+                          <button
+                              onClick={() => setShowPrivacySettings(!showPrivacySettings)}
+                              className="w-full flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-700 hover:bg-gray-800 transition-colors mb-2"
+                          >
+                              <div className="flex items-center gap-2">
+                                  <Icon name="shield" className="w-5 h-5 text-blue-400" />
+                                  <span className="text-lg font-semibold text-white">Приватность</span>
+                              </div>
+                              <Icon 
+                                  name={showPrivacySettings ? 'chevronUp' : 'chevronDown'} 
+                                  className="w-5 h-5 text-gray-400 transition-transform"
+                              />
+                          </button>
+                          {showPrivacySettings && (
+                              <div className="space-y-4 mt-2">
                               {/* Публичный профиль */}
                               <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-700">
                                   <div className="flex-1">
@@ -5323,6 +5334,7 @@
                                   </label>
                               </div>
                           </div>
+                          )}
                       </div>
                       
                       {/* Кнопка подтверждения email */}

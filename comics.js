@@ -44,6 +44,15 @@ const Icon = ({ name, className = 'w-6 h-6' }) => {
     userCheck: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
     userClock: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
     loader: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
+    upload: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>,
+    logout: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>,
+    mail: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>,
+    send: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>,
+    chevronUp: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>,
+    chevronDown: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>,
+    shield: <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+    globe: <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
+    activity: <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
   };
   return icons[name] || null;
 };
@@ -1021,6 +1030,13 @@ const ComicsTrackerApp = () => {
   const [selectedComic, setSelectedComic] = useState(null);
   const [viewingUser, setViewingUser] = useState(null);
   const [profileData, setProfileData] = useState({ username: '', bio: '', currentPassword: '', newPassword: '' });
+  const [privacySettings, setPrivacySettings] = useState({
+    is_profile_public: true,
+    show_activity: true,
+    show_stats: true,
+    allow_friend_requests: true
+  });
+  const [showPrivacySettings, setShowPrivacySettings] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef(null);
   const [allUsers, setAllUsers] = useState([]);
@@ -1042,6 +1058,12 @@ const ComicsTrackerApp = () => {
         const parsedUser = JSON.parse(savedUser);
         setUser(parsedUser);
         setTheme(parsedUser.theme || 'default');
+        setPrivacySettings({
+          is_profile_public: parsedUser.is_profile_public ?? true,
+          show_activity: parsedUser.show_activity ?? true,
+          show_stats: parsedUser.show_stats ?? true,
+          allow_friend_requests: parsedUser.allow_friend_requests ?? true
+        });
       } catch (error) {
         console.error('Error parsing user data:', error);
         localStorage.removeItem('user');
@@ -1510,6 +1532,40 @@ const ComicsTrackerApp = () => {
   };
 
   // Обновление профиля
+  const updatePrivacySettings = async (setting, value) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    
+    try {
+      const newSettings = { ...privacySettings, [setting]: value };
+      setPrivacySettings(newSettings);
+      
+      const response = await fetch(`${API_URL}/api/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ [setting]: value })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+          setUser(data.user);
+        }
+      } else {
+        setPrivacySettings(privacySettings);
+        alert('Ошибка обновления настроек приватности');
+      }
+    } catch (error) {
+      console.error('Ошибка обновления приватности:', error);
+      setPrivacySettings(privacySettings);
+      alert('Ошибка обновления настроек приватности');
+    }
+  };
+
   const updateProfile = async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -2085,6 +2141,106 @@ const ComicsTrackerApp = () => {
               <div>
                 <label className="text-gray-400 text-sm">Новый пароль:</label>
                 <input type="password" value={profileData.newPassword} onChange={(e) => setProfileData({ ...profileData, newPassword: e.target.value })} className="w-full px-4 py-2 bg-[#10b981]/15 border border-[#a8e6cf]/30 rounded-lg focus:border-[#a8e6cf] focus:outline-none focus:shadow-[0_0_0_3px_rgba(168,230,207,0.1)] text-white mt-1" />
+              </div>
+              
+              {/* Секция приватности */}
+              <div className="mt-6">
+                <button
+                  onClick={() => setShowPrivacySettings(!showPrivacySettings)}
+                  className="w-full flex items-center justify-between p-3 bg-[#8B5CF6]/15 border border-[#a78bfa]/30 rounded-lg hover:bg-[#8B5CF6]/25 transition-colors mb-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <Icon name="shield" className="w-5 h-5 text-blue-400" />
+                    <span className="text-lg font-semibold text-white">Приватность</span>
+                  </div>
+                  <Icon 
+                    name={showPrivacySettings ? 'chevronUp' : 'chevronDown'} 
+                    className="w-5 h-5 text-gray-400 transition-transform"
+                  />
+                </button>
+                {showPrivacySettings && (
+                  <div className="space-y-4 mt-2">
+                    {/* Публичный профиль */}
+                    <div className="flex items-center justify-between p-3 bg-[#8B5CF6]/10 rounded-lg border border-[#a78bfa]/20">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-white font-medium">Публичный профиль</span>
+                          <Icon name="globe" className="w-4 h-4 text-green-400" />
+                        </div>
+                        <p className="text-xs text-gray-400">Другие пользователи могут видеть ваши доски и статистику</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={privacySettings.is_profile_public}
+                          onChange={(e) => updatePrivacySettings('is_profile_public', e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
+
+                    {/* Показывать активность */}
+                    <div className="flex items-center justify-between p-3 bg-[#8B5CF6]/10 rounded-lg border border-[#a78bfa]/20">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-white font-medium">Показывать активность</span>
+                          <Icon name="activity" className="w-4 h-4 text-blue-400" />
+                        </div>
+                        <p className="text-xs text-gray-400">Друзья будут видеть ваши недавние действия в ленте активности</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={privacySettings.show_activity}
+                          onChange={(e) => updatePrivacySettings('show_activity', e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
+
+                    {/* Показывать статистику */}
+                    <div className="flex items-center justify-between p-3 bg-[#8B5CF6]/10 rounded-lg border border-[#a78bfa]/20">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-white font-medium">Показывать статистику</span>
+                          <Icon name="barChart" className="w-4 h-4 text-purple-400" />
+                        </div>
+                        <p className="text-xs text-gray-400">Другие пользователи могут видеть вашу статистику комиксов</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={privacySettings.show_stats}
+                          onChange={(e) => updatePrivacySettings('show_stats', e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
+
+                    {/* Принимать заявки в друзья */}
+                    <div className="flex items-center justify-between p-3 bg-[#8B5CF6]/10 rounded-lg border border-[#a78bfa]/20">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-white font-medium">Принимать заявки в друзья</span>
+                          <Icon name="userPlus" className="w-4 h-4 text-green-400" />
+                        </div>
+                        <p className="text-xs text-gray-400">Другие пользователи могут отправлять вам заявки в друзья</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={privacySettings.allow_friend_requests}
+                          onChange={(e) => updatePrivacySettings('allow_friend_requests', e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
               
               {/* Кнопка подтверждения email */}

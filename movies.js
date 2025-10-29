@@ -1134,6 +1134,9 @@ const Icon = ({ name, className = "w-5 h-5" }) => {
     send: <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>,
     chevronUp: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>,
     chevronDown: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>,
+    shield: <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+    globe: <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
+    activity: <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
     youtube: <svg className={className} fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>,
   };
   return icons[name] || null;
@@ -1846,6 +1849,13 @@ function MovieApp() {
   const [confirmingAddFriend, setConfirmingAddFriend] = useState(null);
   const [confirmingDeleteFriend, setConfirmingDeleteFriend] = useState(null);
   const [profileData, setProfileData] = useState({ username: '', bio: '', currentPassword: '', newPassword: '' });
+  const [privacySettings, setPrivacySettings] = useState({
+    is_profile_public: true,
+    show_activity: true,
+    show_stats: true,
+    allow_friend_requests: true
+  });
+  const [showPrivacySettings, setShowPrivacySettings] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef(null);
   const token = localStorage.getItem('token');
@@ -1911,6 +1921,12 @@ function MovieApp() {
         setUser(parsedUser);
         setTheme(parsedUser.theme || 'default');
         setProfileData({ username: parsedUser.username || '', bio: parsedUser.bio || '', currentPassword: '', newPassword: '' });
+        setPrivacySettings({
+          is_profile_public: parsedUser.is_profile_public ?? true,
+          show_activity: parsedUser.show_activity ?? true,
+          show_stats: parsedUser.show_stats ?? true,
+          allow_friend_requests: parsedUser.allow_friend_requests ?? true
+        });
         loadBoards();
         loadFriends();
     } else {
@@ -2146,6 +2162,37 @@ function MovieApp() {
       }
     } catch (err) {
       console.error('Ошибка обновления профиля:', err);
+    }
+  };
+
+  const updatePrivacySettings = async (setting, value) => {
+    try {
+      const newSettings = { ...privacySettings, [setting]: value };
+      setPrivacySettings(newSettings);
+      
+      const response = await fetch(`${API_URL}/api/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ [setting]: value })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+          setUser(data.user);
+        }
+      } else {
+        setPrivacySettings(privacySettings);
+        alert('Ошибка обновления настроек приватности');
+      }
+    } catch (error) {
+      console.error('Ошибка обновления приватности:', error);
+      setPrivacySettings(privacySettings);
+      alert('Ошибка обновления настроек приватности');
     }
   };
 
@@ -2531,6 +2578,106 @@ function MovieApp() {
               <div>
                 <label className="text-gray-400 text-sm">Новый пароль:</label>
                 <input type="password" value={profileData.newPassword} onChange={(e) => setProfileData({ ...profileData, newPassword: e.target.value })} className="w-full px-4 py-2 bg-[#8458B3]/15 border border-[#a0d2eb]/30 rounded-lg focus:border-[#a0d2eb] focus:outline-none focus:shadow-[0_0_0_3px_rgba(160,210,235,0.1)] text-white mt-1" />
+              </div>
+              
+              {/* Секция приватности */}
+              <div className="mt-6">
+                <button
+                  onClick={() => setShowPrivacySettings(!showPrivacySettings)}
+                  className="w-full flex items-center justify-between p-3 bg-[#8458B3]/15 border border-[#a0d2eb]/30 rounded-lg hover:bg-[#8458B3]/25 transition-colors mb-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <Icon name="shield" className="w-5 h-5 text-blue-400" />
+                    <span className="text-lg font-semibold text-white">Приватность</span>
+                  </div>
+                  <Icon 
+                    name={showPrivacySettings ? 'chevronUp' : 'chevronDown'} 
+                    className="w-5 h-5 text-gray-400 transition-transform"
+                  />
+                </button>
+                {showPrivacySettings && (
+                  <div className="space-y-4 mt-2">
+                    {/* Публичный профиль */}
+                    <div className="flex items-center justify-between p-3 bg-[#8458B3]/10 rounded-lg border border-[#a0d2eb]/20">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-white font-medium">Публичный профиль</span>
+                          <Icon name="globe" className="w-4 h-4 text-green-400" />
+                        </div>
+                        <p className="text-xs text-gray-400">Другие пользователи могут видеть ваши доски и статистику</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={privacySettings.is_profile_public}
+                          onChange={(e) => updatePrivacySettings('is_profile_public', e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
+
+                    {/* Показывать активность */}
+                    <div className="flex items-center justify-between p-3 bg-[#8458B3]/10 rounded-lg border border-[#a0d2eb]/20">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-white font-medium">Показывать активность</span>
+                          <Icon name="activity" className="w-4 h-4 text-blue-400" />
+                        </div>
+                        <p className="text-xs text-gray-400">Друзья будут видеть ваши недавние действия в ленте активности</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={privacySettings.show_activity}
+                          onChange={(e) => updatePrivacySettings('show_activity', e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
+
+                    {/* Показывать статистику */}
+                    <div className="flex items-center justify-between p-3 bg-[#8458B3]/10 rounded-lg border border-[#a0d2eb]/20">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-white font-medium">Показывать статистику</span>
+                          <Icon name="barChart" className="w-4 h-4 text-purple-400" />
+                        </div>
+                        <p className="text-xs text-gray-400">Другие пользователи могут видеть вашу статистику фильмов и сериалов</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={privacySettings.show_stats}
+                          onChange={(e) => updatePrivacySettings('show_stats', e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
+
+                    {/* Принимать заявки в друзья */}
+                    <div className="flex items-center justify-between p-3 bg-[#8458B3]/10 rounded-lg border border-[#a0d2eb]/20">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-white font-medium">Принимать заявки в друзья</span>
+                          <Icon name="userPlus" className="w-4 h-4 text-green-400" />
+                        </div>
+                        <p className="text-xs text-gray-400">Другие пользователи могут отправлять вам заявки в друзья</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={privacySettings.allow_friend_requests}
+                          onChange={(e) => updatePrivacySettings('allow_friend_requests', e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
               
               {/* Кнопка подтверждения email */}
