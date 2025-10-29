@@ -3606,7 +3606,11 @@
       const [confirmingAddFriend, setConfirmingAddFriend] = useState(null);
       const dragItem = useRef(null);
       const [expandedColumns, setExpandedColumns] = useState({});
-      const [formData, setFormData] = useState({ username: '', email: '', password: '' });
+      const [formData, setFormData] = useState({ username: '', email: '', password: '', confirmPassword: '' });
+      const [showPassword, setShowPassword] = useState(false);
+      const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+      const [showForgotPassword, setShowForgotPassword] = useState(false);
+      const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
       const [profileData, setProfileData] = useState({ username: '', bio: '', theme: 'default', currentPassword: '', newPassword: '' });
       const [privacySettings, setPrivacySettings] = useState({
           is_profile_public: true,
@@ -3781,6 +3785,15 @@
         e.preventDefault();
         setLoading(true);
         setError('');
+        
+        // Проверка совпадения паролей при регистрации
+        if (authMode === 'register' && formData.password !== formData.confirmPassword) {
+          setError('Пароли не совпадают');
+          showToast('Пароли не совпадают', 'error');
+          setLoading(false);
+          return;
+        }
+        
         try {
           const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
           const response = await fetch(`${API_URL}${endpoint}`, {
@@ -3789,7 +3802,16 @@
             body: JSON.stringify(formData)
           });
           const data = await response.json();
+          
           if (response.ok) {
+            // Для регистрации - показываем сообщение о подтверждении email
+            if (authMode === 'register') {
+              showToast('Регистрация успешна! Проверьте ваш email для подтверждения аккаунта.', 'success');
+              setShowAuth(false);
+              return;
+            }
+            
+            // Для логина - обычная авторизация
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
             setUser(data.user);
@@ -3802,13 +3824,50 @@
             });
             setShowAuth(false);
             loadBoards(data.token);
-            showToast(authMode === 'login' ? 'Добро пожаловать!' : 'Регистрация успешна!', 'success');
+            showToast('Добро пожаловать!', 'success');
           } else {
-            setError(data.error || 'Ошибка авторизации');
-            showToast(data.error || 'Ошибка авторизации', 'error');
+            // Обработка ошибки "email не подтвержден"
+            if (data.needsVerification) {
+              setError('Email не подтвержден. Проверьте вашу почту и подтвердите регистрацию.');
+              showToast('Email не подтвержден. Проверьте вашу почту.', 'warning');
+            } else {
+              setError(data.error || 'Ошибка авторизации');
+              showToast(data.error || 'Ошибка авторизации', 'error');
+            }
           }
         } catch (err) {
           setError('Ошибка подключения к серверу');
+          showToast('Ошибка подключения к серверу', 'error');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      // Функция для сброса пароля
+      const handleForgotPassword = async () => {
+        if (!forgotPasswordEmail) {
+          showToast('Введите email адрес', 'error');
+          return;
+        }
+        
+        setLoading(true);
+        try {
+          const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: forgotPasswordEmail })
+          });
+          
+          const data = await response.json();
+          
+          if (response.ok) {
+            showToast('Инструкции по сбросу пароля отправлены на ваш email', 'success');
+            setShowForgotPassword(false);
+            setForgotPasswordEmail('');
+          } else {
+            showToast(data.error || 'Ошибка отправки email', 'error');
+          }
+        } catch (err) {
           showToast('Ошибка подключения к серверу', 'error');
         } finally {
           setLoading(false);
@@ -4444,11 +4503,102 @@
               {error && <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 text-sm">{error}</div>}
               <div className="space-y-4">
                 <input type="text" placeholder="Логин" value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white placeholder-gray-500" />
-                <input type="password" placeholder="Пароль" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white placeholder-gray-500" />
+                
+                {/* Поле пароля с галочкой показать/скрыть */}
+                <div className="relative">
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="Пароль" 
+                    value={formData.password} 
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })} 
+                    className="w-full px-4 py-3 pr-12 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white placeholder-gray-500" 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  >
+                    {showPassword ? '🙈' : '👁️'}
+                  </button>
+                </div>
+                
+                {/* Поле подтверждения пароля (только для регистрации) */}
+                {authMode === 'register' && (
+                  <div className="relative">
+                    <input 
+                      type={showConfirmPassword ? "text" : "password"} 
+                      placeholder="Подтвердите пароль" 
+                      value={formData.confirmPassword} 
+                      onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })} 
+                      className="w-full px-4 py-3 pr-12 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white placeholder-gray-500" 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                    >
+                      {showConfirmPassword ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                )}
+                
                 {authMode === 'register' && <input type="email" placeholder="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white placeholder-gray-500" />}
                 <button onClick={handleAuth} disabled={loading} className={`w-full py-3 bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 text-white font-bold rounded-lg hover:from-purple-600 hover:via-pink-600 hover:to-blue-600 transition-all transform hover:scale-105 shadow-xl disabled:opacity-50 flex items-center justify-center gap-2 ${loading ? 'btn-loading' : ''}`}>
                   {loading ? <><Icon name="loader" className="w-5 h-5" />Загрузка...</> : (authMode === 'login' ? '🚀 Войти' : '✨ Зарегистрироваться')}
                 </button>
+                
+                {/* Кнопка "Забыли пароль?" для режима логина */}
+                {authMode === 'login' && (
+                  <div className="text-center">
+                    <button 
+                      onClick={() => setShowForgotPassword(true)}
+                      className="text-purple-400 hover:text-purple-300 text-sm underline transition-colors"
+                    >
+                      Забыли пароль?
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // Модальное окно "Забыли пароль?"
+      if (showForgotPassword) {
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
+            <div className="bg-gray-900/90 backdrop-blur-xl rounded-2xl p-8 w-full max-w-md border border-purple-500/30 shadow-2xl">
+              <div className="text-center mb-8">
+                <div className="text-6xl mb-4">🔐</div>
+                <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 mb-2">Сброс пароля</h1>
+                <p className="text-gray-400">Введите ваш email для получения инструкций</p>
+              </div>
+              
+              <div className="space-y-4">
+                <input 
+                  type="email" 
+                  placeholder="Email" 
+                  value={forgotPasswordEmail} 
+                  onChange={(e) => setForgotPasswordEmail(e.target.value)} 
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white placeholder-gray-500" 
+                />
+                
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => setShowForgotPassword(false)}
+                    className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-colors"
+                  >
+                    Отмена
+                  </button>
+                  <button 
+                    onClick={handleForgotPassword}
+                    disabled={loading}
+                    className="flex-1 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold rounded-lg transition-all disabled:opacity-50"
+                  >
+                    {loading ? 'Отправка...' : 'Отправить'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
