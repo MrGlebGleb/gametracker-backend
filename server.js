@@ -653,6 +653,16 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/landing.html');
 });
 
+// Middleware для предотвращения кеширования HTML файлов
+app.use((req, res, next) => {
+  if (req.path.endsWith('.html') || req.path === '/' || req.path === '/index.html') {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+  next();
+});
+
 // Раздача статических файлов (HTML, CSS, JS)
 app.use(express.static('.'));
 
