@@ -24,15 +24,21 @@ app.set('trust proxy', 1);
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
 const FROM_EMAIL = process.env.FROM_EMAIL || process.env.EMAIL_USER; // Email отправителя (должен быть verified в SendGrid)
 
-if (SENDGRID_API_KEY) {
-  sgMail.setApiKey(SENDGRID_API_KEY);
-  console.log('✅ SendGrid инициализирован');
-  console.log('📧 FROM_EMAIL:', FROM_EMAIL ? `${FROM_EMAIL.split('@')[0]}@***` : 'НЕ установлен');
-  console.log('📧 SENDGRID_API_KEY:', SENDGRID_API_KEY ? 'установлен' : 'НЕ установлен');
-  console.log('📧 FRONTEND_URL:', process.env.FRONTEND_URL || 'НЕ установлен (используется localhost:3000)');
-} else {
-  console.warn('⚠️ SENDGRID_API_KEY не настроен! Email функции будут недоступны.');
-  console.warn('📧 Добавьте SENDGRID_API_KEY в переменные окружения Railway');
+// Инициализируем SendGrid только если API ключ присутствует
+try {
+  if (SENDGRID_API_KEY) {
+    sgMail.setApiKey(SENDGRID_API_KEY);
+    console.log('✅ SendGrid инициализирован');
+    console.log('📧 FROM_EMAIL:', FROM_EMAIL ? `${FROM_EMAIL.split('@')[0]}@***` : 'НЕ установлен');
+    console.log('📧 SENDGRID_API_KEY:', SENDGRID_API_KEY ? 'установлен' : 'НЕ установлен');
+    console.log('📧 FRONTEND_URL:', process.env.FRONTEND_URL || 'НЕ установлен (используется localhost:3000)');
+  } else {
+    console.warn('⚠️ SENDGRID_API_KEY не настроен! Email функции будут недоступны.');
+    console.warn('📧 Добавьте SENDGRID_API_KEY в переменные окружения Railway');
+  }
+} catch (error) {
+  console.error('❌ Ошибка инициализации SendGrid:', error.message);
+  console.warn('⚠️ Email функции будут недоступны, но сервер продолжит работу');
 }
 
 // Функция для генерации токена верификации
@@ -339,7 +345,19 @@ async function sendPasswordResetEmail(email, token, username) {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+  try {
+    res.status(200).json({ 
+      status: 'OK', 
+      timestamp: new Date().toISOString(),
+      sendgrid: SENDGRID_API_KEY ? 'configured' : 'not configured'
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({ 
+      status: 'ERROR', 
+      error: error.message 
+    });
+  }
 });
 
 // Database test endpoint
@@ -4842,9 +4860,43 @@ app.post('/api/comics/migrate', async (req, res) => {
   }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Сервер запущен на порту ${PORT}`);
-  console.log(`🌐 Доступен по адресу: http://0.0.0.0:${PORT}`);
-  console.log(`📊 Healthcheck endpoint: http://0.0.0.0:${PORT}/api/health`);
-  console.log(`✅ Сервер готов принимать запросы`);
+// Обработка неперехваченных ошибок и promise rejections
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  console.error('Stack:', error.stack);
 });
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise);
+  console.error('Reason:', reason);
+});
+
+// Запуск сервера
+console.log('🚀 Запуск сервера...');
+console.log('📋 Порты и переменные:');
+console.log('   PORT:', PORT);
+console.log('   NODE_ENV:', process.env.NODE_ENV || 'not set');
+console.log('   DATABASE_URL:', process.env.DATABASE_URL ? 'present' : 'missing');
+console.log('   SENDGRID_API_KEY:', SENDGRID_API_KEY ? 'present' : 'missing');
+console.log('   FROM_EMAIL:', FROM_EMAIL || 'not set');
+
+try {
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Сервер успешно запущен на порту ${PORT}`);
+    console.log(`🌐 Доступен по адресу: http://0.0.0.0:${PORT}`);
+    console.log(`📊 Healthcheck endpoint: http://0.0.0.0:${PORT}/api/health`);
+    console.log(`✅ Сервер готов принимать запросы`);
+  });
+  
+  server.on('error', (error) => {
+    console.error('❌ Ошибка сервера:', error);
+    if (error.code === 'EADDRINUSE') {
+      console.error(`❌ Порт ${PORT} уже занят!`);
+    }
+    process.exit(1);
+  });
+} catch (error) {
+  console.error('❌ Ошибка запуска сервера:', error);
+  console.error('Stack:', error.stack);
+  process.exit(1);
+}
