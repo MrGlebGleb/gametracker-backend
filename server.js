@@ -88,10 +88,19 @@ async function sendVerificationEmail(email, token, username) {
   else if (emailDomain?.includes('yahoo')) serviceName = 'Yahoo Mail';
   
   // Проверяем конфигурацию ДО создания сообщения
+  // Пытаемся загрузить модуль динамически, если он не был загружен при старте
   if (!sgMail) {
-    console.error('❌ [sendVerificationEmail] Модуль @sendgrid/mail не найден!');
-    console.error('   Проверьте, что пакет установлен: npm install @sendgrid/mail');
-    return false;
+    console.warn('⚠️ [sendVerificationEmail] Модуль @sendgrid/mail не загружен при старте, пытаемся загрузить динамически...');
+    try {
+      sgMail = require('@sendgrid/mail');
+      console.log('✅ [sendVerificationEmail] Модуль @sendgrid/mail успешно загружен динамически');
+    } catch (loadError) {
+      console.error('❌ [sendVerificationEmail] Модуль @sendgrid/mail не найден!');
+      console.error('   Ошибка загрузки:', loadError.message);
+      console.error('   Проверьте, что пакет установлен: npm install @sendgrid/mail');
+      console.error('   Убедитесь, что зависимость есть в package.json и перезапустите сервер');
+      return false;
+    }
   }
   
   if (!SENDGRID_API_KEY) {
@@ -369,9 +378,19 @@ async function sendPasswordResetEmail(email, token, username) {
 
   try {
     // Проверяем, что SendGrid модуль загружен
+    // Пытаемся загрузить модуль динамически, если он не был загружен при старте
     if (!sgMail) {
-      console.error('❌ Модуль @sendgrid/mail не найден! Установите: npm install @sendgrid/mail');
-      return false;
+      console.warn('⚠️ [sendPasswordResetEmail] Модуль @sendgrid/mail не загружен при старте, пытаемся загрузить динамически...');
+      try {
+        sgMail = require('@sendgrid/mail');
+        console.log('✅ [sendPasswordResetEmail] Модуль @sendgrid/mail успешно загружен динамически');
+      } catch (loadError) {
+        console.error('❌ [sendPasswordResetEmail] Модуль @sendgrid/mail не найден!');
+        console.error('   Ошибка загрузки:', loadError.message);
+        console.error('   Установите: npm install @sendgrid/mail');
+        console.error('   Убедитесь, что зависимость есть в package.json и перезапустите сервер');
+        return false;
+      }
     }
     
     // Проверяем, что SendGrid настроен
@@ -388,6 +407,11 @@ async function sendPasswordResetEmail(email, token, username) {
     console.log('📧 Отправка email сброса пароля через SendGrid:');
     console.log('   От:', FROM_EMAIL);
     console.log('   Кому:', email);
+    
+    // Убеждаемся что API ключ установлен (на случай если модуль был загружен динамически)
+    if (SENDGRID_API_KEY && sgMail) {
+      sgMail.setApiKey(SENDGRID_API_KEY);
+    }
     
     // Отправляем email через SendGrid
     const [response] = await sgMail.send(msg);
