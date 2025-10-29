@@ -222,13 +222,17 @@ async function sendVerificationEmail(email, token, username) {
   try {
     // Проверяем, что transporter создан
     if (!transporter) {
-      console.error('❌ Email transporter не настроен!');
+      console.error('❌ Email transporter не настроен! EMAIL_USER и EMAIL_PASS не настроены.');
       return false;
     }
     
-    // Проверяем соединение перед отправкой
-    await transporter.verify();
+    // Проверяем, что EMAIL_USER настроен
+    if (!process.env.EMAIL_USER) {
+      console.error('❌ EMAIL_USER не настроен в переменных окружения!');
+      return false;
+    }
     
+    // Отправляем email (не проверяем verify, так как это может вызвать проблемы)
     const info = await transporter.sendMail(mailOptions);
     console.log('✅ Verification email sent successfully to:', email);
     console.log('Message ID:', info.messageId);
@@ -243,6 +247,9 @@ async function sendVerificationEmail(email, token, username) {
     }
     if (error.response) {
       console.error('SMTP response:', error.response);
+    }
+    if (error.stack) {
+      console.error('Stack trace:', error.stack);
     }
     
     return false;
@@ -1240,6 +1247,8 @@ app.post('/api/auth/register', registerLimiter, validateRegister, async (req, re
   const client = await pool.connect();
   try {
     const { username, email, password, confirmPassword } = req.body;
+    
+    console.log('Registration attempt:', { username, email, hasPassword: !!password, hasConfirmPassword: !!confirmPassword });
     if (!username || !email || !password || !confirmPassword) {
       return res.status(400).json({ error: 'Все поля обязательны' });
     }
@@ -1249,23 +1258,49 @@ app.post('/api/auth/register', registerLimiter, validateRegister, async (req, re
     if (password !== confirmPassword) {
       return res.status(400).json({ error: 'Пароли не совпадают' });
     }
+    
+    console.log('✅ Validation passed, generating verification token...');
     // Генерируем токен верификации
     const verificationToken = generateVerificationToken();
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 часа
     
+    console.log('✅ Token generated, hashing password...');
     const hashedPassword = await bcrypt.hash(password, 10);
+    
+    console.log('✅ Password hashed, inserting user to database...');
+    
+    // Убеждаемся, что колонки существуют (добавляем если нет)
+    try {
+      await client.query(`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS email_verification_token VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS email_verification_expires TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS is_email_verified BOOLEAN DEFAULT false
+      `);
+    } catch (migrationError) {
+      console.warn('⚠️ Migration warning (columns may already exist):', migrationError.message);
+      // Продолжаем, так как колонки могут уже существовать
+    }
+    
     const result = await client.query(
       'INSERT INTO users (username, email, password, email_verification_token, email_verification_expires) VALUES ($1, $2, $3, $4, $5) RETURNING id, username, email, avatar, bio, theme, is_email_verified',
       [username, email, hashedPassword, verificationToken, verificationExpires]
     );
     const user = result.rows[0];
+    console.log('✅ User created successfully:', user.id);
     
-    // Отправляем email подтверждения
-    const emailSent = await sendVerificationEmail(email, verificationToken, username);
-    
-    if (!emailSent) {
-      console.error('Failed to send verification email for user:', username);
-      // Не возвращаем ошибку, так как пользователь уже создан
+    // Отправляем email подтверждения (не блокируем регистрацию если email не отправился)
+    try {
+      const emailSent = await sendVerificationEmail(email, verificationToken, username);
+      if (!emailSent) {
+        console.error('Failed to send verification email for user:', username);
+        // Продолжаем регистрацию, так как пользователь уже создан
+      }
+    } catch (emailError) {
+      console.error('Error sending verification email (non-blocking):', emailError.message);
+      // Не блокируем регистрацию, даже если email не отправился
     }
     
     res.status(201).json({ 
@@ -1281,11 +1316,23 @@ app.post('/api/auth/register', registerLimiter, validateRegister, async (req, re
       }
     });
   } catch (error) {
+    console.error('❌ Ошибка регистрации:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
     if (error.code === '23505') {
       return res.status(400).json({ error: 'Пользователь или email уже существует' });
     }
-    console.error('Ошибка регистрации:', error);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    
+    // Возвращаем более подробную информацию об ошибке (только для отладки)
+    const errorMessage = process.env.NODE_ENV === 'production' 
+      ? 'Ошибка сервера' 
+      : error.message || 'Ошибка сервера';
+    
+    res.status(500).json({ 
+      error: 'Ошибка сервера',
+      details: process.env.NODE_ENV !== 'production' ? errorMessage : undefined
+    });
   } finally {
     client.release();
   }
