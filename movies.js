@@ -2157,17 +2157,39 @@ function MovieApp() {
       return;
     }
     
+    // Проверяем, не идет ли уже отправка
+    if (resendingEmail) {
+      return;
+    }
+    
     setResendingEmail(true);
     try {
+      // Добавляем таймаут для запроса (30 секунд)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      
       const response = await fetch(`${API_URL}/api/auth/resend-verification`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ email: user.email })
+        body: JSON.stringify({ email: user.email }),
+        signal: controller.signal
       });
       
-      const data = await response.json();
+      clearTimeout(timeoutId);
+      
+      // Проверяем, является ли ответ JSON
+      const contentType = response.headers.get('content-type');
+      let data;
+      
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('Неожиданный формат ответа:', text);
+        throw new Error('Сервер вернул неожиданный формат ответа');
+      }
       
       if (response.ok) {
         alert('Письмо подтверждения отправлено на ваш email');
@@ -2176,7 +2198,14 @@ function MovieApp() {
       }
     } catch (error) {
       console.error('Ошибка отправки письма подтверждения:', error);
-      alert('Ошибка подключения к серверу');
+      
+      if (error.name === 'AbortError') {
+        alert('Превышено время ожидания ответа от сервера');
+      } else if (error.message.includes('Failed to fetch')) {
+        alert('Ошибка подключения к серверу. Проверьте интернет-соединение');
+      } else {
+        alert('Ошибка отправки письма: ' + (error.message || 'Неизвестная ошибка'));
+      }
     } finally {
       setResendingEmail(false);
     }
