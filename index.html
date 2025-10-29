@@ -4495,29 +4495,50 @@
         if (!showAuth) return null;
         
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-            <div className="bg-gray-900/95 backdrop-blur-xl rounded-2xl p-8 w-full max-w-md border border-purple-500/30 shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{
+            background: 'linear-gradient(135deg, #1a0b2e 0%, #2d1b3d 25%, #3d2a4d 50%, #2d1b3d 75%, #1a0b2e 100%)',
+            backdropFilter: 'blur(20px)'
+          }}>
+            <div className="bg-gray-900/40 backdrop-blur-2xl rounded-3xl p-8 w-full max-w-md border border-purple-500/20 shadow-2xl relative" onClick={(e) => e.stopPropagation()} style={{
+              background: 'linear-gradient(135deg, rgba(26, 11, 46, 0.9) 0%, rgba(45, 27, 61, 0.9) 100%)',
+              boxShadow: '0 25px 50px -12px rgba(139, 92, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+            }}>
               {/* Кнопка закрытия (только если пользователь авторизован) */}
               {user && (
                 <button 
                   onClick={() => setShowAuth(false)}
-                  className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-2xl"
+                  className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-2xl z-10"
                 >
                   ×
                 </button>
               )}
               <div className="text-center mb-8">
-                <div className="text-6xl mb-4 animate-pulse">🎮</div>
-                <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 mb-2">Game</h1>
-                <p className="text-gray-400 text-lg">Твой игровой прогресс</p>
+                {/* Логотип */}
+                <div className="mb-6 flex justify-center">
+                  <img 
+                    src="/images/logo.png" 
+                    alt="Omnilogue Logo" 
+                    className="w-24 h-24 object-contain filter drop-shadow-2xl"
+                    style={{
+                      animation: 'pulse 3s ease-in-out infinite',
+                      filter: 'drop-shadow(0 0 20px rgba(139, 92, 246, 0.5))'
+                    }}
+                  />
+                </div>
+                <h1 className="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-300 to-purple-400 mb-3" style={{
+                  fontFamily: 'Inter, sans-serif',
+                  letterSpacing: '-0.02em',
+                  textShadow: '0 0 30px rgba(139, 92, 246, 0.3)'
+                }}>Omnilogue</h1>
+                <p className="text-gray-300 text-lg font-light tracking-wide">Весь твой контент</p>
               </div>
               <div className="flex gap-2 mb-6">
-                <button onClick={() => { setAuthMode('login'); setError(''); }} className={`flex-1 py-3 rounded-lg font-semibold transition-all ${authMode === 'login' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>Вход</button>
-                <button onClick={() => { setAuthMode('register'); setError(''); }} className={`flex-1 py-3 rounded-lg font-semibold transition-all ${authMode === 'register' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>Регистрация</button>
+                <button onClick={() => { setAuthMode('login'); setError(''); }} className={`flex-1 py-3 rounded-xl font-semibold transition-all ${authMode === 'login' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 backdrop-blur-sm border border-gray-700/50'}`}>Вход</button>
+                <button onClick={() => { setAuthMode('register'); setError(''); }} className={`flex-1 py-3 rounded-xl font-semibold transition-all ${authMode === 'register' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 backdrop-blur-sm border border-gray-700/50'}`}>Регистрация</button>
               </div>
               {error && <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 text-sm">{error}</div>}
               <div className="space-y-4">
-                <input type="text" placeholder="Логин" value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white placeholder-gray-500" />
+                <input type="text" placeholder="Логин" value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-xl focus:border-purple-500/50 focus:outline-none text-white placeholder-gray-500 backdrop-blur-sm transition-all" />
                 
                 {/* Поле пароля с галочкой показать/скрыть */}
                 <div className="relative">
@@ -4526,7 +4547,7 @@
                     placeholder="Пароль" 
                     value={formData.password} 
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })} 
-                    className="w-full px-4 py-3 pr-12 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white placeholder-gray-500" 
+                    className="w-full px-4 py-3 pr-12 bg-gray-800/50 border border-gray-700/50 rounded-xl focus:border-purple-500/50 focus:outline-none text-white placeholder-gray-500 backdrop-blur-sm transition-all" 
                   />
                   <button
                     type="button"
@@ -4545,7 +4566,7 @@
                       placeholder="Подтвердите пароль" 
                       value={formData.confirmPassword} 
                       onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })} 
-                      className="w-full px-4 py-3 pr-12 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white placeholder-gray-500" 
+                      className="w-full px-4 py-3 pr-12 bg-gray-800/50 border border-gray-700/50 rounded-xl focus:border-purple-500/50 focus:outline-none text-white placeholder-gray-500 backdrop-blur-sm transition-all" 
                     />
                     <button
                       type="button"
@@ -4557,8 +4578,10 @@
                   </div>
                 )}
                 
-                {authMode === 'register' && <input type="email" placeholder="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white placeholder-gray-500" />}
-                <button onClick={handleAuth} disabled={loading} className={`w-full py-3 bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 text-white font-bold rounded-lg hover:from-purple-600 hover:via-pink-600 hover:to-blue-600 transition-all transform hover:scale-105 shadow-xl disabled:opacity-50 flex items-center justify-center gap-2 ${loading ? 'btn-loading' : ''}`}>
+                {authMode === 'register' && <input type="email" placeholder="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-xl focus:border-purple-500/50 focus:outline-none text-white placeholder-gray-500 backdrop-blur-sm transition-all" />}
+                <button onClick={handleAuth} disabled={loading} className={`w-full py-3 bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 text-white font-bold rounded-xl hover:from-purple-600 hover:via-pink-600 hover:to-blue-600 transition-all transform hover:scale-105 shadow-xl disabled:opacity-50 flex items-center justify-center gap-2 ${loading ? 'btn-loading' : ''}`} style={{
+                  boxShadow: '0 10px 25px -5px rgba(139, 92, 246, 0.4), 0 0 15px rgba(139, 92, 246, 0.2)'
+                }}>
                   {loading ? <><Icon name="loader" className="w-5 h-5" />Загрузка...</> : (authMode === 'login' ? '🚀 Войти' : '✨ Зарегистрироваться')}
                 </button>
                 
@@ -4584,18 +4607,37 @@
         if (!showForgotPassword) return null;
         
         return (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setShowForgotPassword(false)}>
-            <div className="bg-gray-900/95 backdrop-blur-xl rounded-2xl p-8 w-full max-w-md border border-purple-500/30 shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{
+            background: 'linear-gradient(135deg, #1a0b2e 0%, #2d1b3d 25%, #3d2a4d 50%, #2d1b3d 75%, #1a0b2e 100%)',
+            backdropFilter: 'blur(20px)'
+          }} onClick={() => setShowForgotPassword(false)}>
+            <div className="bg-gray-900/40 backdrop-blur-2xl rounded-3xl p-8 w-full max-w-md border border-purple-500/20 shadow-2xl relative" onClick={(e) => e.stopPropagation()} style={{
+              background: 'linear-gradient(135deg, rgba(26, 11, 46, 0.9) 0%, rgba(45, 27, 61, 0.9) 100%)',
+              boxShadow: '0 25px 50px -12px rgba(139, 92, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+            }}>
               <button 
                 onClick={() => setShowForgotPassword(false)}
-                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-2xl"
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-2xl z-10"
               >
                 ×
               </button>
               <div className="text-center mb-8">
-                <div className="text-6xl mb-4">🔐</div>
-                <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 mb-2">Сброс пароля</h1>
-                <p className="text-gray-400">Введите ваш email для получения инструкций</p>
+                <div className="mb-6 flex justify-center">
+                  <img 
+                    src="/images/logo.png" 
+                    alt="Omnilogue Logo" 
+                    className="w-20 h-20 object-contain"
+                    style={{
+                      filter: 'drop-shadow(0 0 15px rgba(139, 92, 246, 0.4))'
+                    }}
+                  />
+                </div>
+                <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-300 to-purple-400 mb-3" style={{
+                  fontFamily: 'Inter, sans-serif',
+                  letterSpacing: '-0.02em',
+                  textShadow: '0 0 20px rgba(139, 92, 246, 0.3)'
+                }}>Сброс пароля</h1>
+                <p className="text-gray-300 font-light">Введите ваш email для получения инструкций</p>
               </div>
               
               <div className="space-y-4">
@@ -4604,20 +4646,23 @@
                   placeholder="Email" 
                   value={forgotPasswordEmail} 
                   onChange={(e) => setForgotPasswordEmail(e.target.value)} 
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white placeholder-gray-500" 
+                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-xl focus:border-purple-500/50 focus:outline-none text-white placeholder-gray-500 backdrop-blur-sm transition-all" 
                 />
                 
                 <div className="flex gap-3">
                   <button 
                     onClick={() => setShowForgotPassword(false)}
-                    className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-colors"
+                    className="flex-1 py-3 bg-gray-800/50 hover:bg-gray-700/50 text-white font-semibold rounded-xl transition-all backdrop-blur-sm border border-gray-700/50"
                   >
                     Отмена
                   </button>
                   <button 
                     onClick={handleForgotPassword}
                     disabled={loading}
-                    className="flex-1 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold rounded-lg transition-all disabled:opacity-50"
+                    className="flex-1 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold rounded-xl transition-all disabled:opacity-50 shadow-lg"
+                    style={{
+                      boxShadow: '0 10px 25px -5px rgba(139, 92, 246, 0.4), 0 0 15px rgba(139, 92, 246, 0.2)'
+                    }}
                   >
                     {loading ? 'Отправка...' : 'Отправить'}
                   </button>
