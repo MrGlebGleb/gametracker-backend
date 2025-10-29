@@ -1205,7 +1205,7 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-    const { useState, useEffect, useRef, Fragment, useCallback } = React;
+    const { useState, useEffect, useRef, Fragment, useCallback, useMemo } = React;
     
     // Обфусцированный API URL для базовой защиты
     const getApiUrl = () => {
@@ -3614,6 +3614,13 @@
       const [showConfirmPassword, setShowConfirmPassword] = useState(false);
       const [showForgotPassword, setShowForgotPassword] = useState(false);
       const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+      
+      // Refs для сохранения фокуса на инпутах
+      const usernameInputRef = useRef(null);
+      const passwordInputRef = useRef(null);
+      const confirmPasswordInputRef = useRef(null);
+      const emailInputRef = useRef(null);
+      
       const [profileData, setProfileData] = useState({ username: '', bio: '', theme: 'default', currentPassword: '', newPassword: '' });
       const [privacySettings, setPrivacySettings] = useState({
           is_profile_public: true,
@@ -3833,9 +3840,9 @@
             if (data.needsVerification) {
               setError('Email не подтвержден. Проверьте вашу почту и подтвердите регистрацию.');
               showToast('Email не подтвержден. Проверьте вашу почту.', 'warning');
-            } else {
-              setError(data.error || 'Ошибка авторизации');
-              showToast(data.error || 'Ошибка авторизации', 'error');
+          } else {
+            setError(data.error || 'Ошибка авторизации');
+            showToast(data.error || 'Ошибка авторизации', 'error');
             }
           }
         } catch (err) {
@@ -4490,19 +4497,93 @@
         setExpandedColumns(prev => ({...prev, [boardId]: !prev[boardId]}));
       };
 
+      // Обработчики для полей ввода (мемоизированы для стабильности)
+      const handleUsernameChange = useCallback((e) => {
+        const input = e.target;
+        const cursorPos = input.selectionStart;
+        const newValue = input.value;
+        const wasFocused = document.activeElement === input;
+        setFormData(prev => ({ ...prev, username: newValue }));
+        // Восстанавливаем фокус и позицию курсора после обновления
+        if (wasFocused && usernameInputRef.current) {
+          requestAnimationFrame(() => {
+            if (usernameInputRef.current) {
+              usernameInputRef.current.focus();
+              usernameInputRef.current.setSelectionRange(cursorPos, cursorPos);
+            }
+          });
+        }
+      }, []);
+      
+      const handlePasswordChange = useCallback((e) => {
+        const input = e.target;
+        const cursorPos = input.selectionStart;
+        const newValue = input.value;
+        const wasFocused = document.activeElement === input;
+        setFormData(prev => ({ ...prev, password: newValue }));
+        // Восстанавливаем фокус и позицию курсора после обновления
+        if (wasFocused && passwordInputRef.current) {
+          requestAnimationFrame(() => {
+            if (passwordInputRef.current) {
+              passwordInputRef.current.focus();
+              passwordInputRef.current.setSelectionRange(cursorPos, cursorPos);
+            }
+          });
+        }
+      }, []);
+      
+      const handleConfirmPasswordChange = useCallback((e) => {
+        const input = e.target;
+        const cursorPos = input.selectionStart;
+        const newValue = input.value;
+        const wasFocused = document.activeElement === input;
+        setFormData(prev => ({ ...prev, confirmPassword: newValue }));
+        // Восстанавливаем фокус и позицию курсора после обновления
+        if (wasFocused && confirmPasswordInputRef.current) {
+          requestAnimationFrame(() => {
+            if (confirmPasswordInputRef.current) {
+              confirmPasswordInputRef.current.focus();
+              confirmPasswordInputRef.current.setSelectionRange(cursorPos, cursorPos);
+            }
+          });
+        }
+      }, []);
+      
+      const handleEmailChange = useCallback((e) => {
+        const input = e.target;
+        const cursorPos = input.selectionStart;
+        const newValue = input.value;
+        const wasFocused = document.activeElement === input;
+        setFormData(prev => ({ ...prev, email: newValue }));
+        // Восстанавливаем фокус и позицию курсора после обновления
+        if (wasFocused && emailInputRef.current) {
+          requestAnimationFrame(() => {
+            if (emailInputRef.current) {
+              emailInputRef.current.focus();
+              emailInputRef.current.setSelectionRange(cursorPos, cursorPos);
+            }
+          });
+        }
+      }, []);
+      
+      // Константы стилей для модального окна (мемоизированы чтобы не пересоздавались при каждом рендере)
+      const authModalBgStyle = useMemo(() => ({
+        background: 'linear-gradient(135deg, #0f0519 0%, #1a0b2e 25%, #241832 50%, #1a0b2e 75%, #0f0519 100%)',
+        backdropFilter: 'blur(20px)'
+      }), []);
+      
+      const authModalContentStyle = useMemo(() => ({
+        background: 'linear-gradient(135deg, rgba(15, 5, 25, 0.95) 0%, rgba(26, 11, 46, 0.95) 100%)',
+        boxShadow: '0 25px 50px -12px rgba(88, 28, 135, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
+      }), []);
+
       // Модальное окно авторизации (показывается поверх основного интерфейса)
       const AuthModal = () => {
         if (!showAuth) return null;
         
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{
-            background: 'linear-gradient(135deg, #0f0519 0%, #1a0b2e 25%, #241832 50%, #1a0b2e 75%, #0f0519 100%)',
-            backdropFilter: 'blur(20px)'
-          }}>
-            <div className="bg-gray-900/40 backdrop-blur-2xl rounded-3xl p-8 w-full max-w-md border border-purple-900/30 shadow-2xl relative" onClick={(e) => e.stopPropagation()} style={{
-              background: 'linear-gradient(135deg, rgba(15, 5, 25, 0.95) 0%, rgba(26, 11, 46, 0.95) 100%)',
-              boxShadow: '0 25px 50px -12px rgba(88, 28, 135, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
-            }}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={authModalBgStyle}>
+            <div className="bg-gray-900/40 backdrop-blur-2xl rounded-3xl p-8 w-full max-w-md border border-purple-900/30 shadow-2xl relative" onClick={(e) => e.stopPropagation()} style={authModalContentStyle}>
               {/* Кнопка закрытия (только если пользователь авторизован) */}
               {user && (
                 <button 
@@ -4539,35 +4620,34 @@
               {error && <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 text-sm">{error}</div>}
               <div className="space-y-4">
                 <input 
-                  key="username-input"
+                  ref={usernameInputRef}
                   type="text" 
                   placeholder="Логин" 
                   value={formData.username} 
-                  onChange={(e) => {
-                    const newValue = e.target.value;
-                    setFormData(prev => ({ ...prev, username: newValue }));
-                  }} 
+                  onChange={handleUsernameChange}
                   className="w-full px-4 py-3 bg-gray-900/60 border border-gray-800/50 rounded-xl focus:border-purple-800/50 focus:outline-none text-white placeholder-gray-500 backdrop-blur-sm transition-colors"
                 />
                 
                 {/* Поле пароля с галочкой показать/скрыть */}
-                <div className="relative" key="password-wrapper">
+                <div className="relative">
                   <input 
-                    key="password-input"
+                    ref={passwordInputRef}
                     type={showPassword ? "text" : "password"} 
                     placeholder="Пароль" 
                     value={formData.password} 
-                    onChange={(e) => {
-                      const newValue = e.target.value;
-                      setFormData(prev => ({ ...prev, password: newValue }));
-                    }} 
+                    onChange={handlePasswordChange}
                     className="w-full px-4 py-3 pr-12 bg-gray-900/60 border border-gray-800/50 rounded-xl focus:border-purple-800/50 focus:outline-none text-white placeholder-gray-500 backdrop-blur-sm transition-colors" 
                   />
                   <button
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
+                      e.stopPropagation();
+                      const wasFocused = document.activeElement === passwordInputRef.current;
                       setShowPassword(!showPassword);
+                      if (wasFocused && passwordInputRef.current) {
+                        setTimeout(() => passwordInputRef.current.focus(), 0);
+                      }
                     }}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                   >
@@ -4576,45 +4656,42 @@
                 </div>
                 
                 {/* Поле подтверждения пароля (только для регистрации) */}
-                {authMode === 'register' && (
-                  <div className="relative" key="confirm-password-wrapper">
-                    <input 
-                      key="confirm-password-input"
-                      type={showConfirmPassword ? "text" : "password"} 
-                      placeholder="Подтвердите пароль" 
-                      value={formData.confirmPassword} 
-                      onChange={(e) => {
-                        const newValue = e.target.value;
-                        setFormData(prev => ({ ...prev, confirmPassword: newValue }));
-                      }} 
-                      className="w-full px-4 py-3 pr-12 bg-gray-900/60 border border-gray-800/50 rounded-xl focus:border-purple-800/50 focus:outline-none text-white placeholder-gray-500 backdrop-blur-sm transition-colors" 
-                    />
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setShowConfirmPassword(!showConfirmPassword);
-                      }}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                    >
-                      {showConfirmPassword ? '🙈' : '👁️'}
-                    </button>
-                  </div>
-                )}
-                
-                {authMode === 'register' && (
+                <div className="relative" style={{ display: authMode === 'register' ? 'block' : 'none' }}>
                   <input 
-                    key="email-input"
+                    ref={confirmPasswordInputRef}
+                    type={showConfirmPassword ? "text" : "password"} 
+                    placeholder="Подтвердите пароль" 
+                    value={formData.confirmPassword} 
+                    onChange={handleConfirmPasswordChange}
+                    className="w-full px-4 py-3 pr-12 bg-gray-900/60 border border-gray-800/50 rounded-xl focus:border-purple-800/50 focus:outline-none text-white placeholder-gray-500 backdrop-blur-sm transition-colors" 
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const wasFocused = document.activeElement === confirmPasswordInputRef.current;
+                      setShowConfirmPassword(!showConfirmPassword);
+                      if (wasFocused && confirmPasswordInputRef.current) {
+                        setTimeout(() => confirmPasswordInputRef.current.focus(), 0);
+                      }
+                    }}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  >
+                    {showConfirmPassword ? '🙈' : '👁️'}
+                  </button>
+                </div>
+                
+                <div style={{ display: authMode === 'register' ? 'block' : 'none' }}>
+                  <input 
+                    ref={emailInputRef}
                     type="email" 
                     placeholder="Email" 
                     value={formData.email} 
-                    onChange={(e) => {
-                      const newValue = e.target.value;
-                      setFormData(prev => ({ ...prev, email: newValue }));
-                    }} 
+                    onChange={handleEmailChange}
                     className="w-full px-4 py-3 bg-gray-900/60 border border-gray-800/50 rounded-xl focus:border-purple-800/50 focus:outline-none text-white placeholder-gray-500 backdrop-blur-sm transition-colors" 
                   />
-                )}
+                </div>
                 <button onClick={handleAuth} disabled={loading} className={`w-full py-3 bg-gradient-to-r from-purple-700 via-purple-600 to-purple-700 text-white font-bold rounded-xl hover:from-purple-600 hover:via-purple-500 hover:to-purple-600 transition-all transform hover:scale-105 shadow-xl disabled:opacity-50 flex items-center justify-center gap-2 ${loading ? 'btn-loading' : ''}`} style={{
                   boxShadow: '0 10px 25px -5px rgba(88, 28, 135, 0.3), 0 0 15px rgba(88, 28, 135, 0.15)'
                 }}>
@@ -4629,7 +4706,7 @@
                       className="text-purple-400 hover:text-purple-300 text-sm underline transition-colors"
                     >
                       Забыли пароль?
-                    </button>
+                </button>
                   </div>
                 )}
               </div>
