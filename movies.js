@@ -1130,6 +1130,8 @@ const Icon = ({ name, className = "w-5 h-5" }) => {
     userPlus: <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>,
     userCheck: <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>,
     userClock: <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><circle cx="18" cy="18" r="3" /><path d="M20.5 16.5 18 18l.5 2.5"/></svg>,
+    mail: <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/></svg>,
+    send: <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>,
     chevronUp: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>,
     chevronDown: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>,
     youtube: <svg className={className} fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>,
@@ -2147,6 +2149,39 @@ function MovieApp() {
     }
   };
 
+  // Функция для отправки письма подтверждения email
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const handleResendVerificationEmail = async () => {
+    if (!user?.email) {
+      alert('Email не найден');
+      return;
+    }
+    
+    setResendingEmail(true);
+    try {
+      const response = await fetch(`${API_URL}/api/auth/resend-verification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: user.email })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        alert('Письмо подтверждения отправлено на ваш email');
+      } else {
+        alert(data.error || 'Ошибка отправки письма');
+      }
+    } catch (error) {
+      console.error('Ошибка отправки письма подтверждения:', error);
+      alert('Ошибка подключения к серверу');
+    } finally {
+      setResendingEmail(false);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -2468,6 +2503,39 @@ function MovieApp() {
                 <label className="text-gray-400 text-sm">Новый пароль:</label>
                 <input type="password" value={profileData.newPassword} onChange={(e) => setProfileData({ ...profileData, newPassword: e.target.value })} className="w-full px-4 py-2 bg-[#8458B3]/15 border border-[#a0d2eb]/30 rounded-lg focus:border-[#a0d2eb] focus:outline-none focus:shadow-[0_0_0_3px_rgba(160,210,235,0.1)] text-white mt-1" />
               </div>
+              
+              {/* Кнопка подтверждения email */}
+              {user && !user.is_email_verified && (
+                <div className="mt-6 pt-4 border-t border-gray-700">
+                  <div className="flex items-center justify-between p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-yellow-400 font-medium text-sm">Email не подтвержден</span>
+                        <Icon name="mail" className="w-4 h-4 text-yellow-400" />
+                      </div>
+                      <p className="text-xs text-gray-400">Подтвердите ваш email для полного доступа</p>
+                    </div>
+                    <button
+                      onClick={handleResendVerificationEmail}
+                      disabled={resendingEmail}
+                      className="px-3 py-1.5 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    >
+                      {resendingEmail ? (
+                        <>
+                          <Icon name="loader" className="w-3 h-3 animate-spin" />
+                          <span>Отправка...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Icon name="send" className="w-3 h-3" />
+                          <span>Подтвердить</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+              
               <div className="mt-4 pt-4 border-t border-gray-700">
                 <button onClick={handleLogout} className="w-full py-2 bg-red-600 border-2 border-[#a28089] hover:bg-red-700 text-white font-bold rounded-lg flex items-center justify-center gap-2">
                   <Icon name="logout" className="w-4 h-4" />

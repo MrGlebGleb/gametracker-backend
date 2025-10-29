@@ -91,11 +91,18 @@ try {
   transporter = createEmailTransporter();
   if (transporter) {
     console.log('✅ Email transporter успешно создан');
+    console.log('📧 EMAIL_USER:', process.env.EMAIL_USER ? `${process.env.EMAIL_USER.split('@')[0]}@***` : 'НЕ установлен');
+    console.log('📧 EMAIL_PASS:', process.env.EMAIL_PASS ? 'установлен' : 'НЕ установлен');
+    console.log('📧 FRONTEND_URL:', process.env.FRONTEND_URL || 'НЕ установлен (используется localhost:3000)');
   } else {
     console.warn('⚠️ Email transporter не создан (EMAIL_USER или EMAIL_PASS не настроены)');
+    console.warn('📧 EMAIL_USER:', process.env.EMAIL_USER ? 'установлен' : 'НЕ установлен');
+    console.warn('📧 EMAIL_PASS:', process.env.EMAIL_PASS ? 'установлен' : 'НЕ установлен');
   }
 } catch (error) {
   console.error('❌ Ошибка создания email transporter:', error.message);
+  console.error('📧 EMAIL_USER:', process.env.EMAIL_USER ? 'установлен' : 'НЕ установлен');
+  console.error('📧 EMAIL_PASS:', process.env.EMAIL_PASS ? 'установлен' : 'НЕ установлен');
   console.warn('⚠️ Email функции будут недоступны, но сервер продолжит работу');
   transporter = null;
 }
@@ -223,6 +230,8 @@ async function sendVerificationEmail(email, token, username) {
     // Проверяем, что transporter создан
     if (!transporter) {
       console.error('❌ Email transporter не настроен! EMAIL_USER и EMAIL_PASS не настроены.');
+      console.error('📧 EMAIL_USER:', process.env.EMAIL_USER ? 'установлен' : 'НЕ установлен');
+      console.error('📧 EMAIL_PASS:', process.env.EMAIL_PASS ? 'установлен' : 'НЕ установлен');
       return false;
     }
     
@@ -232,10 +241,16 @@ async function sendVerificationEmail(email, token, username) {
       return false;
     }
     
+    console.log('📧 Отправка email подтверждения:');
+    console.log('   От:', process.env.EMAIL_USER);
+    console.log('   Кому:', email);
+    console.log('   Frontend URL:', process.env.FRONTEND_URL || 'http://localhost:3000');
+    
     // Отправляем email (не проверяем verify, так как это может вызвать проблемы)
     const info = await transporter.sendMail(mailOptions);
     console.log('✅ Verification email sent successfully to:', email);
-    console.log('Message ID:', info.messageId);
+    console.log('✅ Message ID:', info.messageId);
+    console.log('✅ Response:', info.response);
     return true;
   } catch (error) {
     console.error('❌ Error sending verification email to:', email);
@@ -1571,14 +1586,14 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
       return res.status(401).json({ error: 'Неверные учетные данные' });
     }
     
-    // Проверяем, подтвержден ли email
-    if (!user.is_email_verified) {
-      return res.status(403).json({ 
-        error: 'Email не подтвержден. Проверьте вашу почту и подтвердите регистрацию.',
-        email: user.email,
-        needsVerification: true
-      });
-    }
+    // ВРЕМЕННО ОТКЛЮЧЕНО: Проверка подтверждения email
+    // if (!user.is_email_verified) {
+    //   return res.status(403).json({ 
+    //     error: 'Email не подтвержден. Проверьте вашу почту и подтвердите регистрацию.',
+    //     email: user.email,
+    //     needsVerification: true
+    //   });
+    // }
     
     const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
     res.json({

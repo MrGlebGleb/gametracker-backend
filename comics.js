@@ -1541,6 +1541,39 @@ const ComicsTrackerApp = () => {
     }
   };
 
+  // Функция для отправки письма подтверждения email
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const handleResendVerificationEmail = async () => {
+    if (!user?.email) {
+      showToast('Email не найден', 'error');
+      return;
+    }
+    
+    setResendingEmail(true);
+    try {
+      const response = await fetch(`${API_URL}/api/auth/resend-verification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: user.email })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        showToast('Письмо подтверждения отправлено на ваш email', 'success');
+      } else {
+        showToast(data.error || 'Ошибка отправки письма', 'error');
+      }
+    } catch (error) {
+      console.error('Ошибка отправки письма подтверждения:', error);
+      showToast('Ошибка подключения к серверу', 'error');
+    } finally {
+      setResendingEmail(false);
+    }
+  };
+
   // Загрузка всех пользователей
   const loadAllUsers = async (query = '') => {
     const token = localStorage.getItem('token');
@@ -2024,6 +2057,39 @@ const ComicsTrackerApp = () => {
                 <label className="text-gray-400 text-sm">Новый пароль:</label>
                 <input type="password" value={profileData.newPassword} onChange={(e) => setProfileData({ ...profileData, newPassword: e.target.value })} className="w-full px-4 py-2 bg-[#10b981]/15 border border-[#a8e6cf]/30 rounded-lg focus:border-[#a8e6cf] focus:outline-none focus:shadow-[0_0_0_3px_rgba(168,230,207,0.1)] text-white mt-1" />
               </div>
+              
+              {/* Кнопка подтверждения email */}
+              {user && !user.is_email_verified && (
+                <div className="mt-6 pt-4 border-t border-gray-700">
+                  <div className="flex items-center justify-between p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-yellow-400 font-medium text-sm">Email не подтвержден</span>
+                        <span className="text-yellow-400">📧</span>
+                      </div>
+                      <p className="text-xs text-gray-400">Подтвердите ваш email для полного доступа</p>
+                    </div>
+                    <button
+                      onClick={handleResendVerificationEmail}
+                      disabled={resendingEmail}
+                      className="px-3 py-1.5 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    >
+                      {resendingEmail ? (
+                        <>
+                          <Icon name="loader" className="w-3 h-3 animate-spin" />
+                          <span>Отправка...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>✉️</span>
+                          <span>Подтвердить</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+              
               <div className="mt-4 pt-4 border-t border-gray-700">
                 <button onClick={handleLogout} className="w-full py-2 bg-red-600 border-2 border-[#a28089] hover:bg-red-700 text-white font-bold rounded-lg flex items-center justify-center gap-2">
                   <Icon name="logout" className="w-4 h-4" />
