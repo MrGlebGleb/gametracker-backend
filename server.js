@@ -1827,7 +1827,13 @@ app.get('/api/games/search', searchLimiter, authenticateToken, async (req, res) 
       cover: game.cover?.url ? `https:${game.cover.url.replace('t_thumb', 't_cover_big')}` : null,
       summary: game.summary || '', rating: game.rating ? Math.round(game.rating / 20) : null,
       genres: game.genres?.map(g => g.name) || [], videoId: game.videos?.[0]?.video_id || null,
-      time_to_beat: game.time_to_beat || null,
+      time_to_beat: (game.time_to_beat && typeof game.time_to_beat === 'object')
+        ? [
+            Number.isFinite(game.time_to_beat.normally) ? game.time_to_beat.normally : null,
+            Number.isFinite(game.time_to_beat.completely) ? game.time_to_beat.completely : null,
+            Number.isFinite(game.time_to_beat.hastly) ? game.time_to_beat.hastly : null
+          ]
+        : null,
     }));
     res.json({ games });
   } catch (error) {
@@ -1856,6 +1862,14 @@ app.get('/api/games/:gameId/details', authenticateToken, async (req, res) => {
     }
     
     const game = response.data[0];
+    // Нормализуем структуру времени прохождения из IGDB в массив [основной, 100%, hastly]
+    let normalizedTimeToBeat = null;
+    if (game.time_to_beat && typeof game.time_to_beat === 'object') {
+      const normally = Number.isFinite(game.time_to_beat.normally) ? game.time_to_beat.normally : null;
+      const completely = Number.isFinite(game.time_to_beat.completely) ? game.time_to_beat.completely : null;
+      const hastly = Number.isFinite(game.time_to_beat.hastly) ? game.time_to_beat.hastly : null;
+      normalizedTimeToBeat = [normally, completely, hastly];
+    }
     const gameDetails = {
       id: game.id,
       name: game.name,
@@ -1864,7 +1878,7 @@ app.get('/api/games/:gameId/details', authenticateToken, async (req, res) => {
       rating: game.rating ? Math.round(game.rating / 20) : null,
       genres: game.genres?.map(g => g.name) || [],
       videoId: game.videos?.[0]?.video_id || null,
-      time_to_beat: game.time_to_beat || null
+      time_to_beat: normalizedTimeToBeat
     };
     
     res.json(gameDetails);
