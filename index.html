@@ -1791,6 +1791,7 @@
         </div>
       );
     };
+
     // Компонент страницы статистики
     const StatisticsPage = ({ isOpen, onClose, token, showMediaTab = true }) => {
       const [activeTab, setActiveTab] = useState('games');
@@ -2382,6 +2383,7 @@
         </div>
       );
     };
+
     // Компонент dropdown для экспорта
     const ExportDropdown = ({ onExport, loading }) => {
       const [isOpen, setIsOpen] = useState(false);
@@ -2937,6 +2939,7 @@
         </div>
       );
     };
+
     // Компонент истории изменений
     const HistoryLog = ({ isOpen, onClose, gameId, gameName, token }) => {
       const [history, setHistory] = useState([]);
@@ -3270,30 +3273,7 @@
               </button>
             </div>
             <div className="space-y-4">
-              {/* Ваше время игры */}
-              {!isViewingFriend && (
-                <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/30">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-blue-400">🎮</span>
-                      <span className="text-white font-medium text-sm">Ваше время игры</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={game.hoursPlayed || 0}
-                      onChange={(e) => onUpdate(game.id, { hoursPlayed: parseInt(e.target.value) || 0 })}
-                      className="w-20 px-2 py-1 bg-gray-800 border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none text-white text-sm"
-                      placeholder="0"
-                    />
-                    <span className="text-gray-400 text-sm">часов</span>
-                  </div>
-                </div>
-              )}
-              {/* Время прохождения из IGDB */}
+              {/* Время прохождения */}
               <div className="p-3 bg-purple-500/10 rounded-lg border border-purple-500/30">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-purple-400">⏱️</span>
@@ -3591,6 +3571,7 @@
         </>
       );
     };
+
     const GameKanban = () => {
       const [user, setUser] = useState(null);
       const [showAuth, setShowAuth] = useState(true);
@@ -4209,6 +4190,7 @@
           alert('Ошибка при добавлении игры. Попробуйте еще раз.');
         }
       };
+
       const updateGame = useCallback(async (gameId, updates) => {
         // Сначала обновляем UI локально для мгновенного отклика
         setSelectedGame(prev => prev && prev.id === gameId ? { ...prev, ...updates } : prev);
@@ -4699,6 +4681,7 @@
         }
         return <button onClick={() => friendAction(targetUser.id, 'request')} className="p-2 bg-purple-500/20 hover:bg-purple-500/30 rounded-lg"><Icon name="userPlus" className="w-5 h-5 text-purple-400" /></button>;
     };
+
       const toggleColumnExpansion = (boardId) => {
         setExpandedColumns(prev => ({...prev, [boardId]: !prev[boardId]}));
       };
@@ -5287,6 +5270,7 @@
               </div>
             </>
           )}
+
           <main className="flex-grow">
               {showProfile && (
                   <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 modal-enter-active">
@@ -5483,7 +5467,7 @@
               
               {editingNickname && (
                   <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
-                  <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-purple-500/30">
+                  <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-purple-500/30 elevation-3">
                       <h2 className="text-xl font-bold text-white mb-4">Изменить метку для {viewingUser?.username}</h2>
                       <input type="text" value={userNickname} onChange={(e) => setUserNickname(e.target.value)} placeholder="Например: Лучший друг, Коллега..." className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white mb-4" />
                       <div className="flex gap-2">
@@ -5608,6 +5592,7 @@
                   </div>
                   </div>
               )}
+
               <div className="container mx-auto px-4 py-6">
                   {viewingUser && (
                   <div className="mb-6 bg-gradient-to-r from-purple-900/50 to-blue-900/50 backdrop-blur-xl rounded-xl p-6 border border-purple-500/30">
@@ -6201,6 +6186,7 @@
               <Icon name="plus" className="w-7 h-7 text-white" />
             </button>
           )}
+
           {/* Мобильная модалка поиска */}
           {showSearch && (
             <div className="md:hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
