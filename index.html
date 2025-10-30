@@ -3270,7 +3270,30 @@
               </button>
             </div>
             <div className="space-y-4">
-              {/* Время прохождения */}
+              {/* Ваше время игры */}
+              {!isViewingFriend && (
+                <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-blue-400">🎮</span>
+                      <span className="text-white font-medium text-sm">Ваше время игры</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={game.hoursPlayed || 0}
+                      onChange={(e) => onUpdate(game.id, { hoursPlayed: parseInt(e.target.value) || 0 })}
+                      className="w-20 px-2 py-1 bg-gray-800 border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none text-white text-sm"
+                      placeholder="0"
+                    />
+                    <span className="text-gray-400 text-sm">часов</span>
+                  </div>
+                </div>
+              )}
+              {/* Время прохождения из IGDB */}
               <div className="p-3 bg-purple-500/10 rounded-lg border border-purple-500/30">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-purple-400">⏱️</span>
@@ -5819,10 +5842,6 @@
                                               ))}
                                           </div>
                                       )}
-                                      {/* Отображение времени игры */}
-                                      <div className="text-xs text-gray-500 mt-1">
-                                        ⏱ Время: {card.hoursPlayed !== undefined && card.hoursPlayed !== null ? card.hoursPlayed + ' ч' : 'Недоступно'}
-                                      </div>
                                   </div>
                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity self-end flex-shrink-0 z-10">
                                     </div>
