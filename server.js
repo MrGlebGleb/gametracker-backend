@@ -1840,22 +1840,63 @@ app.get('/api/games/search', searchLimiter, authenticateToken, async (req, res) 
 app.get('/api/games/:gameId/details', authenticateToken, async (req, res) => {
   try {
     const { gameId } = req.params; // IGDB ID игры
+    console.log('=== Запрос деталей игры ===');
+    console.log('Game ID:', gameId);
+    
     if (!gameId || isNaN(gameId)) {
+      console.log('❌ Неверный ID игры:', gameId);
       return res.status(400).json({ error: 'Неверный ID игры' });
     }
     
     const token = await getTwitchToken();
-    const response = await axios.post(
+    console.log('✅ Twitch token получен');
+    
+    // Сначала получаем базовую информацию об игре
+    console.log('📡 Запрос базовой информации об игре...');
+    const gameResponse = await axios.post(
       'https://api.igdb.com/v4/games',
-      `fields name, cover.url, summary, rating, genres.name, videos.video_id, time_to_beat; where id = ${gameId}; limit 1;`,
+      `fields name, cover.url, summary, rating, genres.name, videos.video_id; where id = ${gameId}; limit 1;`,
       { headers: { 'Client-ID': TWITCH_CLIENT_ID, 'Authorization': `Bearer ${token}`, 'Content-Type': 'text/plain' } }
     );
     
-    if (!response.data || response.data.length === 0) {
+    if (!gameResponse.data || gameResponse.data.length === 0) {
+      console.log('❌ Игра не найдена в IGDB');
       return res.status(404).json({ error: 'Игра не найдена' });
     }
     
-    const game = response.data[0];
+    console.log('✅ Игра найдена:', gameResponse.data[0].name);
+    const game = gameResponse.data[0];
+    
+    // Теперь запрашиваем время прохождения отдельным запросом с расширенными полями
+    let timeToBeatData = null;
+    try {
+      console.log('📡 Запрос времени прохождения из IGDB...');
+      const timeToBeatResponse = await axios.post(
+        'https://api.igdb.com/v4/time_to_beats',
+        `fields completely, normally, hastly; where game = ${gameId};`,
+        { headers: { 'Client-ID': TWITCH_CLIENT_ID, 'Authorization': `Bearer ${token}`, 'Content-Type': 'text/plain' } }
+      );
+      
+      console.log('📊 IGDB time_to_beats response:', JSON.stringify(timeToBeatResponse.data, null, 2));
+      
+      if (timeToBeatResponse.data && timeToBeatResponse.data.length > 0) {
+        const ttb = timeToBeatResponse.data[0];
+        console.log('📊 Raw time_to_beat object:', JSON.stringify(ttb, null, 2));
+        
+        timeToBeatData = [
+          ttb.normally || null,  // Основной сюжет
+          ttb.completely || null, // На 100%
+          ttb.hastly || null      // Быстрое прохождение
+        ];
+        console.log('✅ Parsed time_to_beat data:', timeToBeatData);
+      } else {
+        console.log('⚠️ Нет данных о времени прохождения для игры:', gameId);
+      }
+    } catch (timeToBeatError) {
+      console.log('❌ Ошибка получения времени прохождения:', timeToBeatError.message);
+      console.log('❌ Error details:', timeToBeatError.response?.data || 'No response data');
+    }
+    
     const gameDetails = {
       id: game.id,
       name: game.name,
@@ -1864,12 +1905,16 @@ app.get('/api/games/:gameId/details', authenticateToken, async (req, res) => {
       rating: game.rating ? Math.round(game.rating / 20) : null,
       genres: game.genres?.map(g => g.name) || [],
       videoId: game.videos?.[0]?.video_id || null,
-      time_to_beat: game.time_to_beat || null
+      time_to_beat: timeToBeatData
     };
+    
+    console.log('📤 Отправка данных клиенту:', JSON.stringify(gameDetails, null, 2));
+    console.log('=== Конец запроса деталей игры ===');
     
     res.json(gameDetails);
   } catch (error) {
-    console.error('Ошибка получения деталей игры:', error.message);
+    console.error('❌ Ошибка получения деталей игры:', error.message);
+    console.error('❌ Stack trace:', error.stack);
     res.status(500).json({ error: 'Ошибка получения деталей игры' });
   }
 });
