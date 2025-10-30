@@ -1858,6 +1858,7 @@ app.get('/api/games/:gameId/details', authenticateToken, async (req, res) => {
     }
     
     const token = await getTwitchToken();
+    console.log(`[IGDB] details for gameId=${gameId}`);
     const response = await axios.post(
       'https://api.igdb.com/v4/games',
       `fields name, cover.url, summary, rating, genres.name, videos.video_id; where id = ${gameId}; limit 1;`,
@@ -1877,6 +1878,7 @@ app.get('/api/games/:gameId/details', authenticateToken, async (req, res) => {
         `fields normally, completely, hastly; where game = ${gameId}; limit 1;`,
         { headers: { 'Client-ID': TWITCH_CLIENT_ID, 'Authorization': `Bearer ${token}`, 'Content-Type': 'text/plain' } }
       );
+      console.log('[IGDB] game_time_to_beats:', Array.isArray(ttbResp.data) ? ttbResp.data : ttbResp.data);
       const ttb = Array.isArray(ttbResp.data) && ttbResp.data[0] ? ttbResp.data[0] : null;
       if (ttb) {
         const normally = Number.isFinite(ttb.normally) ? ttb.normally : null;
