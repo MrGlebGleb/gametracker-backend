@@ -3125,26 +3125,30 @@
       // Загружаем время прохождения при открытии модалки
       useEffect(() => {
         const loadTimeToBeat = async () => {
-          if (!game.game_id || !token) return;
-          
+          const igdbId = game.game_id || game.gameId; // поддержка разных источников данных
+          if (!igdbId || !token) return;
+
           setLoadingTimeToBeat(true);
           try {
-            const response = await fetch(`${API_URL}/api/games/${game.game_id}/details`, {
+            const response = await fetch(`${API_URL}/api/games/${igdbId}/details`, {
               headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
               const data = await response.json();
               setTimeToBeat(data.time_to_beat);
+            } else {
+              setTimeToBeat(null);
             }
           } catch (error) {
             console.error('Ошибка загрузки времени прохождения:', error);
+            setTimeToBeat(null);
           } finally {
             setLoadingTimeToBeat(false);
           }
         };
-        
+
         loadTimeToBeat();
-      }, [game.game_id, token]);
+      }, [game.game_id, game.gameId, token]);
       
       // Функция для форматирования секунд в читаемый формат
       const formatTime = (seconds) => {
