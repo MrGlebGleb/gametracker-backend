@@ -1826,7 +1826,7 @@ app.get('/api/games/search', searchLimiter, authenticateToken, async (req, res) 
     const safeQ = String(q).replace(/"/g, '\\"').slice(0, 100);
     const token = await getTwitchToken();
     const response = await axios.post(
-      'https://api.igdb.com/v4/games', `search "${safeQ}"; fields name, cover.url, summary, rating, genres.name, videos.video_id, time_to_beat; limit 20;`,
+      'https://api.igdb.com/v4/games', `search "${safeQ}"; fields name, cover.url, summary, rating, genres.name, videos.video_id; limit 20;`,
       { headers: { 'Client-ID': TWITCH_CLIENT_ID, 'Authorization': `Bearer ${token}`, 'Content-Type': 'text/plain' } }
     );
     const games = response.data.map(game => ({
@@ -1860,7 +1860,7 @@ app.get('/api/games/:gameId/details', authenticateToken, async (req, res) => {
     const token = await getTwitchToken();
     const response = await axios.post(
       'https://api.igdb.com/v4/games',
-      `fields name, cover.url, summary, rating, genres.name, videos.video_id, time_to_beat; where id = ${gameId}; limit 1;`,
+      `fields name, cover.url, summary, rating, genres.name, videos.video_id; where id = ${gameId}; limit 1;`,
       { headers: { 'Client-ID': TWITCH_CLIENT_ID, 'Authorization': `Bearer ${token}`, 'Content-Type': 'text/plain' } }
     );
     
@@ -1869,13 +1869,23 @@ app.get('/api/games/:gameId/details', authenticateToken, async (req, res) => {
     }
     
     const game = response.data[0];
-    // Нормализуем структуру времени прохождения из IGDB в массив [основной, 100%, hastly]
+    // Получаем время прохождения из отдельной таблицы IGDB
     let normalizedTimeToBeat = null;
-    if (game.time_to_beat && typeof game.time_to_beat === 'object') {
-      const normally = Number.isFinite(game.time_to_beat.normally) ? game.time_to_beat.normally : null;
-      const completely = Number.isFinite(game.time_to_beat.completely) ? game.time_to_beat.completely : null;
-      const hastly = Number.isFinite(game.time_to_beat.hastly) ? game.time_to_beat.hastly : null;
-      normalizedTimeToBeat = [normally, completely, hastly];
+    try {
+      const ttbResp = await axios.post(
+        'https://api.igdb.com/v4/game_time_to_beats',
+        `fields normally, completely, hastly; where game = ${gameId}; limit 1;`,
+        { headers: { 'Client-ID': TWITCH_CLIENT_ID, 'Authorization': `Bearer ${token}`, 'Content-Type': 'text/plain' } }
+      );
+      const ttb = Array.isArray(ttbResp.data) && ttbResp.data[0] ? ttbResp.data[0] : null;
+      if (ttb) {
+        const normally = Number.isFinite(ttb.normally) ? ttb.normally : null;
+        const completely = Number.isFinite(ttb.completely) ? ttb.completely : null;
+        const hastly = Number.isFinite(ttb.hastly) ? ttb.hastly : null;
+        normalizedTimeToBeat = [normally, completely, hastly];
+      }
+    } catch (e) {
+      console.warn('Не удалось получить time_to_beat из IGDB:', e.response?.data || e.message);
     }
     const gameDetails = {
       id: game.id,
