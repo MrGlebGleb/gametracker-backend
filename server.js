@@ -1195,6 +1195,10 @@ async function getTwitchToken() {
     return twitchAccessToken;
   }
   try {
+    if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET) {
+      console.error('❌ TWITCH_CLIENT_ID/TWITCH_CLIENT_SECRET не настроены');
+      throw new Error('Отсутствуют креды Twitch для IGDB');
+    }
     const response = await axios.post('https://id.twitch.tv/oauth2/token', null, {
       params: {
         client_id: TWITCH_CLIENT_ID,
@@ -1206,8 +1210,10 @@ async function getTwitchToken() {
     tokenExpiry = Date.now() + (response.data.expires_in * 1000);
     return twitchAccessToken;
   } catch (error) {
-    console.error('Ошибка Twitch токена:', error.message);
-    throw new Error('Не удалось авторизоваться в Twitch API');
+    console.error('Ошибка Twitch токена:', error.response?.data || error.message);
+    const err = new Error('Не удалось авторизоваться в Twitch API');
+    err.cause = error;
+    throw err;
   }
 }
 
@@ -1817,9 +1823,10 @@ app.get('/api/games/search', searchLimiter, authenticateToken, async (req, res) 
   try {
     const { q } = req.query;
     if (!q || q.length < 2) return res.status(400).json({ error: 'Минимум 2 символа' });
+    const safeQ = String(q).replace(/"/g, '\\"').slice(0, 100);
     const token = await getTwitchToken();
     const response = await axios.post(
-      'https://api.igdb.com/v4/games', `search "${q}"; fields name, cover.url, summary, rating, genres.name, videos.video_id, time_to_beat; limit 20;`,
+      'https://api.igdb.com/v4/games', `search "${safeQ}"; fields name, cover.url, summary, rating, genres.name, videos.video_id, time_to_beat; limit 20;`,
       { headers: { 'Client-ID': TWITCH_CLIENT_ID, 'Authorization': `Bearer ${token}`, 'Content-Type': 'text/plain' } }
     );
     const games = response.data.map(game => ({
@@ -1837,7 +1844,7 @@ app.get('/api/games/search', searchLimiter, authenticateToken, async (req, res) 
     }));
     res.json({ games });
   } catch (error) {
-    console.error('Ошибка поиска:', error.message);
+    console.error('Ошибка поиска IGDB:', error.response?.data || error.message);
     res.status(500).json({ error: 'Ошибка поиска' });
   }
 });
