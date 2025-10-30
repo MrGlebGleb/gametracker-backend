@@ -1865,6 +1865,7 @@ app.get('/api/games/:gameId/details', authenticateToken, async (req, res) => {
       genres: game.genres?.map(g => g.name) || [],
       videoId: game.videos?.[0]?.video_id || null,
       time_to_beat: game.time_to_beat || null
+      raw_igdb: game 
     };
     
     res.json(gameDetails);
