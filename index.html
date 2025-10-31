@@ -1128,6 +1128,56 @@
         }
       }
     
+      @keyframes borderPulse {
+        0%, 100% {
+          box-shadow: 0 0 20px rgba(251, 191, 36, 0.6), 0 0 40px rgba(251, 191, 36, 0.3);
+        }
+        50% {
+          box-shadow: 0 0 30px rgba(251, 191, 36, 0.9), 0 0 60px rgba(251, 191, 36, 0.5);
+        }
+      }
+
+      @keyframes scale-in {
+        0% {
+          transform: scale(0.8);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      @keyframes fadeInScale {
+        0% {
+          opacity: 0;
+          transform: scale(0.5);
+        }
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      @keyframes fadeOutUp {
+        0% {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+        }
+        100% {
+          opacity: 0;
+          transform: scale(0.7) translateY(-30px);
+        }
+      }
+
+      .animate-shimmer {
+        animation: shimmer 2s linear infinite;
+      }
+
+      .animate-scale-in {
+        animation: scale-in 0.5s ease-out;
+      }
+    
     /* Liquid Eye Theme */
     .liquid-eye {
         --bg-color: #000000;
@@ -1369,15 +1419,170 @@
       );
     };
 
-    const Avatar = ({ src, size = 'md', className = '' }) => {
+    // Функция получения цвета рамки для уровня
+    const getBorderColorForLevel = (level) => {
+      if (!level) level = 1;
+      if (level <= 10) {
+        return { color: '#4ade80', gradient: 'linear-gradient(135deg, #4ade80, #22c55e)', name: 'Новичок', glow: 'rgba(74, 222, 128, 0.3)' };
+      } else if (level <= 25) {
+        return { color: '#3b82f6', gradient: 'linear-gradient(135deg, #3b82f6, #2563eb)', name: 'Опытный', glow: 'rgba(59, 130, 246, 0.3)' };
+      } else if (level <= 40) {
+        return { color: '#a855f7', gradient: 'linear-gradient(135deg, #a855f7, #9333ea)', name: 'Продвинутый', glow: 'rgba(168, 85, 247, 0.3)' };
+      } else if (level <= 60) {
+        return { color: '#eab308', gradient: 'linear-gradient(135deg, #eab308, #ca8a04)', name: 'Элитный', glow: 'rgba(234, 179, 8, 0.4)' };
+      } else if (level <= 80) {
+        return { color: '#ef4444', gradient: 'linear-gradient(135deg, #ef4444, #dc2626)', name: 'Легендарный', glow: 'rgba(239, 68, 68, 0.4)' };
+      } else if (level <= 95) {
+        return { color: '#f0f0f0', gradient: 'linear-gradient(135deg, #f0f0f0, #d4d4d4)', name: 'Божественный', glow: 'rgba(240, 240, 240, 0.5)' };
+      } else {
+        return { color: '#fbbf24', gradient: 'linear-gradient(135deg, #fbbf24, #f59e0b, #f97316, #ef4444)', name: 'Абсолют', glow: 'rgba(251, 191, 36, 0.6)' };
+      }
+    };
+
+    // Таблица уровней XP
+    const LEVEL_XP_TABLE = {
+      1: 0, 2: 2400, 3: 4821, 4: 7264, 5: 9729, 6: 12216, 7: 14725, 8: 17255, 9: 19807, 10: 22381,
+      11: 24977, 12: 27595, 13: 30234, 14: 32895, 15: 35578, 16: 38283, 17: 41010, 18: 43758, 19: 46528, 20: 49320,
+      21: 52134, 22: 54970, 23: 57827, 24: 60706, 25: 63607, 26: 66530, 27: 69475, 28: 72441, 29: 75429, 30: 78439,
+      31: 81471, 32: 84525, 33: 87600, 34: 90697, 35: 93816, 36: 96957, 37: 100120, 38: 103304, 39: 106510, 40: 109738,
+      41: 112988, 42: 116260, 43: 119553, 44: 122868, 45: 126205, 46: 129564, 47: 132945, 48: 136347, 49: 139771, 50: 143217,
+      51: 146685, 52: 150175, 53: 153686, 54: 157219, 55: 160774, 56: 164351, 57: 167950, 58: 171570, 59: 175212, 60: 178876,
+      61: 182562, 62: 186270, 63: 189999, 64: 193750, 65: 197523, 66: 201318, 67: 205135, 68: 208973, 69: 212833, 70: 216715,
+      71: 220619, 72: 224545, 73: 228492, 74: 232461, 75: 236452, 76: 240465, 77: 244500, 78: 248556, 79: 252634, 80: 256734,
+      81: 260856, 82: 265000, 83: 269165, 84: 273352, 85: 277561, 86: 281792, 87: 286045, 88: 290319, 89: 294615, 90: 298933,
+      91: 303273, 92: 307635, 93: 312018, 94: 316423, 95: 320850, 96: 325299, 97: 329770, 98: 334262, 99: 338776, 100: 343312
+    };
+
+    // Звания для уровней
+    const LEVEL_TITLES = {
+      1: 'Новичок', 2: 'Начинающий Игрок', 3: 'Любитель', 4: 'Энтузиаст', 5: 'Геймер',
+      6: 'Практикант', 7: 'Ученик', 8: 'Подмастерье', 9: 'Стажёр', 10: 'Посвящённый',
+      11: 'Искатель Приключений', 12: 'Странник', 13: 'Путешественник', 14: 'Исследователь', 15: 'Следопыт',
+      16: 'Авантюрист', 17: 'Искушённый', 18: 'Знаток', 19: 'Эксперт', 20: 'Ветеран',
+      21: 'Бывалый', 22: 'Опытный Воин', 23: 'Закалённый', 24: 'Профессионал', 25: 'Специалист',
+      26: 'Мастер', 27: 'Виртуоз', 28: 'Умелец', 29: 'Талант', 30: 'Гуру',
+      31: 'Чемпион', 32: 'Герой', 33: 'Защитник', 34: 'Страж', 35: 'Рыцарь',
+      36: 'Паладин', 37: 'Крестоносец', 38: 'Воитель', 39: 'Боец', 40: 'Гладиатор',
+      41: 'Элитный Игрок', 42: 'Непобедимый', 43: 'Неудержимый', 44: 'Доминатор', 45: 'Покоритель',
+      46: 'Завоеватель', 47: 'Триумфатор', 48: 'Победитель', 49: 'Повелитель', 50: 'Властелин',
+      51: 'Император', 52: 'Монарх', 53: 'Владыка', 54: 'Тиран', 55: 'Деспот',
+      56: 'Диктатор', 57: 'Верховный', 58: 'Абсолютный', 59: 'Превосходный', 60: 'Совершенный',
+      61: 'Легендарный Воин', 62: 'Мифический', 63: 'Эпический', 64: 'Легендарный', 65: 'Баснословный',
+      66: 'Знаменитый', 67: 'Прославленный', 68: 'Великий', 69: 'Величайший', 70: 'Грандиозный',
+      71: 'Колоссальный', 72: 'Титанический', 73: 'Гигантский', 74: 'Огромный', 75: 'Исполинский',
+      76: 'Монументальный', 77: 'Грандиозный Мастер', 78: 'Невероятный', 79: 'Фантастический', 80: 'Феноменальный',
+      81: 'Божественный', 82: 'Небесный', 83: 'Ангельский', 84: 'Святой', 85: 'Священный',
+      86: 'Благословенный', 87: 'Просветлённый', 88: 'Возвышенный', 89: 'Трансцендентный', 90: 'Бессмертный',
+      91: 'Вечный', 92: 'Бесконечный', 93: 'Всемогущий', 94: 'Всезнающий', 95: 'Вездесущий',
+      96: 'Абсолютный Мастер', 97: 'Запредельный', 98: 'Несравненный', 99: 'Единственный', 100: 'ЛЕГЕНДА'
+    };
+
+    // Расчет прогресса до следующего уровня
+    const getProgressToNextLevel = (totalXP, currentLevel) => {
+      const currentLevelXP = LEVEL_XP_TABLE[currentLevel] || 0;
+      const nextLevel = Math.min(currentLevel + 1, 100);
+      const nextLevelXP = LEVEL_XP_TABLE[nextLevel] || LEVEL_XP_TABLE[100];
+      
+      const xpNeeded = nextLevelXP - currentLevelXP;
+      const xpProgress = totalXP - currentLevelXP;
+      const percentage = Math.min((xpProgress / xpNeeded) * 100, 100);
+      
+      return {
+        percentage: Math.round(percentage * 100) / 100,
+        current: xpProgress,
+        needed: xpNeeded,
+        nextLevel: nextLevel
+      };
+    };
+
+    // Компонент шкалы опыта
+    const XPBar = ({ level, totalXP, title, progress, borderColor, borderGradient, compact = false }) => {
+      if (!level) level = 1;
+      if (!totalXP) totalXP = 0;
+      if (!progress) progress = getProgressToNextLevel(totalXP, level);
+      if (!title) title = LEVEL_TITLES[level] || 'Новичок';
+      
+      const levelInfo = getBorderColorForLevel(level);
+      const finalProgress = progress || getProgressToNextLevel(totalXP, level);
+      
+      if (compact) {
+        return (
+          <div className="w-full">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold text-white">Уровень {level}</span>
+              <span className="text-xs text-gray-400">{finalProgress.current} / {finalProgress.needed} XP</span>
+            </div>
+            <div className="w-full h-1.5 bg-gray-800/50 rounded-full overflow-hidden">
+              <div 
+                className="h-full rounded-full transition-all duration-500 relative"
+                style={{
+                  width: `${finalProgress.percentage}%`,
+                  background: levelInfo.gradient,
+                  boxShadow: `0 0 8px ${levelInfo.glow}`
+                }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
+      return (
+        <div className="w-full space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold" style={{ color: levelInfo.color }}>
+              Уровень {level}: {title}
+            </span>
+            <span className="text-xs text-gray-400">
+              {finalProgress.current} / {finalProgress.needed} XP
+            </span>
+          </div>
+          <div className="w-full h-2 bg-gray-800/50 rounded-full overflow-hidden backdrop-blur-sm border border-gray-700/30">
+            <div 
+              className="h-full rounded-full transition-all duration-500 relative"
+              style={{
+                width: `${finalProgress.percentage}%`,
+                background: levelInfo.gradient,
+                boxShadow: `0 0 12px ${levelInfo.glow}`
+              }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const Avatar = ({ src, size = 'md', className = '', level = null, showBorder = false }) => {
       const sizes = { sm: 'w-8 h-8', md: 'w-12 h-12', lg: 'w-20 h-20', xl: 'w-32 h-32' };
-      return src ? (
+      const levelInfo = level ? getBorderColorForLevel(level) : null;
+      const borderWidth = size === 'xl' ? '4px' : size === 'lg' ? '3px' : size === 'md' ? '2.5px' : '2px';
+      
+      const avatarContent = src ? (
         <img src={src} className={`${sizes[size]} avatar-circle ${className}`} alt="avatar" />
       ) : (
         <div className={`${sizes[size]} avatar-circle bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold ${className}`}>
           <Icon name="user" className={size === 'sm' ? 'w-4 h-4' : 'w-6 h-6'} />
         </div>
       );
+
+      if (showBorder && levelInfo) {
+        return (
+          <div 
+            className="relative rounded-full p-0.5 transition-all duration-300"
+            style={{
+              background: levelInfo.gradient,
+              boxShadow: `0 0 ${size === 'xl' ? '20px' : size === 'lg' ? '15px' : '10px'} ${levelInfo.glow}`,
+              animation: level >= 96 ? 'borderPulse 2s ease-in-out infinite' : 'none'
+            }}
+          >
+            {avatarContent}
+          </div>
+        );
+      }
+      
+      return avatarContent;
     };
     
     const AvatarCropModal = ({ src, onCancel, onComplete }) => {
@@ -3887,6 +4092,9 @@
       const [userNickname, setUserNickname] = useState('');
       const [editingNickname, setEditingNickname] = useState(false);
       const [uploadingAvatar, setUploadingAvatar] = useState(false);
+      const [userLevel, setUserLevel] = useState(null);
+      const [showLevelUpModal, setShowLevelUpModal] = useState(false);
+      const [levelUpData, setLevelUpData] = useState(null);
       const fileInputRef = useRef(null);
       const [theme, setTheme] = useState('default');
       const [confirmingDeleteFriend, setConfirmingDeleteFriend] = useState(null);
@@ -3962,6 +4170,34 @@
         };
       }, [showAuth, viewingUser]);
 
+      // Функция загрузки уровня пользователя
+      const loadUserLevel = useCallback(async (token, userId = null) => {
+        try {
+          const targetUserId = userId || user?.id;
+          if (!targetUserId || !token) return;
+          
+          const response = await fetch(`${API_URL}/api/user/level?userId=${targetUserId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (!userId || userId === user?.id) {
+              // Обновляем уровень текущего пользователя
+              setUserLevel(data);
+              // Обновляем данные пользователя
+              const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+              currentUser.level = data.level;
+              currentUser.total_xp = data.totalXP;
+              localStorage.setItem('user', JSON.stringify(currentUser));
+              setUser(prev => prev ? { ...prev, level: data.level, total_xp: data.totalXP } : null);
+            }
+          }
+        } catch (error) {
+          console.error('Ошибка загрузки уровня:', error);
+        }
+      }, [user]);
+
       const loadBoards = useCallback(async (token, userId = null, tagId = null) => {
         setBoardsLoading(true);
         try {
@@ -3976,6 +4212,14 @@
               setViewingUser(data.user);
               setFriendshipStatus(data.friendship);
               setUserNickname(data.nickname || '');
+              // Загружаем уровень просматриваемого пользователя
+              const levelData = await fetch(`${API_URL}/api/user/level?userId=${userId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              });
+              if (levelData.ok) {
+                const levelInfo = await levelData.json();
+                setViewingUser(prev => prev ? { ...prev, level: levelInfo.level, total_xp: levelInfo.totalXP } : null);
+              }
             } else {
                setViewingUser(null);
             }
@@ -4155,6 +4399,8 @@
                 show_stats: data.user.show_stats ?? true,
                 allow_friend_requests: data.user.allow_friend_requests ?? true
             });
+            // Загружаем уровень пользователя
+            await loadUserLevel(data.token, data.user.id);
             setShowAuth(false);
             loadBoards(data.token);
               showToast('Добро пожаловать!', 'success');
@@ -4342,6 +4588,16 @@
           });
           
           if (response.ok) {
+            const data = await response.json();
+            
+            // Проверяем, произошел ли level up
+            if (data.levelUp && data.levelUp.leveledUp) {
+              setLevelUpData(data.levelUp);
+              setShowLevelUpModal(true);
+              // Обновляем уровень пользователя
+              await loadUserLevel(token, user?.id);
+            }
+            
             await loadBoards(token);
             setShowSearch(false);
             setSearchQuery('');
@@ -4434,6 +4690,16 @@
             console.error('Game update error:', errorText);
             // В случае ошибки перезагружаем данные
             loadBoards(token);
+          } else {
+            const data = await response.json();
+            
+            // Проверяем, произошел ли level up
+            if (data.levelUp && data.levelUp.leveledUp) {
+              setLevelUpData(data.levelUp);
+              setShowLevelUpModal(true);
+              // Обновляем уровень пользователя
+              await loadUserLevel(token, user?.id);
+            }
           }
            // Не перезагружаем доски при изменении board - UI уже обновлен оптимистично
            // Перезагружаем только если нужно обновить ленту (например, при изменении рейтинга/статуса)
@@ -4446,7 +4712,37 @@
           console.error('Ошибка обновления:', err);
           loadBoards(localStorage.getItem('token'));
         }
-      }, [loadBoards]);
+      }, [loadBoards, loadUserLevel, user]);
+
+      // Инициализация пользователя и загрузка уровня при загрузке страницы
+      useEffect(() => {
+        const token = localStorage.getItem('token');
+        const savedUser = localStorage.getItem('user');
+        
+        if (token && savedUser) {
+          try {
+            const user = JSON.parse(savedUser);
+            setUser(user);
+            setTheme(user.theme || 'default');
+            setPrivacySettings({
+              is_profile_public: user.is_profile_public ?? true,
+              show_activity: user.show_activity ?? true,
+              show_stats: user.show_stats ?? true,
+              allow_friend_requests: user.allow_friend_requests ?? true
+            });
+            setShowAuth(false);
+            loadBoards(token);
+            // Загружаем уровень пользователя
+            if (user.id) {
+              loadUserLevel(token, user.id);
+            }
+          } catch (err) {
+            console.error('Ошибка инициализации пользователя:', err);
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+          }
+        }
+      }, [loadBoards, loadUserLevel]);
       
       const submitDeepReview = useCallback(async (gameId, answers) => {
           const token = localStorage.getItem('token');
@@ -5112,6 +5408,145 @@
         );
       };
 
+      // Модальное окно получения нового уровня
+      const LevelUpModal = () => {
+        if (!showLevelUpModal || !levelUpData) return null;
+        
+        const oldLevel = levelUpData.oldLevel || 1;
+        const newLevel = levelUpData.newLevel || 1;
+        const oldTitle = LEVEL_TITLES[oldLevel] || 'Новичок';
+        const newTitle = LEVEL_TITLES[newLevel] || 'Новичок';
+        const oldLevelInfo = getBorderColorForLevel(oldLevel);
+        const newLevelInfo = getBorderColorForLevel(newLevel);
+        
+        return (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            {/* Затемнение экрана */}
+            <div 
+              className="absolute inset-0 bg-black/90 backdrop-blur-md transition-opacity duration-500"
+              onClick={() => setShowLevelUpModal(false)}
+            />
+            
+            {/* Центральное окно */}
+            <div className="relative bg-gradient-to-br from-gray-900 via-purple-900/50 to-blue-900 rounded-3xl p-8 md:p-12 w-full max-w-lg border-2 shadow-2xl animate-scale-in" style={{
+              borderColor: newLevelInfo.color,
+              boxShadow: `0 0 40px ${newLevelInfo.glow}, 0 0 80px ${newLevelInfo.glow}`
+            }}>
+              {/* Закрыть */}
+              <button
+                onClick={() => setShowLevelUpModal(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-2xl z-10"
+              >
+                ×
+              </button>
+              
+              {/* Анимация перехода уровня */}
+              <div className="text-center space-y-6">
+                {/* Заголовок */}
+                <div className="space-y-2">
+                  <h2 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text" style={{
+                    background: newLevelInfo.gradient
+                  }}>
+                    🎉 УРОВЕНЬ ПОВЫШЕН! 🎉
+                  </h2>
+                  <p className="text-gray-300 text-lg">Поздравляем с достижением!</p>
+                </div>
+                
+                {/* Анимация смены уровня */}
+                <div className="relative h-40 flex items-center justify-center overflow-hidden">
+                  {/* Старый уровень - исчезает */}
+                  <div 
+                    key={`old-${oldLevel}`}
+                    className="absolute inset-0 flex flex-col items-center justify-center transition-all duration-700 ease-in-out"
+                    style={{
+                      opacity: 0,
+                      transform: 'scale(0.7) translateY(30px)',
+                      animation: 'fadeOutUp 0.7s ease-in-out forwards'
+                    }}
+                  >
+                    <div className="text-6xl font-bold" style={{ color: oldLevelInfo.color }}>
+                      {oldLevel}
+                    </div>
+                    <div className="text-sm text-gray-400 mt-2">{oldTitle}</div>
+                  </div>
+                  
+                  {/* Стрелка вверх - появляется между уровнями */}
+                  <div 
+                    className="absolute inset-0 flex items-center justify-center"
+                    style={{
+                      animation: 'fadeInScale 0.5s ease-out 0.4s forwards',
+                      opacity: 0
+                    }}
+                  >
+                    <div className="text-5xl text-purple-400 animate-bounce" style={{ animationDuration: '1s' }}>⬆️</div>
+                  </div>
+                  
+                  {/* Новый уровень - появляется */}
+                  <div 
+                    key={`new-${newLevel}`}
+                    className="absolute inset-0 flex flex-col items-center justify-center"
+                    style={{
+                      animation: 'fadeInScale 0.8s ease-out 0.7s forwards',
+                      opacity: 0
+                    }}
+                  >
+                    <div 
+                      className="text-7xl md:text-8xl font-bold mb-2"
+                      style={{ 
+                        color: newLevelInfo.color,
+                        textShadow: `0 0 30px ${newLevelInfo.glow}, 0 0 60px ${newLevelInfo.glow}`,
+                        animation: 'pulse 1.5s ease-in-out infinite 1.5s',
+                        animationFillMode: 'both'
+                      }}
+                    >
+                      {newLevel}
+                    </div>
+                    <div className="text-lg font-semibold mt-2" style={{ color: newLevelInfo.color }}>
+                      {newTitle}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Информация о прогрессе */}
+                <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50">
+                  <div className="text-sm text-gray-300 space-y-1">
+                    <div className="flex justify-between">
+                      <span>Старый уровень:</span>
+                      <span className="font-semibold" style={{ color: oldLevelInfo.color }}>
+                        {oldLevel} ({oldTitle})
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Новый уровень:</span>
+                      <span className="font-semibold" style={{ color: newLevelInfo.color }}>
+                        {newLevel} ({newTitle})
+                      </span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t border-gray-700">
+                      <span>Накоплено опыта:</span>
+                      <span className="font-semibold text-purple-400">
+                        {levelUpData.newXP?.toLocaleString() || 0} XP
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Кнопка закрытия */}
+                <button
+                  onClick={() => setShowLevelUpModal(false)}
+                  className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg"
+                  style={{
+                    boxShadow: `0 10px 25px -5px ${newLevelInfo.glow}`
+                  }}
+                >
+                  Продолжить
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
       // Модальное окно "Забыли пароль?"
       const ForgotPasswordModal = () => {
         if (!showForgotPassword) return null;
@@ -5196,6 +5631,9 @@
           {/* Модальные окна авторизации */}
           <AuthModal />
           <ForgotPasswordModal />
+          
+          {/* Модальное окно получения нового уровня */}
+          <LevelUpModal />
           
           {imageForCrop && <AvatarCropModal src={imageForCrop} onCancel={() => setImageForCrop(null)} onComplete={handleAvatarUpdate} />}
           {gameForReview && <DeepReviewModal game={gameForReview} existingAnswers={gameForReview.deep_review_answers} onClose={() => setGameForReview(null)} onSubmit={submitDeepReview} />}
@@ -5310,12 +5748,26 @@
                       )}
                 </div>
                 <div className="flex items-center gap-2 md:gap-3">
-                  <div className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg border border-purple-500/30">
-                    <Avatar src={viewingUser ? viewingUser.avatar : user?.avatar} size="sm" />
-                    <div>
+                  <div className="flex flex-col gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg border border-purple-500/30 min-w-[200px]">
+                    <div className="flex items-center gap-2">
+                      <Avatar 
+                        src={viewingUser ? viewingUser.avatar : user?.avatar} 
+                        size="sm" 
+                        level={viewingUser ? viewingUser.level : (userLevel?.level || user?.level)}
+                        showBorder={true}
+                      />
+                      <div className="flex-1">
                       <span className="text-white font-semibold text-sm md:text-base block">{viewingUser ? (userNickname || viewingUser.username) : user?.username}</span>
                       {viewingUser && userNickname && <span className="text-xs text-gray-400">@{viewingUser.username}</span>}
                     </div>
+                    </div>
+                    <XPBar
+                      level={viewingUser ? (viewingUser.level || 1) : (userLevel?.level || user?.level || 1)}
+                      totalXP={viewingUser ? (viewingUser.total_xp || 0) : (userLevel?.totalXP || user?.total_xp || 0)}
+                      title={viewingUser ? (LEVEL_TITLES[viewingUser.level || 1] || 'Новичок') : (userLevel?.title || LEVEL_TITLES[user?.level || 1] || 'Новичок')}
+                      progress={viewingUser ? getProgressToNextLevel(viewingUser.total_xp || 0, viewingUser.level || 1) : (userLevel?.progress || getProgressToNextLevel(user?.total_xp || 0, user?.level || 1))}
+                      compact={true}
+                    />
                   </div>
                   {viewingUser ? (
                     <Fragment>
@@ -5408,12 +5860,29 @@
               {/* Sidebar */}
               <div className="fixed top-0 left-0 h-full w-72 bg-gray-900 z-50 p-6 overflow-y-auto transform transition-transform">
                 {/* Профиль */}
-                <div className="flex items-center gap-3 mb-6 pb-6 border-b border-gray-700">
-                  <Avatar src={user?.avatar} size="lg" />
-                  <div>
-                    <p className="text-white font-semibold">{user?.username}</p>
-                    <p className="text-sm text-gray-400">{user?.email}</p>
+                <div className="flex flex-col gap-3 mb-6 pb-6 border-b border-gray-700">
+                  <div className="flex items-center gap-3">
+                    <Avatar 
+                      src={user?.avatar} 
+                      size="lg" 
+                      level={userLevel?.level || user?.level || 1}
+                      showBorder={true}
+                    />
+                    <div className="flex-1">
+                      <p className="text-white font-semibold">{user?.username}</p>
+                      <p className="text-sm text-gray-400">{user?.email}</p>
+                      <p className="text-xs text-purple-400 mt-1">
+                        Уровень {userLevel?.level || user?.level || 1}: {LEVEL_TITLES[userLevel?.level || user?.level || 1] || 'Новичок'}
+                      </p>
+                    </div>
                   </div>
+                  <XPBar
+                    level={userLevel?.level || user?.level || 1}
+                    totalXP={userLevel?.totalXP || user?.total_xp || 0}
+                    title={userLevel?.title || LEVEL_TITLES[user?.level || 1] || 'Новичок'}
+                    progress={userLevel?.progress || getProgressToNextLevel(user?.total_xp || 0, user?.level || 1)}
+                    compact={true}
+                  />
                 </div>
 
                 {/* Переключение приложений */}
@@ -5487,8 +5956,28 @@
                   <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-purple-500/30 max-h-[90vh] overflow-y-auto elevation-3">
                       <h2 className="text-2xl font-bold text-white mb-4">Настройки профиля</h2>
                       <div className="space-y-4">
-                      <div className="flex flex-col items-center gap-3">
-                          <Avatar src={user?.avatar} size="xl" />
+                      <div className="flex flex-col items-center gap-4">
+                          <Avatar 
+                            src={user?.avatar} 
+                            size="xl" 
+                            level={userLevel?.level || user?.level || 1}
+                            showBorder={true}
+                          />
+                          <div className="text-center">
+                            <div className="text-lg font-bold text-white mb-1">
+                              Уровень {userLevel?.level || user?.level || 1}: {LEVEL_TITLES[userLevel?.level || user?.level || 1] || 'Новичок'}
+                            </div>
+                            <div className="text-sm text-gray-400">
+                              {userLevel?.totalXP || user?.total_xp || 0} XP
+                            </div>
+                          </div>
+                          <XPBar
+                            level={userLevel?.level || user?.level || 1}
+                            totalXP={userLevel?.totalXP || user?.total_xp || 0}
+                            title={userLevel?.title || LEVEL_TITLES[user?.level || 1] || 'Новичок'}
+                            progress={userLevel?.progress || getProgressToNextLevel(user?.total_xp || 0, user?.level || 1)}
+                            compact={false}
+                          />
                           <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden" />
                           <button onClick={() => fileInputRef.current?.click()} disabled={uploadingAvatar} className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-all disabled:opacity-50">
                           {uploadingAvatar ? <Icon name="loader" className="w-4 h-4" /> : <Icon name="upload" className="w-4 h-4" />}

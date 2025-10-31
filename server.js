@@ -1071,6 +1071,14 @@ async function initDatabase() {
       ALTER TABLE books ADD COLUMN IF NOT EXISTS review TEXT;
       ALTER TABLE books ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT false;
       ALTER TABLE comics ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT false;
+      
+      -- LEVEL SYSTEM (GAMES)
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS total_xp INTEGER DEFAULT 0;
+      
+      -- LEVEL SYSTEM (MEDIA/MOVIES)
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS media_level INTEGER DEFAULT 1;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS media_total_xp INTEGER DEFAULT 0;
 
       -- MEDIA (movies/series)
       CREATE TABLE IF NOT EXISTS media_items (
@@ -1269,6 +1277,549 @@ async function createNotification(userId, fromUserId, type, message, referenceId
     );
   } catch (error) {
     console.error(`Failed to create notification [${type}]:`, error);
+  } finally {
+    client.release();
+  }
+}
+
+// === LEVEL SYSTEM FUNCTIONS ===
+
+// Таблица уровней (накопительный опыт для каждого уровня)
+const LEVEL_XP_TABLE = {
+  1: 0,
+  2: 2400,
+  3: 4821,
+  4: 7264,
+  5: 9729,
+  6: 12216,
+  7: 14725,
+  8: 17255,
+  9: 19807,
+  10: 22381,
+  11: 24977,
+  12: 27595,
+  13: 30234,
+  14: 32895,
+  15: 35578,
+  16: 38283,
+  17: 41010,
+  18: 43758,
+  19: 46528,
+  20: 49320,
+  21: 52134,
+  22: 54970,
+  23: 57827,
+  24: 60706,
+  25: 63607,
+  26: 66530,
+  27: 69475,
+  28: 72441,
+  29: 75429,
+  30: 78439,
+  31: 81471,
+  32: 84525,
+  33: 87600,
+  34: 90697,
+  35: 93816,
+  36: 96957,
+  37: 100120,
+  38: 103304,
+  39: 106510,
+  40: 109738,
+  41: 112988,
+  42: 116260,
+  43: 119553,
+  44: 122868,
+  45: 126205,
+  46: 129564,
+  47: 132945,
+  48: 136347,
+  49: 139771,
+  50: 143217,
+  51: 146685,
+  52: 150175,
+  53: 153686,
+  54: 157219,
+  55: 160774,
+  56: 164351,
+  57: 167950,
+  58: 171570,
+  59: 175212,
+  60: 178876,
+  61: 182562,
+  62: 186270,
+  63: 189999,
+  64: 193750,
+  65: 197523,
+  66: 201318,
+  67: 205135,
+  68: 208973,
+  69: 212833,
+  70: 216715,
+  71: 220619,
+  72: 224545,
+  73: 228492,
+  74: 232461,
+  75: 236452,
+  76: 240465,
+  77: 244500,
+  78: 248556,
+  79: 252634,
+  80: 256734,
+  81: 260856,
+  82: 265000,
+  83: 269165,
+  84: 273352,
+  85: 277561,
+  86: 281792,
+  87: 286045,
+  88: 290319,
+  89: 294615,
+  90: 298933,
+  91: 303273,
+  92: 307635,
+  93: 312018,
+  94: 316423,
+  95: 320850,
+  96: 325299,
+  97: 329770,
+  98: 334262,
+  99: 338776,
+  100: 343312
+};
+
+// Звания для уровней
+const LEVEL_TITLES = {
+  1: 'Новичок', 2: 'Начинающий Игрок', 3: 'Любитель', 4: 'Энтузиаст', 5: 'Геймер',
+  6: 'Практикант', 7: 'Ученик', 8: 'Подмастерье', 9: 'Стажёр', 10: 'Посвящённый',
+  11: 'Искатель Приключений', 12: 'Странник', 13: 'Путешественник', 14: 'Исследователь', 15: 'Следопыт',
+  16: 'Авантюрист', 17: 'Искушённый', 18: 'Знаток', 19: 'Эксперт', 20: 'Ветеран',
+  21: 'Бывалый', 22: 'Опытный Воин', 23: 'Закалённый', 24: 'Профессионал', 25: 'Специалист',
+  26: 'Мастер', 27: 'Виртуоз', 28: 'Умелец', 29: 'Талант', 30: 'Гуру',
+  31: 'Чемпион', 32: 'Герой', 33: 'Защитник', 34: 'Страж', 35: 'Рыцарь',
+  36: 'Паладин', 37: 'Крестоносец', 38: 'Воитель', 39: 'Боец', 40: 'Гладиатор',
+  41: 'Элитный Игрок', 42: 'Непобедимый', 43: 'Неудержимый', 44: 'Доминатор', 45: 'Покоритель',
+  46: 'Завоеватель', 47: 'Триумфатор', 48: 'Победитель', 49: 'Повелитель', 50: 'Властелин',
+  51: 'Император', 52: 'Монарх', 53: 'Владыка', 54: 'Тиран', 55: 'Деспот',
+  56: 'Диктатор', 57: 'Верховный', 58: 'Абсолютный', 59: 'Превосходный', 60: 'Совершенный',
+  61: 'Легендарный Воин', 62: 'Мифический', 63: 'Эпический', 64: 'Легендарный', 65: 'Баснословный',
+  66: 'Знаменитый', 67: 'Прославленный', 68: 'Великий', 69: 'Величайший', 70: 'Грандиозный',
+  71: 'Колоссальный', 72: 'Титанический', 73: 'Гигантский', 74: 'Огромный', 75: 'Исполинский',
+  76: 'Монументальный', 77: 'Грандиозный Мастер', 78: 'Невероятный', 79: 'Фантастический', 80: 'Феноменальный',
+  81: 'Божественный', 82: 'Небесный', 83: 'Ангельский', 84: 'Святой', 85: 'Священный',
+  86: 'Благословенный', 87: 'Просветлённый', 88: 'Возвышенный', 89: 'Трансцендентный', 90: 'Бессмертный',
+  91: 'Вечный', 92: 'Бесконечный', 93: 'Всемогущий', 94: 'Всезнающий', 95: 'Вездесущий',
+  96: 'Абсолютный Мастер', 97: 'Запредельный', 98: 'Несравненный', 99: 'Единственный', 100: 'ЛЕГЕНДА'
+};
+
+// Получение цвета рамки для уровня
+function getBorderColorForLevel(level) {
+  if (level <= 10) {
+    return { color: '#4ade80', gradient: 'linear-gradient(135deg, #4ade80, #22c55e)', name: 'Новичок' };
+  } else if (level <= 25) {
+    return { color: '#3b82f6', gradient: 'linear-gradient(135deg, #3b82f6, #2563eb)', name: 'Опытный' };
+  } else if (level <= 40) {
+    return { color: '#a855f7', gradient: 'linear-gradient(135deg, #a855f7, #9333ea)', name: 'Продвинутый' };
+  } else if (level <= 60) {
+    return { color: '#eab308', gradient: 'linear-gradient(135deg, #eab308, #ca8a04)', name: 'Элитный' };
+  } else if (level <= 80) {
+    return { color: '#ef4444', gradient: 'linear-gradient(135deg, #ef4444, #dc2626)', name: 'Легендарный' };
+  } else if (level <= 95) {
+    return { color: '#f0f0f0', gradient: 'linear-gradient(135deg, #f0f0f0, #d4d4d4)', name: 'Божественный' };
+  } else {
+    return { color: '#fbbf24', gradient: 'linear-gradient(135deg, #fbbf24, #f59e0b, #f97316, #ef4444)', name: 'Абсолют' };
+  }
+}
+
+// Расчет XP за игру на основе времени прохождения
+function getXPForGame(hoursPlayed = null) {
+  const BASE_XP = 300;
+  
+  if (hoursPlayed === null || hoursPlayed < 5) {
+    return BASE_XP;
+  }
+  
+  let multiplier = 1.0;
+  if (hoursPlayed >= 100) multiplier = 3.0;
+  else if (hoursPlayed >= 80) multiplier = 2.6;
+  else if (hoursPlayed >= 60) multiplier = 2.3;
+  else if (hoursPlayed >= 40) multiplier = 2.0;
+  else if (hoursPlayed >= 25) multiplier = 1.7;
+  else if (hoursPlayed >= 15) multiplier = 1.5;
+  else if (hoursPlayed >= 8) multiplier = 1.3;
+  else if (hoursPlayed >= 5) multiplier = 1.2;
+  
+  return Math.round(BASE_XP * multiplier);
+}
+
+// Расчет XP за фильм/сериал для системы уровней игр (старая система, оставляем для совместимости)
+function getXPForMedia(mediaType = 'movie') {
+  // Фильм = 200 XP, Сериал = 300 XP (базовая система для игровых уровней)
+  return mediaType === 'tv' ? 300 : 200;
+}
+
+// === MEDIA LEVEL SYSTEM FUNCTIONS ===
+
+// Таблица уровней медиа (накопительный опыт для каждого уровня)
+const MEDIA_LEVEL_XP_TABLE = {
+  1: 0,
+  2: 15000,
+  3: 30064,
+  4: 45194,
+  5: 60389,
+  6: 75648,
+  7: 90972,
+  8: 106362,
+  9: 121816,
+  10: 137335,
+  11: 152920,
+  12: 168569,
+  13: 184283,
+  14: 200063,
+  15: 215907,
+  16: 231817,
+  17: 247791,
+  18: 263831,
+  19: 279936,
+  20: 296106,
+  21: 312341,
+  22: 328641,
+  23: 345006,
+  24: 361437,
+  25: 377933,
+  26: 394494,
+  27: 411120,
+  28: 427811,
+  29: 444568,
+  30: 461390,
+  31: 478277,
+  32: 495230,
+  33: 512248,
+  34: 529331,
+  35: 546480,
+  36: 563694,
+  37: 580973,
+  38: 598318,
+  39: 615728,
+  40: 633204,
+  41: 650745,
+  42: 668351,
+  43: 686023,
+  44: 703760,
+  45: 721563,
+  46: 739431,
+  47: 757364,
+  48: 775363,
+  49: 793428,
+  50: 811558,
+  51: 829753,
+  52: 848014,
+  53: 866340,
+  54: 884732,
+  55: 903189,
+  56: 921712,
+  57: 940300,
+  58: 958954,
+  59: 977673,
+  60: 996458,
+  61: 1015308,
+  62: 1034224,
+  63: 1053205,
+  64: 1072251,
+  65: 1091363,
+  66: 1110541,
+  67: 1129784,
+  68: 1149092,
+  69: 1168466,
+  70: 1187905,
+  71: 1207410,
+  72: 1226980,
+  73: 1246616,
+  74: 1266317,
+  75: 1286084,
+  76: 1305916,
+  77: 1325814,
+  78: 1345777,
+  79: 1365806,
+  80: 1385900,
+  81: 1406060,
+  82: 1426285,
+  83: 1446576,
+  84: 1466932,
+  85: 1487354,
+  86: 1507841,
+  87: 1528394,
+  88: 1549012,
+  89: 1569696,
+  90: 1590445,
+  91: 1611260,
+  92: 1632140,
+  93: 1653086,
+  94: 1674097,
+  95: 1695174,
+  96: 1716316,
+  97: 1737524,
+  98: 1758797,
+  99: 1780136,
+  100: 1801540
+};
+
+// Звания для уровней медиа
+const MEDIA_LEVEL_TITLES = {
+  1: 'Зритель', 2: 'Новичок Кино', 3: 'Любитель Кино', 4: 'Киноман', 5: 'Ценитель',
+  6: 'Поклонник', 7: 'Фанат Кино', 8: 'Знаток Кино', 9: 'Киноэнтузиаст', 10: 'Посвящённый',
+  11: 'Искатель Сюжетов', 12: 'Охотник за Фильмами', 13: 'Исследователь Жанров', 14: 'Коллекционер', 15: 'Архивариус',
+  16: 'Киновед', 17: 'Киноискатель', 18: 'Знаток Жанров', 19: 'Эксперт', 20: 'Киноветеран',
+  21: 'Опытный Зритель', 22: 'Бывалый Киноман', 23: 'Матёрый Зритель', 24: 'Профессионал', 25: 'Мастер Жанров',
+  26: 'Киномастер', 27: 'Виртуоз Кино', 28: 'Гуру Кинематографа', 29: 'Талантливый Критик', 30: 'Авторитет',
+  31: 'Знаменитый Критик', 32: 'Герой Кинозалов', 33: 'Защитник Кино', 34: 'Хранитель Фильмов', 35: 'Рыцарь Экрана',
+  36: 'Паладин Кинематографа', 37: 'Крестоносец Жанров', 38: 'Воитель Вкуса', 39: 'Боец за Качество', 40: 'Гладиатор Рейтингов',
+  41: 'Элитный Критик', 42: 'Непревзойдённый', 43: 'Неудержимый Зритель', 44: 'Доминатор Жанров', 45: 'Покоритель Экранов',
+  46: 'Завоеватель Кинозалов', 47: 'Триумфатор', 48: 'Победитель Фестивалей', 49: 'Повелитель Вкуса', 50: 'Властелин Кино',
+  51: 'Император Экранов', 52: 'Монарх Кинематографа', 53: 'Владыка Жанров', 54: 'Кинотиран', 55: 'Деспот Рейтингов',
+  56: 'Диктатор Вкуса', 57: 'Верховный Критик', 58: 'Абсолютный Знаток', 59: 'Превосходный Ценитель', 60: 'Совершенный Киноман',
+  61: 'Легендарный Критик', 62: 'Мифический Зритель', 63: 'Эпический Киноман', 64: 'Легендарный Ценитель', 65: 'Баснословный Критик',
+  66: 'Знаменитость Кино', 67: 'Прославленный Критик', 68: 'Великий Киновед', 69: 'Величайший Зритель', 70: 'Грандиозный Критик',
+  71: 'Колоссальный Эксперт', 72: 'Титан Кинематографа', 73: 'Гигант Киноиндустрии', 74: 'Огромный Авторитет', 75: 'Исполин Кино',
+  76: 'Монумент Кинематографа', 77: 'Грандиозный Мэтр', 78: 'Невероятный Критик', 79: 'Фантастический Знаток', 80: 'Феноменальный Киновед',
+  81: 'Божество Кино', 82: 'Небесный Критик', 83: 'Ангел Кинематографа', 84: 'Святой Покровитель', 85: 'Священный Хранитель',
+  86: 'Благословенный Мэтр', 87: 'Просветлённый Гуру', 88: 'Возвышенный Критик', 89: 'Трансцендентный Знаток', 90: 'Бессмертная Легенда',
+  91: 'Вечный Ценитель', 92: 'Бесконечный Критик', 93: 'Всемогущий Киновед', 94: 'Всезнающий Мэтр', 95: 'Вездесущий Критик',
+  96: 'Абсолютный Мэтр Кино', 97: 'Запредельный Критик', 98: 'Несравненный Киновед', 99: 'Единственный и Неповторимый', 100: 'ОСКАР'
+};
+
+// Расчет XP за фильм/сериал для системы уровней медиа
+function getXPForMediaContent(mediaType = 'movie') {
+  // Фильм = 100 XP, Сериал = 500 XP
+  return mediaType === 'tv' ? 500 : 100;
+}
+
+// Расчет уровня медиа на основе общего XP
+function calculateMediaLevelFromXP(totalXP) {
+  let level = 1;
+  for (let i = 100; i >= 1; i--) {
+    if (totalXP >= MEDIA_LEVEL_XP_TABLE[i]) {
+      level = i;
+      break;
+    }
+  }
+  return level;
+}
+
+// Расчет прогресса до следующего уровня медиа
+function getMediaProgressToNextLevel(totalXP, currentLevel) {
+  const currentLevelXP = MEDIA_LEVEL_XP_TABLE[currentLevel] || 0;
+  const nextLevel = Math.min(currentLevel + 1, 100);
+  const nextLevelXP = MEDIA_LEVEL_XP_TABLE[nextLevel] || MEDIA_LEVEL_XP_TABLE[100];
+  
+  const xpNeeded = nextLevelXP - currentLevelXP;
+  const xpProgress = totalXP - currentLevelXP;
+  const percentage = Math.min((xpProgress / xpNeeded) * 100, 100);
+  
+  return {
+    percentage: Math.round(percentage * 100) / 100,
+    current: xpProgress,
+    needed: xpNeeded,
+    nextLevel: nextLevel
+  };
+}
+
+// Получение цвета рамки для уровня медиа
+function getMediaBorderColorForLevel(level) {
+  if (level <= 10) {
+    return { color: '#4ade80', gradient: 'linear-gradient(135deg, #4ade80, #22c55e)', name: 'Зритель', icon: '🎬', glow: 'rgba(74, 222, 128, 0.3)' };
+  } else if (level <= 25) {
+    return { color: '#3b82f6', gradient: 'linear-gradient(135deg, #3b82f6, #2563eb)', name: 'Киноман', icon: '🎥', glow: 'rgba(59, 130, 246, 0.3)' };
+  } else if (level <= 40) {
+    return { color: '#a855f7', gradient: 'linear-gradient(135deg, #a855f7, #9333ea)', name: 'Критик', icon: '🎭', glow: 'rgba(168, 85, 247, 0.3)' };
+  } else if (level <= 60) {
+    return { color: '#eab308', gradient: 'linear-gradient(135deg, #eab308, #ca8a04)', name: 'Мэтр', icon: '⭐', glow: 'rgba(234, 179, 8, 0.4)' };
+  } else if (level <= 80) {
+    return { color: '#ef4444', gradient: 'linear-gradient(135deg, #ef4444, #dc2626)', name: 'Легенда', icon: '🔥', glow: 'rgba(239, 68, 68, 0.4)' };
+  } else if (level <= 95) {
+    return { color: '#f0f0f0', gradient: 'linear-gradient(135deg, #f0f0f0, #d4d4d4)', name: 'Божество', icon: '✨', glow: 'rgba(240, 240, 240, 0.5)' };
+  } else {
+    return { color: '#ffd700', gradient: 'linear-gradient(135deg, #ffd700, #ffed4e, #ffd700)', name: 'Оскар', icon: '🏆', glow: 'rgba(255, 215, 0, 0.6)' };
+  }
+}
+
+// Обновление XP и уровня медиа пользователя
+async function updateUserMediaXP(userId, additionalXP) {
+  const client = await pool.connect();
+  try {
+    // Получаем текущие данные пользователя
+    const userResult = await client.query('SELECT media_total_xp, media_level FROM users WHERE id = $1', [userId]);
+    if (userResult.rows.length === 0) return null;
+    
+    const currentXP = userResult.rows[0].media_total_xp || 0;
+    const currentLevel = userResult.rows[0].media_level || 1;
+    
+    // Добавляем новый XP
+    const newTotalXP = currentXP + additionalXP;
+    const newLevel = calculateMediaLevelFromXP(newTotalXP);
+    
+    // Обновляем в базе
+    await client.query(
+      'UPDATE users SET media_total_xp = $1, media_level = $2 WHERE id = $3',
+      [newTotalXP, newLevel, userId]
+    );
+    
+    // Возвращаем информацию об изменении уровня
+    return {
+      oldLevel: currentLevel,
+      newLevel: newLevel,
+      oldXP: currentXP,
+      newXP: newTotalXP,
+      leveledUp: newLevel > currentLevel
+    };
+  } catch (error) {
+    console.error('Ошибка обновления XP медиа:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Пересчет XP медиа для всех фильмов и сериалов пользователя (для миграции)
+async function recalculateUserMediaXP(userId) {
+  const client = await pool.connect();
+  try {
+    // Получаем все просмотренные фильмы/сериалы
+    const mediaResult = await client.query(
+      'SELECT media_type FROM media_items WHERE user_id = $1 AND board = $2',
+      [userId, 'watched']
+    );
+    
+    // Считаем XP
+    let totalXP = 0;
+    
+    mediaResult.rows.forEach(media => {
+      totalXP += getXPForMediaContent(media.media_type);
+    });
+    
+    // Обновляем уровень
+    const newLevel = calculateMediaLevelFromXP(totalXP);
+    
+    await client.query(
+      'UPDATE users SET media_total_xp = $1, media_level = $2 WHERE id = $3',
+      [totalXP, newLevel, userId]
+    );
+    
+    return { totalXP, level: newLevel };
+  } catch (error) {
+    console.error('Ошибка пересчета XP медиа:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Расчет уровня на основе общего XP
+function calculateLevelFromXP(totalXP) {
+  let level = 1;
+  for (let i = 100; i >= 1; i--) {
+    if (totalXP >= LEVEL_XP_TABLE[i]) {
+      level = i;
+      break;
+    }
+  }
+  return level;
+}
+
+// Расчет прогресса до следующего уровня
+function getProgressToNextLevel(totalXP, currentLevel) {
+  const currentLevelXP = LEVEL_XP_TABLE[currentLevel] || 0;
+  const nextLevel = Math.min(currentLevel + 1, 100);
+  const nextLevelXP = LEVEL_XP_TABLE[nextLevel] || LEVEL_XP_TABLE[100];
+  
+  const xpNeeded = nextLevelXP - currentLevelXP;
+  const xpProgress = totalXP - currentLevelXP;
+  const percentage = Math.min((xpProgress / xpNeeded) * 100, 100);
+  
+  return {
+    percentage: Math.round(percentage * 100) / 100,
+    current: xpProgress,
+    needed: xpNeeded,
+    nextLevel: nextLevel
+  };
+}
+
+// Обновление XP и уровня пользователя
+async function updateUserXP(userId, additionalXP) {
+  const client = await pool.connect();
+  try {
+    // Получаем текущие данные пользователя
+    const userResult = await client.query('SELECT total_xp, level FROM users WHERE id = $1', [userId]);
+    if (userResult.rows.length === 0) return null;
+    
+    const currentXP = userResult.rows[0].total_xp || 0;
+    const currentLevel = userResult.rows[0].level || 1;
+    
+    // Добавляем новый XP
+    const newTotalXP = currentXP + additionalXP;
+    const newLevel = calculateLevelFromXP(newTotalXP);
+    
+    // Обновляем в базе
+    await client.query(
+      'UPDATE users SET total_xp = $1, level = $2 WHERE id = $3',
+      [newTotalXP, newLevel, userId]
+    );
+    
+    // Возвращаем информацию об изменении уровня
+    return {
+      oldLevel: currentLevel,
+      newLevel: newLevel,
+      oldXP: currentXP,
+      newXP: newTotalXP,
+      leveledUp: newLevel > currentLevel
+    };
+  } catch (error) {
+    console.error('Ошибка обновления XP:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Пересчет XP для всех игр и фильмов пользователя (для миграции)
+async function recalculateUserXP(userId) {
+  const client = await pool.connect();
+  try {
+    // Получаем все игры пользователя на доске "completed"
+    const gamesResult = await client.query(
+      'SELECT hours_played FROM games WHERE user_id = $1 AND board = $2',
+      [userId, 'completed']
+    );
+    
+    // Получаем все просмотренные фильмы/сериалы
+    const mediaResult = await client.query(
+      'SELECT media_type FROM media_items WHERE user_id = $1 AND board = $2',
+      [userId, 'watched']
+    );
+    
+    // Считаем XP
+    let totalXP = 0;
+    
+    gamesResult.rows.forEach(game => {
+      totalXP += getXPForGame(game.hours_played);
+    });
+    
+    mediaResult.rows.forEach(media => {
+      totalXP += getXPForMedia(media.media_type);
+    });
+    
+    // Обновляем уровень
+    const newLevel = calculateLevelFromXP(totalXP);
+    
+    await client.query(
+      'UPDATE users SET total_xp = $1, level = $2 WHERE id = $3',
+      [totalXP, newLevel, userId]
+    );
+    
+    return { totalXP, level: newLevel };
+  } catch (error) {
+    console.error('Ошибка пересчета XP:', error);
+    throw error;
   } finally {
     client.release();
   }
@@ -1650,7 +2201,11 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
         avatar: user.avatar, 
         bio: user.bio, 
         theme: user.theme,
-        is_email_verified: user.is_email_verified
+        is_email_verified: user.is_email_verified,
+        level: user.level || 1,
+        total_xp: user.total_xp || 0,
+        media_level: user.media_level || 1,
+        media_total_xp: user.media_total_xp || 0
       }
     });
   } catch (error) {
@@ -1666,7 +2221,7 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      'SELECT id, username, email, avatar, bio, theme, created_at FROM users WHERE id = $1',
+      'SELECT id, username, email, avatar, bio, theme, level, total_xp, media_level, media_total_xp, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
     res.json({ user: result.rows[0] });
@@ -1690,7 +2245,21 @@ app.post('/api/profile/avatar', avatarLimiter, authenticateToken, validateAvatar
       [avatar, req.user.id]
     );
     const user = result.rows[0];
-    res.json({ message: 'Аватар обновлен', user: { id: user.id, username: user.username, email: user.email, avatar: user.avatar, bio: user.bio, theme: user.theme } });
+    res.json({ 
+      message: 'Аватар обновлен', 
+      user: { 
+        id: user.id, 
+        username: user.username, 
+        email: user.email, 
+        avatar: user.avatar, 
+        bio: user.bio, 
+        theme: user.theme,
+        level: user.level || 1,
+        total_xp: user.total_xp || 0,
+        media_level: user.media_level || 1,
+        media_total_xp: user.media_total_xp || 0
+      } 
+    });
   } catch (error) {
     console.error('Ошибка загрузки аватара:', error);
     res.status(500).json({ error: 'Ошибка загрузки аватара' });
@@ -2040,9 +2609,22 @@ app.post('/api/user/boards/:boardId/games', authenticateToken, async (req, res) 
       'INSERT INTO games (user_id, game_id, name, cover, board, video_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
       [req.user.id, game.id, game.name, game.cover || null, boardId, game.videoId || null]
     );
+    
+    // Начисляем XP если игра добавлена на доску "completed"
+    let levelUpInfo = null;
+    if (boardId === 'completed') {
+      const hoursPlayed = game.hoursPlayed || null;
+      const xpGained = getXPForGame(hoursPlayed);
+      levelUpInfo = await updateUserXP(req.user.id, xpGained);
+    }
+    
     // ЛОГИРОВАНИЕ
     await logActivity(req.user.id, 'add_game', { gameName: game.name, board: boardId });
-    res.status(201).json({ message: 'Игра добавлена', game: result.rows[0] });
+    res.status(201).json({ 
+      message: 'Игра добавлена', 
+      game: result.rows[0],
+      levelUp: levelUpInfo
+    });
   } catch (error) {
     console.error('Ошибка добавления игры:', error);
     res.status(500).json({ error: 'Ошибка сервера', details: error.message });
@@ -2056,13 +2638,20 @@ app.delete('/api/user/games/:gameId', authenticateToken, validateIdParam('gameId
   try {
     const { gameId } = req.params;
     // Сначала получаем данные игры
-    const gameResult = await client.query('SELECT name FROM games WHERE id = $1 AND user_id = $2', [gameId, req.user.id]);
+    const gameResult = await client.query('SELECT name, board, hours_played FROM games WHERE id = $1 AND user_id = $2', [gameId, req.user.id]);
     if (gameResult.rows.length > 0) {
-      const gameName = gameResult.rows[0].name;
+      const game = gameResult.rows[0];
+      
+      // Снимаем XP если игра была на доске "completed"
+      if (game.board === 'completed') {
+        const xpToRemove = getXPForGame(game.hours_played);
+        await updateUserXP(req.user.id, -xpToRemove);
+      }
+      
       // Потом удаляем
       await client.query('DELETE FROM games WHERE id = $1 AND user_id = $2', [gameId, req.user.id]);
       // И логируем
-      await logActivity(req.user.id, 'remove_game', { gameName });
+      await logActivity(req.user.id, 'remove_game', { gameName: game.name });
       res.json({ message: 'Игра удалена' });
     } else {
       res.status(404).json({ message: 'Игра не найдена' });
@@ -2081,11 +2670,15 @@ app.put('/api/user/games/:gameId', authenticateToken, validateIdParam('gameId'),
     const { gameId } = req.params;
     const { board, rating, notes, hoursPlayed, review, is_published } = req.body;
 
-    let oldGameData = null;
-    if (board) {
-      const oldGameResult = await client.query('SELECT board, name FROM games WHERE id = $1 AND user_id = $2', [gameId, req.user.id]);
-      if (oldGameResult.rows.length > 0) oldGameData = oldGameResult.rows[0];
+    // Получаем старые данные игры для расчета XP
+    const oldGameResult = await client.query(
+      'SELECT board, hours_played, name FROM games WHERE id = $1 AND user_id = $2',
+      [gameId, req.user.id]
+    );
+    if (oldGameResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Игра не найдена' });
     }
+    const oldGameData = oldGameResult.rows[0];
 
     let updateFields = [], values = [], paramCount = 1;
     if (board) { updateFields.push(`board = $${paramCount++}`); values.push(board); }
@@ -2102,8 +2695,36 @@ app.put('/api/user/games/:gameId', authenticateToken, validateIdParam('gameId'),
       values
     );
 
+    // ОБРАБОТКА XP
+    let levelUpInfo = null;
+    const newBoard = board || oldGameData.board;
+    const newHoursPlayed = hoursPlayed !== undefined ? hoursPlayed : oldGameData.hours_played;
+    
+    // Если игра перемещается между досками
+    if (board && oldGameData.board !== board) {
+      if (oldGameData.board === 'completed') {
+        // Снимаем XP если игра перемещается с доски "completed"
+        const oldXP = getXPForGame(oldGameData.hours_played);
+        await updateUserXP(req.user.id, -oldXP);
+      }
+      if (board === 'completed') {
+        // Начисляем XP если игра перемещается на доску "completed"
+        const newXP = getXPForGame(newHoursPlayed);
+        levelUpInfo = await updateUserXP(req.user.id, newXP);
+      }
+    }
+    // Если изменяются часы игры и игра на доске "completed"
+    else if (hoursPlayed !== undefined && oldGameData.hours_played !== hoursPlayed && newBoard === 'completed') {
+      const oldXP = getXPForGame(oldGameData.hours_played);
+      const newXP = getXPForGame(newHoursPlayed);
+      const xpDiff = newXP - oldXP;
+      if (xpDiff !== 0) {
+        levelUpInfo = await updateUserXP(req.user.id, xpDiff);
+      }
+    }
+
     // ЛОГИРОВАНИЕ И УВЕДОМЛЕНИЯ
-    if (oldGameData && oldGameData.board !== board) {
+    if (board && oldGameData.board !== board) {
       if (board === 'completed') {
         await logActivity(req.user.id, 'complete_game', { gameName: oldGameData.name });
         
@@ -2127,7 +2748,11 @@ app.put('/api/user/games/:gameId', authenticateToken, validateIdParam('gameId'),
       }
     }
 
-    res.json({ message: 'Игра обновлена', game: result.rows[0] });
+    res.json({ 
+      message: 'Игра обновлена', 
+      game: result.rows[0],
+      levelUp: levelUpInfo
+    });
   } catch (error) {
     console.error('Ошибка обновления:', error);
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -2174,6 +2799,185 @@ app.post('/api/games/:gameId/deep-review', authenticateToken, validateIdParam('g
     res.json({ message: 'Отзыв сохранен', game: result.rows[0] });
   } catch (error) {
     console.error('Ошибка сохранения отзыва:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// === LEVEL SYSTEM ENDPOINTS ===
+
+// Получение уровня и опыта пользователя
+app.get('/api/user/level', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const userId = req.query.userId ? parseInt(req.query.userId) : req.user.id;
+    
+    // Если запрашивается другой пользователь, проверяем права доступа
+    if (userId !== req.user.id) {
+      const friendshipCheck = await client.query(
+        `SELECT status FROM friendships 
+         WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1) 
+         AND status = 'accepted'`,
+        [req.user.id, userId]
+      );
+      // Пока что разрешаем всем видеть уровни друг друга (можно ограничить позже)
+    }
+    
+    const result = await client.query(
+      'SELECT id, username, avatar, level, total_xp FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+    
+    const user = result.rows[0];
+    const level = user.level || 1;
+    const totalXP = user.total_xp || 0;
+    const progress = getProgressToNextLevel(totalXP, level);
+    const levelInfo = getBorderColorForLevel(level);
+    const title = LEVEL_TITLES[level] || 'Новичок';
+    
+    res.json({
+      level,
+      totalXP,
+      title,
+      progress,
+      borderColor: levelInfo.color,
+      borderGradient: levelInfo.gradient,
+      tierName: levelInfo.name
+    });
+  } catch (error) {
+    console.error('Ошибка получения уровня:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// Получить уровень медиа пользователя
+app.get('/api/user/media-level', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const userId = req.query.userId ? parseInt(req.query.userId) : req.user.id;
+    
+    // Если запрашивается другой пользователь, проверяем права доступа
+    if (userId !== req.user.id) {
+      const friendshipCheck = await client.query(
+        `SELECT status FROM friendships 
+         WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1) 
+         AND status = 'accepted'`,
+        [req.user.id, userId]
+      );
+      // Пока что разрешаем всем видеть уровни медиа друг друга (можно ограничить позже)
+    }
+    
+    const result = await client.query(
+      'SELECT id, username, avatar, media_level, media_total_xp FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+    
+    const user = result.rows[0];
+    const level = user.media_level || 1;
+    const totalXP = user.media_total_xp || 0;
+    const progress = getMediaProgressToNextLevel(totalXP, level);
+    const levelInfo = getMediaBorderColorForLevel(level);
+    const title = MEDIA_LEVEL_TITLES[level] || 'Зритель';
+    
+    res.json({
+      level,
+      totalXP,
+      title,
+      progress,
+      borderColor: levelInfo.color,
+      borderGradient: levelInfo.gradient,
+      tierName: levelInfo.name,
+      icon: levelInfo.icon
+    });
+  } catch (error) {
+    console.error('Ошибка получения уровня медиа:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// Миграция: пересчет XP медиа для всех пользователей
+app.post('/api/admin/recalculate-media-xp', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    // Получаем всех пользователей
+    const usersResult = await client.query('SELECT id FROM users');
+    
+    let updated = 0;
+    let errors = [];
+    
+    for (const user of usersResult.rows) {
+      try {
+        await recalculateUserMediaXP(user.id);
+        updated++;
+      } catch (error) {
+        console.error(`Ошибка пересчета XP медиа для пользователя ${user.id}:`, error);
+        errors.push({ userId: user.id, error: error.message });
+      }
+    }
+    
+    res.json({ 
+      message: 'Пересчет XP медиа завершен',
+      updated,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    console.error('Ошибка миграции XP медиа:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// Миграция: пересчет XP для всех пользователей
+app.post('/api/admin/recalculate-xp', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    // Проверяем, что это админ (можно добавить проверку роли позже)
+    // Пока что разрешаем всем, но можно ограничить
+    
+    const usersResult = await client.query('SELECT id, username FROM users');
+    const results = [];
+    
+    for (const user of usersResult.rows) {
+      try {
+        const result = await recalculateUserXP(user.id);
+        results.push({
+          userId: user.id,
+          username: user.username,
+          success: true,
+          totalXP: result.totalXP,
+          level: result.level
+        });
+      } catch (error) {
+        results.push({
+          userId: user.id,
+          username: user.username,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+    
+    res.json({
+      message: 'Пересчет XP завершен',
+      totalUsers: usersResult.rows.length,
+      results
+    });
+  } catch (error) {
+    console.error('Ошибка пересчета XP:', error);
     res.status(500).json({ error: 'Ошибка сервера' });
   } finally {
     client.release();
@@ -3337,8 +4141,20 @@ app.post('/api/user/media', authenticateToken, async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
       [req.user.id, item.tmdbId, item.mediaType, item.title, item.poster || null, safeBoard]
     );
+    
+    // Начисляем XP медиа если добавлено на доску "watched"
+    let mediaLevelUpInfo = null;
+    if (safeBoard === 'watched') {
+      const xpGained = getXPForMediaContent(item.mediaType);
+      mediaLevelUpInfo = await updateUserMediaXP(req.user.id, xpGained);
+    }
+    
     await logActivity(req.user.id, 'add_media', { title: item.title, mediaType: item.mediaType, board: safeBoard });
-    res.status(201).json({ message: 'Добавлено', media: result.rows[0] });
+    res.status(201).json({ 
+      message: 'Добавлено', 
+      media: result.rows[0],
+      mediaLevelUp: mediaLevelUpInfo
+    });
   } catch (error) {
     console.error('Ошибка добавления медиа:', error);
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -3416,6 +4232,17 @@ app.put('/api/user/media/:id', authenticateToken, validateIdParam('id'), sanitiz
   try {
     const { id } = req.params;
     const { board, rating, review, seasonsWatched, episodesWatched, is_published } = req.body;
+    
+    // Получаем старые данные медиа для обработки XP
+    const oldMediaResult = await client.query(
+      'SELECT board, media_type FROM media_items WHERE id = $1 AND user_id = $2',
+      [id, req.user.id]
+    );
+    if (oldMediaResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Не найдено' });
+    }
+    const oldMediaData = oldMediaResult.rows[0];
+    
     let updateFields = [], values = [], n = 1;
     if (board) { updateFields.push(`board = $${n++}`); values.push(board === 'watched' ? 'watched' : 'wishlist'); }
     if (rating !== undefined) { updateFields.push(`rating = $${n++}`); values.push(rating); }
@@ -3431,12 +4258,33 @@ app.put('/api/user/media/:id', authenticateToken, validateIdParam('id'), sanitiz
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Не найдено' });
     const row = result.rows[0];
+    
+    // Обработка XP медиа
+    let mediaLevelUpInfo = null;
+    if (board && oldMediaData.board !== board) {
+      // Если медиа перемещается между досками
+      if (oldMediaData.board === 'watched') {
+        // Снимаем XP если перемещаем с "watched"
+        const oldXP = getXPForMediaContent(oldMediaData.media_type);
+        await updateUserMediaXP(req.user.id, -oldXP);
+      }
+      if (board === 'watched') {
+        // Начисляем XP если перемещаем на "watched"
+        const newXP = getXPForMediaContent(row.media_type);
+        mediaLevelUpInfo = await updateUserMediaXP(req.user.id, newXP);
+      }
+    }
+    
     if (board) {
       await logActivity(req.user.id, row.board === 'watched' ? 'complete_media' : 'move_media', {
         title: row.title, mediaType: row.media_type, toBoard: board
       });
     }
-    res.json({ message: 'Обновлено', media: row });
+    res.json({ 
+      message: 'Обновлено', 
+      media: row,
+      mediaLevelUp: mediaLevelUpInfo
+    });
   } catch (error) {
     console.error('Ошибка обновления медиа:', error);
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -3449,7 +4297,17 @@ app.delete('/api/user/media/:id', authenticateToken, validateIdParam('id'), asyn
   const client = await pool.connect();
   try {
     const { id } = req.params;
-    const existed = await client.query('SELECT title FROM media_items WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+    const existed = await client.query(
+      'SELECT title, board, media_type FROM media_items WHERE id = $1 AND user_id = $2',
+      [id, req.user.id]
+    );
+    
+    // Снимаем XP медиа если удаляем с доски "watched"
+    if (existed.rows.length > 0 && existed.rows[0].board === 'watched') {
+      const xpToRemove = getXPForMediaContent(existed.rows[0].media_type);
+      await updateUserMediaXP(req.user.id, -xpToRemove);
+    }
+    
     await client.query('DELETE FROM media_items WHERE id = $1 AND user_id = $2', [id, req.user.id]);
     if (existed.rows[0]) await logActivity(req.user.id, 'remove_media', { title: existed.rows[0].title });
     res.json({ message: 'Удалено' });
@@ -5079,8 +5937,118 @@ console.log('   SENDGRID_API_KEY:', SENDGRID_API_KEY ? 'present' : 'missing');
 console.log('   FROM_EMAIL:', FROM_EMAIL || 'not set');
 console.log('   Healthcheck URL: http://0.0.0.0:' + PORT + '/api/health');
 
+// Автоматическая миграция XP при старте сервера
+async function runAutoMigration() {
+  const client = await pool.connect();
+  try {
+    // Проверяем, есть ли таблица для отслеживания миграций
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS migration_log (
+        id SERIAL PRIMARY KEY,
+        migration_name VARCHAR(255) UNIQUE NOT NULL,
+        executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        status VARCHAR(50) DEFAULT 'completed'
+      )
+    `);
+    
+    // Проверяем, выполнялась ли миграция XP для игр
+    const gameMigrationCheck = await client.query(
+      "SELECT * FROM migration_log WHERE migration_name = 'recalculate_games_xp'"
+    );
+    
+    // Проверяем, выполнялась ли миграция XP для медиа
+    const mediaMigrationCheck = await client.query(
+      "SELECT * FROM migration_log WHERE migration_name = 'recalculate_media_xp'"
+    );
+    
+    // Запускаем миграцию XP для игр, если не выполнялась
+    if (gameMigrationCheck.rows.length === 0) {
+      console.log('🔄 Начинаем автоматическую миграцию XP для игр...');
+      try {
+        const usersResult = await client.query('SELECT id, username FROM users');
+        let updated = 0;
+        let errors = [];
+        
+        for (const user of usersResult.rows) {
+          try {
+            await recalculateUserXP(user.id);
+            updated++;
+            if (updated % 10 === 0) {
+              console.log(`   Обработано пользователей: ${updated}/${usersResult.rows.length}`);
+            }
+          } catch (error) {
+            console.error(`   Ошибка для пользователя ${user.id} (${user.username}):`, error.message);
+            errors.push({ userId: user.id, username: user.username, error: error.message });
+          }
+        }
+        
+        // Записываем миграцию в лог
+        await client.query(
+          "INSERT INTO migration_log (migration_name, status) VALUES ('recalculate_games_xp', 'completed') ON CONFLICT (migration_name) DO NOTHING"
+        );
+        
+        console.log(`✅ Миграция XP для игр завершена: ${updated} пользователей обновлено`);
+        if (errors.length > 0) {
+          console.log(`⚠️  Ошибки при миграции: ${errors.length} пользователей`);
+        }
+      } catch (error) {
+        console.error('❌ Ошибка миграции XP для игр:', error);
+        await client.query(
+          "INSERT INTO migration_log (migration_name, status) VALUES ('recalculate_games_xp', 'failed') ON CONFLICT (migration_name) DO UPDATE SET status = 'failed'"
+        );
+      }
+    } else {
+      console.log('✅ Миграция XP для игр уже выполнена ранее');
+    }
+    
+    // Запускаем миграцию XP для медиа, если не выполнялась
+    if (mediaMigrationCheck.rows.length === 0) {
+      console.log('🔄 Начинаем автоматическую миграцию XP для медиа...');
+      try {
+        const usersResult = await client.query('SELECT id, username FROM users');
+        let updated = 0;
+        let errors = [];
+        
+        for (const user of usersResult.rows) {
+          try {
+            await recalculateUserMediaXP(user.id);
+            updated++;
+            if (updated % 10 === 0) {
+              console.log(`   Обработано пользователей: ${updated}/${usersResult.rows.length}`);
+            }
+          } catch (error) {
+            console.error(`   Ошибка для пользователя ${user.id} (${user.username}):`, error.message);
+            errors.push({ userId: user.id, username: user.username, error: error.message });
+          }
+        }
+        
+        // Записываем миграцию в лог
+        await client.query(
+          "INSERT INTO migration_log (migration_name, status) VALUES ('recalculate_media_xp', 'completed') ON CONFLICT (migration_name) DO NOTHING"
+        );
+        
+        console.log(`✅ Миграция XP для медиа завершена: ${updated} пользователей обновлено`);
+        if (errors.length > 0) {
+          console.log(`⚠️  Ошибки при миграции: ${errors.length} пользователей`);
+        }
+      } catch (error) {
+        console.error('❌ Ошибка миграции XP для медиа:', error);
+        await client.query(
+          "INSERT INTO migration_log (migration_name, status) VALUES ('recalculate_media_xp', 'failed') ON CONFLICT (migration_name) DO UPDATE SET status = 'failed'"
+        );
+      }
+    } else {
+      console.log('✅ Миграция XP для медиа уже выполнена ранее');
+    }
+  } catch (error) {
+    console.error('❌ Ошибка при проверке миграций:', error);
+  } finally {
+    client.release();
+  }
+}
+
 // Запускаем сервер
-const server = app.listen(PORT, '0.0.0.0', (err) => {
+const server = app.listen(PORT, '0.0.0.0', async (err) => {
   if (err) {
     console.error('❌ Ошибка запуска:', err);
     process.exit(1);
@@ -5088,6 +6056,12 @@ const server = app.listen(PORT, '0.0.0.0', (err) => {
   console.log(`🚀 Сервер успешно запущен на порту ${PORT}`);
   console.log(`🌐 Доступен по адресу: http://0.0.0.0:${PORT}`);
   console.log(`📊 Healthcheck endpoint: http://0.0.0.0:${PORT}/api/health`);
+  
+  // Запускаем автоматическую миграцию XP (не блокируем запуск сервера)
+  runAutoMigration().catch(error => {
+    console.error('❌ Ошибка автоматической миграции:', error);
+  });
+  
   console.log(`✅ Сервер готов принимать запросы`);
 });
 
