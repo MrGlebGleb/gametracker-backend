@@ -1289,22 +1289,27 @@ const MediaXPBar = ({ level, totalXP, title, progress, borderColor, borderGradie
   const finalProgress = progress || getMediaProgressToNextLevel(totalXP || 0, level || 1);
   
   if (compact) {
+    const currentLevel = level || 1;
+    const formattedLevel = currentLevel.toLocaleString('ru-RU');
+    const formattedCurrent = finalProgress.current.toLocaleString('ru-RU');
+    const formattedNeeded = finalProgress.needed.toLocaleString('ru-RU');
+    
     return (
       <div className="w-full min-w-[120px]">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-xs font-semibold text-white">Уровень {level || 1}</span>
+          <span className="text-xs font-semibold text-white">Уровень {formattedLevel}</span>
           <span className="text-xs text-gray-400 flex items-center gap-1">
-            <span className="text-gray-400">{finalProgress.current} / {finalProgress.needed} XP</span>
-            {xpChange !== 0 && (
-              <span 
-                className={`text-xs font-bold transition-all duration-300 ${
-                  xpChange > 0 ? 'text-green-400' : 'text-red-400'
-                }`}
-                style={{ animation: 'pulse 0.5s ease-in-out' }}
-              >
-                {xpChange > 0 ? '+' : ''}{xpChange} XP
-              </span>
-            )}
+            <span className="text-gray-400">{formattedCurrent} / {formattedNeeded} XP</span>
+              {xpChange !== 0 && (
+                <span 
+                  className={`text-xs font-bold transition-all duration-300 ${
+                    xpChange > 0 ? 'text-green-400' : 'text-red-400'
+                  }`}
+                  style={{ animation: 'pulse 0.5s ease-in-out' }}
+                >
+                  {xpChange > 0 ? '+' : ''}{Math.abs(xpChange).toLocaleString('ru-RU')} XP
+                </span>
+              )}
           </span>
         </div>
         <div className="w-full h-1.5 bg-gray-800/50 rounded-full overflow-hidden">
@@ -1323,27 +1328,32 @@ const MediaXPBar = ({ level, totalXP, title, progress, borderColor, borderGradie
     );
   }
   
+  const currentLevel = level || 1;
+  const formattedLevel = currentLevel.toLocaleString('ru-RU');
+  const formattedCurrent = finalProgress.current.toLocaleString('ru-RU');
+  const formattedNeeded = finalProgress.needed.toLocaleString('ru-RU');
+  
   return (
     <div className="w-full space-y-2">
       <div className="flex items-center justify-between">
         <div>
-          <span className="text-sm font-semibold text-white">Уровень {level || 1}</span>
+          <span className="text-sm font-semibold text-white">Уровень {formattedLevel}</span>
           <span className="text-xs ml-2" style={{ color: levelInfo.color }}>
             {title || MEDIA_LEVEL_TITLES[level || 1] || 'Зритель'}
           </span>
         </div>
         <span className="text-xs text-gray-400 flex items-center gap-1">
-          <span className="text-gray-400">{finalProgress.current} / {finalProgress.needed} XP</span>
-          {xpChange !== 0 && (
-            <span 
-              className={`text-xs font-bold transition-all duration-300 ${
-                xpChange > 0 ? 'text-green-400' : 'text-red-400'
-              }`}
-              style={{ animation: 'pulse 0.5s ease-in-out' }}
-            >
-              {xpChange > 0 ? '+' : ''}{xpChange} XP
-            </span>
-          )}
+          <span className="text-gray-400">{formattedCurrent} / {formattedNeeded} XP</span>
+              {xpChange !== 0 && (
+                <span 
+                  className={`text-xs font-bold transition-all duration-300 ${
+                    xpChange > 0 ? 'text-green-400' : 'text-red-400'
+                  }`}
+                  style={{ animation: 'pulse 0.5s ease-in-out' }}
+                >
+                  {xpChange > 0 ? '+' : ''}{Math.abs(xpChange).toLocaleString('ru-RU')} XP
+                </span>
+              )}
         </span>
       </div>
       <div className="w-full h-2 bg-gray-800/50 rounded-full overflow-hidden">
@@ -3280,9 +3290,199 @@ function MovieApp() {
           </div>
         </div>
       )}
+      
+      {/* Модальное окно получения нового уровня медиа */}
+      <MediaLevelUpModal 
+        showMediaLevelUpModal={showMediaLevelUpModal}
+        setShowMediaLevelUpModal={setShowMediaLevelUpModal}
+        mediaLevelUpData={mediaLevelUpData}
+      />
     </div>
   );
 }
+
+// Модальное окно получения нового уровня медиа
+const MediaLevelUpModal = ({ showMediaLevelUpModal, setShowMediaLevelUpModal, mediaLevelUpData }) => {
+  if (!showMediaLevelUpModal || !mediaLevelUpData) return null;
+  
+  const oldLevel = mediaLevelUpData.oldLevel || 1;
+  const newLevel = mediaLevelUpData.newLevel || 1;
+  const oldTitle = MEDIA_LEVEL_TITLES[oldLevel] || 'Зритель';
+  const newTitle = MEDIA_LEVEL_TITLES[newLevel] || 'Зритель';
+  const oldLevelInfo = getMediaBorderColorForLevel(oldLevel);
+  const newLevelInfo = getMediaBorderColorForLevel(newLevel);
+  
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      {/* Затемнение экрана */}
+      <div 
+        className="absolute inset-0 bg-black/90 backdrop-blur-md transition-opacity duration-500"
+        onClick={() => setShowMediaLevelUpModal(false)}
+      />
+      
+      {/* Центральное окно */}
+      <div className="relative bg-gradient-to-br from-gray-900 via-purple-900/50 to-blue-900 rounded-3xl p-8 md:p-12 w-full max-w-lg border-2 shadow-2xl animate-scale-in" style={{
+        borderColor: newLevelInfo.color,
+        boxShadow: `0 0 40px ${newLevelInfo.glow}, 0 0 80px ${newLevelInfo.glow}`
+      }}>
+        {/* Закрыть */}
+        <button
+          onClick={() => setShowMediaLevelUpModal(false)}
+          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-2xl z-10"
+        >
+          ×
+        </button>
+        
+        {/* Анимация перехода уровня */}
+        <div className="text-center space-y-6">
+          {/* Заголовок */}
+          <div className="space-y-2">
+            <h2 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text" style={{
+              background: newLevelInfo.gradient
+            }}>
+              🎉 УРОВЕНЬ ПОВЫШЕН! 🎉
+            </h2>
+            <p 
+              className="text-gray-300 text-lg relative inline-block px-4 py-2"
+              style={{
+                textShadow: `0 0 20px ${newLevelInfo.glow}, 0 0 40px ${newLevelInfo.glow}, 0 0 60px ${newLevelInfo.glow}`,
+                animation: 'pulse 2s ease-in-out infinite'
+              }}
+            >
+              Поздравляем с достижением!
+            </p>
+          </div>
+          
+          {/* Анимация смены уровня */}
+          <div className="relative h-40 flex items-center justify-center overflow-visible">
+            {/* Старый уровень - исчезает */}
+            <div 
+              key={`old-${oldLevel}`}
+              className="absolute inset-0 flex flex-col items-center justify-center transition-all duration-700 ease-in-out"
+              style={{
+                opacity: 0,
+                transform: 'scale(0.7) translateY(30px)',
+                animation: 'fadeOutUp 0.7s ease-in-out forwards'
+              }}
+            >
+              <div className="text-6xl font-bold" style={{ color: oldLevelInfo.color }}>
+                {oldLevel}
+              </div>
+              <div className="text-sm text-gray-400 mt-2">{oldTitle}</div>
+            </div>
+            
+            {/* Новый уровень - появляется с искрами */}
+            <div 
+              key={`new-${newLevel}`}
+              className="absolute inset-0 flex flex-col items-center justify-center relative"
+              style={{
+                animation: 'fadeInScale 0.8s ease-out 0.7s forwards',
+                opacity: 0
+              }}
+            >
+              {/* Искры вокруг цифры */}
+              {[...Array(12)].map((_, i) => {
+                const angle = (360 / 12) * i;
+                const distance = 80;
+                const x = Math.cos(angle * Math.PI / 180) * distance;
+                const y = Math.sin(angle * Math.PI / 180) * distance;
+                return (
+                  <div
+                    key={i}
+                    className="absolute w-3 h-3 rounded-full"
+                    style={{
+                      left: `50%`,
+                      top: `50%`,
+                      transform: `translate(${x}px, ${y}px)`,
+                      background: newLevelInfo.color,
+                      boxShadow: `0 0 10px ${newLevelInfo.color}, 0 0 20px ${newLevelInfo.color}`,
+                      animation: `sparkle 2s ease-in-out infinite ${i * 0.1}s`,
+                      opacity: 0
+                    }}
+                  />
+                );
+              })}
+              
+              {/* Дополнительные искры - блики */}
+              {[...Array(8)].map((_, i) => {
+                const angle = (360 / 8) * i + 22.5;
+                const distance = 100;
+                const x = Math.cos(angle * Math.PI / 180) * distance;
+                const y = Math.sin(angle * Math.PI / 180) * distance;
+                return (
+                  <div
+                    key={`spark-${i}`}
+                    className="absolute w-2 h-2"
+                    style={{
+                      left: `50%`,
+                      top: `50%`,
+                      transform: `translate(${x}px, ${y}px)`,
+                      background: `radial-gradient(circle, ${newLevelInfo.color} 0%, transparent 70%)`,
+                      borderRadius: '50%',
+                      animation: `sparkRotate 3s linear infinite ${i * 0.2}s`,
+                      opacity: 0.8
+                    }}
+                  />
+                );
+              })}
+              
+              {/* Цифра уровня с эффектами */}
+              <div 
+                className="text-7xl md:text-8xl font-bold mb-2 relative z-10"
+                style={{ 
+                  color: newLevelInfo.color,
+                  textShadow: `0 0 30px ${newLevelInfo.glow}, 0 0 60px ${newLevelInfo.glow}, 0 0 90px ${newLevelInfo.glow}`,
+                  animation: 'pulse 1.5s ease-in-out infinite 1.5s, levelGlow 2s ease-in-out infinite',
+                  animationFillMode: 'both'
+                }}
+              >
+                {newLevel}
+              </div>
+              <div className="text-lg font-semibold mt-2 relative z-10" style={{ color: newLevelInfo.color }}>
+                {newTitle}
+              </div>
+            </div>
+          </div>
+          
+          {/* Информация о прогрессе */}
+          <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50">
+            <div className="text-sm text-gray-300 space-y-1">
+              <div className="flex justify-between">
+                <span>Старый уровень:</span>
+                <span className="font-semibold" style={{ color: oldLevelInfo.color }}>
+                  {oldLevel} ({oldTitle})
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Новый уровень:</span>
+                <span className="font-semibold" style={{ color: newLevelInfo.color }}>
+                  {newLevel} ({newTitle})
+                </span>
+              </div>
+              <div className="flex justify-between pt-2 border-t border-gray-700">
+                <span>Накоплено опыта:</span>
+                <span className="font-semibold text-purple-400">
+                  {mediaLevelUpData.newXP?.toLocaleString() || 0} XP
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Кнопка закрытия */}
+          <button
+            onClick={() => setShowMediaLevelUpModal(false)}
+            className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg"
+            style={{
+              boxShadow: `0 10px 25px -5px ${newLevelInfo.glow}`
+            }}
+          >
+            Продолжить
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 ReactDOM.createRoot(document.getElementById('root')).render(<MovieApp />);
 
