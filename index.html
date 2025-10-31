@@ -3425,20 +3425,21 @@
                 </div>
               )}
               
-              {/* Часы игры - по центру на всю ширину */}
+              {/* Часы игры - на всю ширину, часы слева, индикатор справа */}
               {(!isViewingFriend || (isViewingFriend && game.hoursPlayed && game.hoursPlayed > 0)) && (
-                <div className="w-full flex justify-center">
-                  <div className="relative w-full max-w-md">
-                    <div className="relative group">
-                      {/* Анимированный градиентный фон с переливами */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-purple-500/10 rounded-lg blur-sm opacity-50 group-hover:opacity-75 transition-opacity duration-500 animate-[pulse_4s_ease-in-out_infinite]"></div>
+                <div className="w-full">
+                  <div className="relative group">
+                    {/* Анимированный градиентный фон с переливами */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-purple-500/10 rounded-lg blur-sm opacity-50 group-hover:opacity-75 transition-opacity duration-500 animate-[pulse_4s_ease-in-out_infinite]"></div>
+                    
+                    {/* Основной контейнер */}
+                    <div className="relative bg-gradient-to-br from-purple-500/5 via-gray-800/40 to-blue-500/5 border border-purple-500/20 rounded-lg px-4 py-2.5 backdrop-blur-sm transition-all duration-500 hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/20 group-hover:from-purple-500/10 group-hover:to-blue-500/10">
+                      {/* Тонкое свечение при hover */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/5 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                       
-                      {/* Основной контейнер */}
-                      <div className="relative bg-gradient-to-br from-purple-500/5 via-gray-800/40 to-blue-500/5 border border-purple-500/20 rounded-lg px-4 py-2.5 backdrop-blur-sm transition-all duration-500 hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/20 group-hover:from-purple-500/10 group-hover:to-blue-500/10">
-                        {/* Тонкое свечение при hover */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/5 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                        
-                        <div className="relative flex items-center justify-center gap-2.5">
+                      <div className="relative flex items-center justify-between w-full gap-4">
+                        {/* Левая часть - часы */}
+                        <div className="flex items-center gap-3 flex-shrink-0">
                           {/* Иконка часов */}
                           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-400/25 to-blue-400/25 flex items-center justify-center border border-purple-400/30 shadow-md shadow-purple-500/10 transition-all duration-300 group-hover:scale-105 group-hover:shadow-purple-500/20">
                             <span className="text-sm filter drop-shadow-sm">⏱️</span>
@@ -3506,34 +3507,66 @@
                           )}
                           
                           {/* Текст "Часов игры" */}
-                          <span className="text-gray-400 text-xs font-medium">Часов игры</span>
-                          
-                          {/* Индикатор активности */}
-                          {(hoursPlayed > 0 || (isViewingFriend && game.hoursPlayed > 0)) && (
-                            <div className="flex-shrink-0 flex flex-col items-center gap-1">
-                              <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-purple-400 via-blue-400 to-purple-400 animate-pulse shadow-md shadow-purple-400/50"></div>
-                              <div className="w-0.5 h-3 bg-gradient-to-b from-purple-400/50 to-transparent rounded-full"></div>
-                            </div>
-                          )}
+                          <span className="text-gray-400 text-xs font-medium whitespace-nowrap">Часов игры</span>
                         </div>
                         
-                        {/* Тонкая линия прогресса снизу */}
+                        {/* Волнистая линия в центре */}
+                        <div className="flex-1 flex items-center justify-center px-4 h-8 overflow-hidden relative">
+                          <svg width="100%" height="20" viewBox="0 0 400 20" preserveAspectRatio="none" className="wave-svg">
+                            <defs>
+                              <linearGradient id={`waveGradient-${game.id}`} x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#a78bfa" stopOpacity="0.3" />
+                                <stop offset="25%" stopColor="#6366f1" stopOpacity="0.4" />
+                                <stop offset="50%" stopColor="#a78bfa" stopOpacity="0.5" />
+                                <stop offset="75%" stopColor="#6366f1" stopOpacity="0.4" />
+                                <stop offset="100%" stopColor="#a78bfa" stopOpacity="0.3" />
+                                <animate attributeName="x1" values="0%;100%;0%" dur="4s" repeatCount="indefinite" />
+                                <animate attributeName="x2" values="100%;0%;100%" dur="4s" repeatCount="indefinite" />
+                              </linearGradient>
+                            </defs>
+                            <path
+                              d="M 0 10 Q 100 5, 200 10 T 400 10"
+                              fill="none"
+                              stroke={`url(#waveGradient-${game.id})`}
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              className="wave-path"
+                            >
+                              <animate
+                                attributeName="d"
+                                values="M 0 10 Q 100 5, 200 10 T 400 10;M 0 10 Q 100 15, 200 10 T 400 10;M 0 10 Q 100 5, 200 10 T 400 10"
+                                dur="3s"
+                                repeatCount="indefinite"
+                              />
+                            </path>
+                          </svg>
+                        </div>
+                        
+                        {/* Правая часть - индикатор активности */}
                         {(hoursPlayed > 0 || (isViewingFriend && game.hoursPlayed > 0)) && (
-                          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-purple-400/30 to-transparent rounded-b-lg"></div>
+                          <div className="flex-shrink-0 flex flex-col items-end gap-1">
+                            <div className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-400 via-blue-400 to-purple-400 animate-pulse shadow-lg shadow-purple-400/50"></div>
+                            <div className="w-0.5 h-4 bg-gradient-to-b from-purple-400/50 to-transparent rounded-full"></div>
+                          </div>
                         )}
                       </div>
+                      
+                      {/* Тонкая линия прогресса снизу */}
+                      {(hoursPlayed > 0 || (isViewingFriend && game.hoursPlayed > 0)) && (
+                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-purple-400/30 to-transparent rounded-b-lg"></div>
+                      )}
                     </div>
                   </div>
                 </div>
               )}
               
               {/* Трейлер и кнопка тегов в одну строку */}
-              <div className="flex gap-2 mt-4">
+              <div className="flex items-center gap-2 mt-4">
                 <a 
                   href={game.videoId ? `https://www.youtube.com/watch?v=${game.videoId}` : `https://www.youtube.com/results?search_query=${encodeURIComponent(game.name + ' trailer')}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-purple-500/10 to-blue-500/10 hover:from-purple-500/20 hover:to-blue-500/20 border border-purple-500/30 hover:border-purple-500/40 text-purple-300 hover:text-purple-200 font-medium rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/20 group backdrop-blur-sm"
+                  className="flex-1 flex items-center justify-center gap-2 h-11 py-2.5 px-4 bg-gradient-to-r from-purple-500/10 to-blue-500/10 hover:from-purple-500/20 hover:to-blue-500/20 border border-purple-500/30 hover:border-purple-500/40 text-purple-300 hover:text-purple-200 font-medium rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/20 group backdrop-blur-sm"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-purple-300 group-hover:text-purple-200 transition-colors">
                     <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" fill="currentColor"/>
@@ -3608,6 +3641,16 @@
                   to {
                     text-shadow: 0 0 12px rgba(139, 92, 246, 0.5), 0 0 25px rgba(139, 92, 246, 0.2);
                   }
+                }
+                .wave-svg {
+                  position: absolute;
+                  top: 50%;
+                  left: 0;
+                  transform: translateY(-50%);
+                  opacity: 0.6;
+                }
+                .wave-path {
+                  filter: drop-shadow(0 0 3px rgba(139, 92, 246, 0.3));
                 }
               `}</style>
             </div>
