@@ -3111,76 +3111,14 @@
       const [isExpanded, setIsExpanded] = useState(false);
       const [isSaving, setIsSaving] = useState(false);
       const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-      
-      // Состояние для времени прохождения
-      const [timeToBeat, setTimeToBeat] = useState(null);
-      const [loadingTimeToBeat, setLoadingTimeToBeat] = useState(false);
+      const [hoursPlayed, setHoursPlayed] = useState(game.hoursPlayed || 0);
 
       // Синхронизируем состояние с обновленной игрой
       useEffect(() => {
         setReviewText(game.review || '');
         setIsPublished(game.is_published || false);
-      }, [game.review, game.is_published]);
-      
-      // Загружаем время прохождения при открытии модалки
-      useEffect(() => {
-        const loadTimeToBeat = async () => {
-          const igdbId = game.game_id || game.gameId; // поддержка разных источников данных
-          console.log('[TimeToBeat] Загрузка для игры:', { 
-            game_id: game.game_id, 
-            gameId: game.gameId, 
-            igdbId, 
-            hasToken: !!token,
-            gameName: game.name
-          });
-          
-          if (!igdbId || !token) {
-            console.warn('[TimeToBeat] Пропуск загрузки: нет igdbId или token');
-            return;
-          }
-
-          setLoadingTimeToBeat(true);
-          try {
-            const url = `${API_URL}/api/games/${igdbId}/details`;
-            console.log('[TimeToBeat] Запрос к:', url);
-            
-            const response = await fetch(url, {
-              headers: { 'Authorization': `Bearer ${token}` }
-            });
-            
-            console.log('[TimeToBeat] Ответ:', { status: response.status, ok: response.ok });
-            
-            if (response.ok) {
-              const data = await response.json();
-              console.log('[TimeToBeat] Данные от сервера:', data);
-              console.log('[TimeToBeat] time_to_beat:', data.time_to_beat);
-              setTimeToBeat(data.time_to_beat);
-            } else {
-              const errorText = await response.text();
-              console.error('[TimeToBeat] Ошибка ответа:', response.status, errorText);
-              setTimeToBeat(null);
-            }
-          } catch (error) {
-            console.error('[TimeToBeat] Ошибка загрузки:', error);
-            setTimeToBeat(null);
-          } finally {
-            setLoadingTimeToBeat(false);
-          }
-        };
-
-        loadTimeToBeat();
-      }, [game.game_id, game.gameId, token]);
-      
-      // Функция для форматирования секунд в читаемый формат
-      const formatTime = (seconds) => {
-        if (!seconds || seconds === 0) return null;
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        if (hours > 0) {
-          return `${hours} ч ${minutes > 0 ? minutes + ' мин' : ''}`;
-        }
-        return `${minutes} мин`;
-      };
+        setHoursPlayed(game.hoursPlayed || 0);
+      }, [game.review, game.is_published, game.hoursPlayed]);
       
       // Очищаем таймер при размонтировании компонента
       useEffect(() => {
@@ -3230,6 +3168,23 @@
           }
         }
       }, [game.review, game.id, onUpdate]);
+
+      // Обработка изменения часов игры
+      const handleHoursChange = useCallback(async (hours) => {
+        const hoursNum = parseInt(hours) || 0;
+        setHoursPlayed(hoursNum);
+        
+        // Сохраняем только если значение изменилось
+        if (hoursNum !== (game.hoursPlayed || 0)) {
+          try {
+            await onUpdate(game.id, { 
+              hoursPlayed: hoursNum
+            });
+          } catch (error) {
+            console.error('Ошибка сохранения часов:', error);
+          }
+        }
+      }, [game.hoursPlayed, game.id, onUpdate]);
 
       // Публикация рецензии
       const publishReview = useCallback(() => {
@@ -3298,47 +3253,6 @@
               </button>
             </div>
             <div className="space-y-4">
-              {/* Время прохождения */}
-              <div className="p-3 bg-purple-500/10 rounded-lg border border-purple-500/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-purple-400">⏱️</span>
-                  <span className="text-white font-medium text-sm">Время прохождения</span>
-                </div>
-{(() => {
-                  console.log('[TimeToBeat Render] Состояние:', { 
-                    loadingTimeToBeat, 
-                    timeToBeat, 
-                    isArray: Array.isArray(timeToBeat),
-                    values: timeToBeat 
-                  });
-                  return loadingTimeToBeat ? (
-                    <p className="text-gray-400 text-xs">Загрузка...</p>
-                  ) : timeToBeat && Array.isArray(timeToBeat) ? (
-                    <div className="space-y-1 text-xs">
-                      {timeToBeat[0] && (
-                        <div className="text-gray-300">
-                          <span className="text-gray-400">Основной сюжет:</span> {formatTime(timeToBeat[0]) || 'Н/Д'}
-                        </div>
-                      )}
-                      {timeToBeat[1] && (
-                        <div className="text-gray-300">
-                          <span className="text-gray-400">На 100%:</span> {formatTime(timeToBeat[1]) || 'Н/Д'}
-                        </div>
-                      )}
-                      {timeToBeat[2] && (
-                        <div className="text-gray-300">
-                          <span className="text-gray-400">HowLongToBeat:</span> {formatTime(timeToBeat[2]) || 'Н/Д'}
-                        </div>
-                      )}
-                      {!timeToBeat[0] && !timeToBeat[1] && !timeToBeat[2] && (
-                        <div className="text-gray-400">Данные недоступны</div>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-gray-400 text-xs">Данные недоступны</p>
-                  );
-                })()}
-              </div>
               {!isViewingFriend ? (
                 <Fragment>
                   <div>
@@ -3412,6 +3326,28 @@
                         </span>
                       </div>
                     )}
+                  </div>
+                  
+                  {/* Часы игры */}
+                  <div>
+                    <label className="text-gray-400 text-sm mb-2 block">Часы игры:</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        value={hoursPlayed || ''}
+                        onChange={(e) => handleHoursChange(e.target.value)}
+                        onBlur={(e) => {
+                          const value = parseInt(e.target.value) || 0;
+                          setHoursPlayed(value);
+                        }}
+                        className="w-24 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white text-sm"
+                        placeholder="0"
+                        min="0"
+                        step="1"
+                      />
+                      <span className="text-gray-400 text-sm">часов</span>
+                    </div>
+                    <p className="text-gray-500 text-xs mt-1">Введите количество часов, потраченных на игру</p>
                   </div>
                 </Fragment>
               ) : (
