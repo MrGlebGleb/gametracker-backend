@@ -1289,27 +1289,12 @@ const MediaXPBar = ({ level, totalXP, title, progress, borderColor, borderGradie
   const finalProgress = progress || getMediaProgressToNextLevel(totalXP || 0, level || 1);
   
   if (compact) {
-    const formattedCurrent = finalProgress.current.toLocaleString('ru-RU');
-    const formattedNeeded = finalProgress.needed.toLocaleString('ru-RU');
     const currentLevel = level || 1;
     
     return (
       <div className="w-full min-w-[120px]">
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs font-semibold text-white">Уровень {currentLevel}</span>
-          <span className="text-xs text-gray-400 flex items-center gap-1">
-            <span className="text-gray-400">{formattedCurrent} / {formattedNeeded} XP</span>
-              {xpChange !== 0 && (
-                <span 
-                  className={`text-xs font-bold transition-all duration-300 ${
-                    xpChange > 0 ? 'text-green-400' : 'text-red-400'
-                  }`}
-                  style={{ animation: 'pulse 0.5s ease-in-out' }}
-                >
-                  {xpChange > 0 ? '+' : ''}{Math.abs(xpChange).toLocaleString('ru-RU')} XP
-                </span>
-              )}
-          </span>
         </div>
         <div className="w-full h-1.5 bg-gray-800/50 rounded-full overflow-hidden">
           <div 
@@ -1328,8 +1313,6 @@ const MediaXPBar = ({ level, totalXP, title, progress, borderColor, borderGradie
   }
   
   const currentLevel = level || 1;
-  const formattedCurrent = finalProgress.current.toLocaleString('ru-RU');
-  const formattedNeeded = finalProgress.needed.toLocaleString('ru-RU');
   
   return (
     <div className="w-full space-y-2">
@@ -1340,19 +1323,6 @@ const MediaXPBar = ({ level, totalXP, title, progress, borderColor, borderGradie
             {title || MEDIA_LEVEL_TITLES[level || 1] || 'Зритель'}
           </span>
         </div>
-        <span className="text-xs text-gray-400 flex items-center gap-1">
-          <span className="text-gray-400">{formattedCurrent} / {formattedNeeded} XP</span>
-              {xpChange !== 0 && (
-                <span 
-                  className={`text-xs font-bold transition-all duration-300 ${
-                    xpChange > 0 ? 'text-green-400' : 'text-red-400'
-                  }`}
-                  style={{ animation: 'pulse 0.5s ease-in-out' }}
-                >
-                  {xpChange > 0 ? '+' : ''}{Math.abs(xpChange).toLocaleString('ru-RU')} XP
-                </span>
-              )}
-        </span>
       </div>
       <div className="w-full h-2 bg-gray-800/50 rounded-full overflow-hidden">
         <div 
