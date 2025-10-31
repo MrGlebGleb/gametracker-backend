@@ -2708,7 +2708,11 @@ app.put('/api/user/games/:gameId', authenticateToken, validateIdParam('gameId'),
       if (oldGameData.board === 'completed') {
         // Снимаем XP если игра перемещается с доски "completed"
         const oldXP = getXPForGame(oldGameData.hours_played);
-        await updateUserXP(req.user.id, -oldXP);
+        const removeInfo = await updateUserXP(req.user.id, -oldXP);
+        // Если игра перемещается на доску "completed", обновим levelUpInfo дальше
+        if (board !== 'completed') {
+          levelUpInfo = removeInfo;
+        }
       }
       if (board === 'completed') {
         // Начисляем XP если игра перемещается на доску "completed"
@@ -2723,6 +2727,24 @@ app.put('/api/user/games/:gameId', authenticateToken, validateIdParam('gameId'),
       const xpDiff = newXP - oldXP;
       if (xpDiff !== 0) {
         levelUpInfo = await updateUserXP(req.user.id, xpDiff);
+      }
+    }
+    
+    // ВСЕГДА возвращаем levelUpInfo, даже если не было level up (для обновления XP в реальном времени)
+    // Если levelUpInfo null, но была обработка XP, создаем базовую информацию
+    if (!levelUpInfo && ((board && oldGameData.board !== board) || (hoursPlayed !== undefined && oldGameData.hours_played !== hoursPlayed && newBoard === 'completed'))) {
+      // Получаем текущие данные пользователя для отображения актуального XP
+      const userResult = await client.query('SELECT total_xp, level FROM users WHERE id = $1', [req.user.id]);
+      if (userResult.rows.length > 0) {
+        const currentXP = userResult.rows[0].total_xp || 0;
+        const currentLevel = userResult.rows[0].level || 1;
+        levelUpInfo = {
+          oldLevel: currentLevel,
+          newLevel: currentLevel,
+          oldXP: currentXP,
+          newXP: currentXP,
+          leveledUp: false
+        };
       }
     }
 
