@@ -3186,6 +3186,93 @@
         }
       }, [game.hoursPlayed, game.id, onUpdate]);
 
+      // Функция для получения параметров анимации в зависимости от часов
+      const getWaveAnimation = (hours) => {
+        const h = hours || 0;
+        
+        if (h === 0) {
+          // Уровень 1: 0 часов - статичная линия
+          return {
+            dur: '999s', // Очень медленная, фактически статичная
+            values: 'M 0 10 Q 100 10, 200 10 T 400 10',
+            opacity: 0.2
+          };
+        } else if (h >= 1 && h <= 10) {
+          // Уровень 2: 1-10 часов - легкая анимация
+          return {
+            dur: '4s',
+            values: 'M 0 10 Q 100 8, 200 10 T 400 10;M 0 10 Q 100 12, 200 10 T 400 10;M 0 10 Q 100 8, 200 10 T 400 10',
+            opacity: 0.3
+          };
+        } else if (h >= 11 && h <= 20) {
+          // Уровень 3: 11-20 часов
+          return {
+            dur: '3.5s',
+            values: 'M 0 10 Q 100 7, 200 10 T 400 10;M 0 10 Q 100 13, 200 10 T 400 10;M 0 10 Q 100 7, 200 10 T 400 10',
+            opacity: 0.35
+          };
+        } else if (h >= 21 && h <= 30) {
+          // Уровень 4: 21-30 часов
+          return {
+            dur: '3s',
+            values: 'M 0 10 Q 100 6, 200 10 T 400 10;M 0 10 Q 100 14, 200 10 T 400 10;M 0 10 Q 100 6, 200 10 T 400 10',
+            opacity: 0.4
+          };
+        } else if (h >= 31 && h <= 40) {
+          // Уровень 5: 31-40 часов
+          return {
+            dur: '2.5s',
+            values: 'M 0 10 Q 100 5, 200 10 T 400 10;M 0 10 Q 100 15, 200 10 T 400 10;M 0 10 Q 100 5, 200 10 T 400 10',
+            opacity: 0.45
+          };
+        } else if (h >= 41 && h <= 50) {
+          // Уровень 6: 41-50 часов
+          return {
+            dur: '2s',
+            values: 'M 0 10 Q 100 4, 200 10 Q 300 4, 400 10;M 0 10 Q 100 16, 200 10 Q 300 16, 400 10;M 0 10 Q 100 4, 200 10 Q 300 4, 400 10',
+            opacity: 0.5
+          };
+        } else if (h >= 51 && h <= 60) {
+          // Уровень 7: 51-60 часов
+          return {
+            dur: '1.8s',
+            values: 'M 0 10 Q 100 3, 200 10 Q 300 3, 400 10;M 0 10 Q 100 17, 200 10 Q 300 17, 400 10;M 0 10 Q 100 3, 200 10 Q 300 3, 400 10',
+            opacity: 0.55
+          };
+        } else if (h >= 61 && h <= 70) {
+          // Уровень 8: 61-70 часов
+          return {
+            dur: '1.5s',
+            values: 'M 0 10 Q 50 3, 100 10 Q 150 17, 200 10 Q 250 3, 300 10 Q 350 17, 400 10;M 0 10 Q 50 17, 100 10 Q 150 3, 200 10 Q 250 17, 300 10 Q 350 3, 400 10;M 0 10 Q 50 3, 100 10 Q 150 17, 200 10 Q 250 3, 300 10 Q 350 17, 400 10',
+            opacity: 0.6
+          };
+        } else if (h >= 71 && h <= 80) {
+          // Уровень 9: 71-80 часов
+          return {
+            dur: '1.2s',
+            values: 'M 0 10 Q 50 2, 100 10 Q 150 18, 200 10 Q 250 2, 300 10 Q 350 18, 400 10;M 0 10 Q 50 18, 100 10 Q 150 2, 200 10 Q 250 18, 300 10 Q 350 2, 400 10;M 0 10 Q 50 2, 100 10 Q 150 18, 200 10 Q 250 2, 300 10 Q 350 18, 400 10',
+            opacity: 0.65
+          };
+        } else if (h >= 81 && h <= 90) {
+          // Уровень 10: 81-90 часов
+          return {
+            dur: '1s',
+            values: 'M 0 10 Q 33 1, 66 10 Q 100 19, 133 10 Q 166 1, 200 10 Q 233 19, 266 10 Q 300 1, 333 10 Q 366 19, 400 10;M 0 10 Q 33 19, 66 10 Q 100 1, 133 10 Q 166 19, 200 10 Q 233 1, 266 10 Q 300 19, 333 10 Q 366 1, 400 10;M 0 10 Q 33 1, 66 10 Q 100 19, 133 10 Q 166 1, 200 10 Q 233 19, 266 10 Q 300 1, 333 10 Q 366 19, 400 10',
+            opacity: 0.7
+          };
+        } else {
+          // Уровень 11: 91-100+ часов - максимальная анимация с закручиванием
+          return {
+            dur: '0.6s',
+            values: 'M 0 10 Q 20 -5, 40 10 Q 60 25, 80 10 Q 100 -5, 120 10 Q 140 25, 160 10 Q 180 -5, 200 10 Q 220 25, 240 10 Q 260 -5, 280 10 Q 300 25, 320 10 Q 340 -5, 360 10 Q 380 25, 400 10;M 0 10 Q 20 25, 40 10 Q 60 -5, 80 10 Q 100 25, 120 10 Q 140 -5, 160 10 Q 180 25, 200 10 Q 220 -5, 240 10 Q 260 25, 280 10 Q 300 -5, 320 10 Q 340 25, 360 10 Q 380 -5, 400 10;M 0 10 Q 20 -5, 40 10 Q 60 25, 80 10 Q 100 -5, 120 10 Q 140 25, 160 10 Q 180 -5, 200 10 Q 220 25, 240 10 Q 260 -5, 280 10 Q 300 25, 320 10 Q 340 -5, 360 10 Q 380 25, 400 10',
+            opacity: 0.85
+          };
+        }
+      };
+
+      const currentHours = isViewingFriend ? (game.hoursPlayed || 0) : (hoursPlayed || 0);
+      const waveAnim = getWaveAnimation(currentHours);
+
       // Публикация рецензии
       const publishReview = useCallback(() => {
         const updateData = { 
@@ -3512,7 +3599,7 @@
                         
                         {/* Волнистая линия в центре */}
                         <div className="flex-1 flex items-center justify-center px-4 h-8 overflow-hidden relative">
-                          <svg width="100%" height="20" viewBox="0 0 400 20" preserveAspectRatio="none" className="wave-svg">
+                          <svg width="100%" height="20" viewBox="0 0 400 20" preserveAspectRatio="none" className="wave-svg" style={{ opacity: waveAnim.opacity }}>
                             <defs>
                               <linearGradient id={`waveGradient-${game.id}`} x1="0%" y1="0%" x2="100%" y2="0%">
                                 <stop offset="0%" stopColor="#a78bfa" stopOpacity="0.3" />
@@ -3520,24 +3607,30 @@
                                 <stop offset="50%" stopColor="#a78bfa" stopOpacity="0.5" />
                                 <stop offset="75%" stopColor="#6366f1" stopOpacity="0.4" />
                                 <stop offset="100%" stopColor="#a78bfa" stopOpacity="0.3" />
-                                <animate attributeName="x1" values="0%;100%;0%" dur="4s" repeatCount="indefinite" />
-                                <animate attributeName="x2" values="100%;0%;100%" dur="4s" repeatCount="indefinite" />
+                                {currentHours > 0 && (
+                                  <>
+                                    <animate attributeName="x1" values="0%;100%;0%" dur={waveAnim.dur} repeatCount="indefinite" />
+                                    <animate attributeName="x2" values="100%;0%;100%" dur={waveAnim.dur} repeatCount="indefinite" />
+                                  </>
+                                )}
                               </linearGradient>
                             </defs>
                             <path
-                              d="M 0 10 Q 100 5, 200 10 T 400 10"
+                              d={waveAnim.values.split(';')[0]}
                               fill="none"
                               stroke={`url(#waveGradient-${game.id})`}
                               strokeWidth="1.5"
                               strokeLinecap="round"
                               className="wave-path"
                             >
-                              <animate
-                                attributeName="d"
-                                values="M 0 10 Q 100 5, 200 10 T 400 10;M 0 10 Q 100 15, 200 10 T 400 10;M 0 10 Q 100 5, 200 10 T 400 10"
-                                dur="3s"
-                                repeatCount="indefinite"
-                              />
+                              {currentHours > 0 && (
+                                <animate
+                                  attributeName="d"
+                                  values={waveAnim.values}
+                                  dur={waveAnim.dur}
+                                  repeatCount="indefinite"
+                                />
+                              )}
                             </path>
                           </svg>
                         </div>
@@ -3546,7 +3639,7 @@
                         {(hoursPlayed > 0 || (isViewingFriend && game.hoursPlayed > 0)) && (
                           <div className="flex-shrink-0 flex flex-col items-end gap-1">
                             <div className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-400 via-blue-400 to-purple-400 animate-pulse shadow-lg shadow-purple-400/50"></div>
-                            <div className="w-0.5 h-4 bg-gradient-to-b from-purple-400/50 to-transparent rounded-full"></div>
+                            <div className="w-0.5 h-4 bg-gradient-to-t from-purple-400/50 to-transparent rounded-full"></div>
                           </div>
                         )}
                       </div>
