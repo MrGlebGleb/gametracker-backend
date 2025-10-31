@@ -5939,6 +5939,13 @@ console.log('   Healthcheck URL: http://0.0.0.0:' + PORT + '/api/health');
 
 // Автоматическая миграция XP при старте сервера
 async function runAutoMigration() {
+  // Проверяем, включена ли автоматическая миграция (по умолчанию отключена для безопасности)
+  const autoMigrationEnabled = process.env.AUTO_MIGRATE_XP === 'true';
+  if (!autoMigrationEnabled) {
+    console.log('ℹ️  Автоматическая миграция XP отключена (установите AUTO_MIGRATE_XP=true для включения)');
+    return;
+  }
+  
   const client = await pool.connect();
   try {
     // Проверяем, есть ли таблица для отслеживания миграций
@@ -5966,19 +5973,31 @@ async function runAutoMigration() {
       console.log('🔄 Начинаем автоматическую миграцию XP для игр...');
       try {
         const usersResult = await client.query('SELECT id, username FROM users');
+        const totalUsers = usersResult.rows.length;
         let updated = 0;
         let errors = [];
         
-        for (const user of usersResult.rows) {
+        console.log(`   Всего пользователей для обработки: ${totalUsers}`);
+        
+        // Обрабатываем пользователей с минимальным логированием и задержками
+        for (let i = 0; i < usersResult.rows.length; i++) {
+          const user = usersResult.rows[i];
           try {
             await recalculateUserXP(user.id);
             updated++;
-            if (updated % 10 === 0) {
-              console.log(`   Обработано пользователей: ${updated}/${usersResult.rows.length}`);
+            // Логируем только каждые 50 пользователей или в конце
+            if (updated % 50 === 0 || updated === totalUsers) {
+              console.log(`   Прогресс: ${updated}/${totalUsers}`);
+            }
+            // Добавляем небольшую задержку каждые 10 пользователей, чтобы не перегружать БД
+            if ((i + 1) % 10 === 0) {
+              await new Promise(resolve => setTimeout(resolve, 100)); // 100ms задержка
             }
           } catch (error) {
-            console.error(`   Ошибка для пользователя ${user.id} (${user.username}):`, error.message);
-            errors.push({ userId: user.id, username: user.username, error: error.message });
+            // Логируем только серьезные ошибки, не все подряд
+            if (errors.length < 5) {
+              errors.push({ userId: user.id, username: user.username, error: error.message });
+            }
           }
         }
         
@@ -5987,12 +6006,12 @@ async function runAutoMigration() {
           "INSERT INTO migration_log (migration_name, status) VALUES ('recalculate_games_xp', 'completed') ON CONFLICT (migration_name) DO NOTHING"
         );
         
-        console.log(`✅ Миграция XP для игр завершена: ${updated} пользователей обновлено`);
+        console.log(`✅ Миграция XP для игр завершена: ${updated}/${totalUsers} пользователей обновлено`);
         if (errors.length > 0) {
-          console.log(`⚠️  Ошибки при миграции: ${errors.length} пользователей`);
+          console.log(`⚠️  Ошибки при миграции: ${errors.length} пользователей (первые 5 показаны выше)`);
         }
       } catch (error) {
-        console.error('❌ Ошибка миграции XP для игр:', error);
+        console.error('❌ Ошибка миграции XP для игр:', error.message);
         await client.query(
           "INSERT INTO migration_log (migration_name, status) VALUES ('recalculate_games_xp', 'failed') ON CONFLICT (migration_name) DO UPDATE SET status = 'failed'"
         );
@@ -6006,19 +6025,31 @@ async function runAutoMigration() {
       console.log('🔄 Начинаем автоматическую миграцию XP для медиа...');
       try {
         const usersResult = await client.query('SELECT id, username FROM users');
+        const totalUsers = usersResult.rows.length;
         let updated = 0;
         let errors = [];
         
-        for (const user of usersResult.rows) {
+        console.log(`   Всего пользователей для обработки: ${totalUsers}`);
+        
+        // Обрабатываем пользователей с минимальным логированием и задержками
+        for (let i = 0; i < usersResult.rows.length; i++) {
+          const user = usersResult.rows[i];
           try {
             await recalculateUserMediaXP(user.id);
             updated++;
-            if (updated % 10 === 0) {
-              console.log(`   Обработано пользователей: ${updated}/${usersResult.rows.length}`);
+            // Логируем только каждые 50 пользователей или в конце
+            if (updated % 50 === 0 || updated === totalUsers) {
+              console.log(`   Прогресс: ${updated}/${totalUsers}`);
+            }
+            // Добавляем небольшую задержку каждые 10 пользователей, чтобы не перегружать БД
+            if ((i + 1) % 10 === 0) {
+              await new Promise(resolve => setTimeout(resolve, 100)); // 100ms задержка
             }
           } catch (error) {
-            console.error(`   Ошибка для пользователя ${user.id} (${user.username}):`, error.message);
-            errors.push({ userId: user.id, username: user.username, error: error.message });
+            // Логируем только серьезные ошибки, не все подряд
+            if (errors.length < 5) {
+              errors.push({ userId: user.id, username: user.username, error: error.message });
+            }
           }
         }
         
@@ -6027,12 +6058,12 @@ async function runAutoMigration() {
           "INSERT INTO migration_log (migration_name, status) VALUES ('recalculate_media_xp', 'completed') ON CONFLICT (migration_name) DO NOTHING"
         );
         
-        console.log(`✅ Миграция XP для медиа завершена: ${updated} пользователей обновлено`);
+        console.log(`✅ Миграция XP для медиа завершена: ${updated}/${totalUsers} пользователей обновлено`);
         if (errors.length > 0) {
-          console.log(`⚠️  Ошибки при миграции: ${errors.length} пользователей`);
+          console.log(`⚠️  Ошибки при миграции: ${errors.length} пользователей (первые 5 показаны выше)`);
         }
       } catch (error) {
-        console.error('❌ Ошибка миграции XP для медиа:', error);
+        console.error('❌ Ошибка миграции XP для медиа:', error.message);
         await client.query(
           "INSERT INTO migration_log (migration_name, status) VALUES ('recalculate_media_xp', 'failed') ON CONFLICT (migration_name) DO UPDATE SET status = 'failed'"
         );
