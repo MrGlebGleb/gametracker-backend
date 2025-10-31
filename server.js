@@ -1435,6 +1435,14 @@ function getBorderColorForLevel(level) {
 }
 
 // Расчет XP за игру на основе времени прохождения
+// Базовая XP: 300 за любую игру
+// 8 часов = 300 XP (1.0x)
+// Каждые 10 часов после 8 = +1x к множителю
+// 18 часов = 600 XP (2.0x)
+// 28 часов = 900 XP (3.0x)
+// 90 часов = 2700 XP (9.0x)
+// 100 часов = 3000 XP (10.0x)
+// 200 часов = 6000 XP (20.0x)
 function getXPForGame(hoursPlayed = null) {
   const BASE_XP = 300;
   
@@ -1443,14 +1451,26 @@ function getXPForGame(hoursPlayed = null) {
   }
   
   let multiplier = 1.0;
-  if (hoursPlayed >= 100) multiplier = 3.0;
-  else if (hoursPlayed >= 80) multiplier = 2.6;
-  else if (hoursPlayed >= 60) multiplier = 2.3;
-  else if (hoursPlayed >= 40) multiplier = 2.0;
-  else if (hoursPlayed >= 25) multiplier = 1.7;
-  else if (hoursPlayed >= 15) multiplier = 1.5;
-  else if (hoursPlayed >= 8) multiplier = 1.3;
-  else if (hoursPlayed >= 5) multiplier = 1.2;
+  
+  // Линейная прогрессия: каждые 10 часов после 8 = +1x
+  if (hoursPlayed >= 8) {
+    // Формула: 1.0x + floor((часы - 8) / 10)
+    // 8 часов: 1.0 + floor((8-8)/10) = 1.0x
+    // 18 часов: 1.0 + floor((18-8)/10) = 2.0x
+    // 90 часов: 1.0 + floor((90-8)/10) = 1.0 + 8 = 9.0x
+    // 100 часов: 1.0 + floor((100-8)/10) = 1.0 + 9 = 10.0x
+    // 200 часов: 1.0 + floor((200-8)/10) = 1.0 + 19 = 20.0x
+    const additionalMultiplier = Math.floor((hoursPlayed - 8) / 10);
+    multiplier = 1.0 + additionalMultiplier;
+    
+    // Ограничиваем максимальный множитель на 200 часов (20.0x)
+    if (multiplier > 20.0) {
+      multiplier = 20.0;
+    }
+  } else if (hoursPlayed >= 5) {
+    // От 5 до 8 часов остается базовый множитель
+    multiplier = 1.0;
+  }
   
   return Math.round(BASE_XP * multiplier);
 }

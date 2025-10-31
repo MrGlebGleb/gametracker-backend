@@ -1547,7 +1547,7 @@
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-semibold text-white">Уровень {level}</span>
               <span className="text-xs text-gray-400 flex items-center gap-1">
-                <span>{finalProgress.current} / {finalProgress.needed} XP</span>
+                <span className="text-gray-400">{finalProgress.current} / {finalProgress.needed} XP</span>
                 {xpChange !== 0 && (
                   <span 
                     className={`text-xs font-bold transition-all duration-300 ${
@@ -1585,7 +1585,7 @@
               Уровень {level}: {title}
             </span>
             <span className="text-xs text-gray-400 flex items-center gap-2">
-              <span>{finalProgress.current} / {finalProgress.needed} XP</span>
+              <span className="text-gray-400">{finalProgress.current} / {finalProgress.needed} XP</span>
               {xpChange !== 0 && (
                 <span 
                   className={`text-xs font-bold transition-all duration-300 ${

@@ -110,6 +110,30 @@
       animation: rotate360 0.6s ease-in-out;
     }
 
+    /* Анимация рамки уровня медиа */
+    @keyframes borderPulse {
+      0%, 100% {
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+      }
+      50% {
+        box-shadow: 0 0 30px rgba(255, 215, 0, 0.9);
+      }
+    }
+
+    /* Анимация мерцания для полоски опыта */
+    @keyframes shimmer {
+      0% {
+        transform: translateX(-100%);
+      }
+      100% {
+        transform: translateX(100%);
+      }
+    }
+
+    .animate-shimmer {
+      animation: shimmer 2s infinite;
+    }
+
     /* Ripple эффект при клике */
     @keyframes ripple {
       0% {

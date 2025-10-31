@@ -10,6 +10,83 @@ const API_URL = getApiUrl();
 const REACTION_EMOJIS = ['😍', '🔥', '👍', '😮', '😂', '👎', '❤️', '🤔', '😢', '🤯'];
 const MEDIA_PER_COLUMN = 5;
 
+// === MEDIA LEVEL SYSTEM FUNCTIONS ===
+
+// Таблица уровней медиа (накопительный опыт для каждого уровня)
+const MEDIA_LEVEL_XP_TABLE = {
+  1: 0, 2: 15000, 3: 30064, 4: 45194, 5: 60389, 6: 75648, 7: 90972, 8: 106362, 9: 121816, 10: 137335,
+  11: 152920, 12: 168569, 13: 184283, 14: 200063, 15: 215907, 16: 231817, 17: 247791, 18: 263831, 19: 279936, 20: 296106,
+  21: 312341, 22: 328641, 23: 345006, 24: 361437, 25: 377933, 26: 394494, 27: 411120, 28: 427811, 29: 444568, 30: 461390,
+  31: 478277, 32: 495230, 33: 512248, 34: 529331, 35: 546480, 36: 563694, 37: 580973, 38: 598318, 39: 615728, 40: 633204,
+  41: 650745, 42: 668351, 43: 686023, 44: 703760, 45: 721563, 46: 739431, 47: 757364, 48: 775363, 49: 793428, 50: 811558,
+  51: 829753, 52: 848014, 53: 866340, 54: 884732, 55: 903189, 56: 921712, 57: 940300, 58: 958954, 59: 977673, 60: 996458,
+  61: 1015308, 62: 1034224, 63: 1053205, 64: 1072251, 65: 1091363, 66: 1110541, 67: 1129784, 68: 1149092, 69: 1168466, 70: 1187905,
+  71: 1207410, 72: 1226980, 73: 1246616, 74: 1266317, 75: 1286084, 76: 1305916, 77: 1325814, 78: 1345777, 79: 1365806, 80: 1385900,
+  81: 1406060, 82: 1426285, 83: 1446576, 84: 1466932, 85: 1487354, 86: 1507841, 87: 1528394, 88: 1549012, 89: 1569696, 90: 1590445,
+  91: 1611260, 92: 1632140, 93: 1653086, 94: 1674097, 95: 1695174, 96: 1716316, 97: 1737524, 98: 1758797, 99: 1780136, 100: 1801540
+};
+
+// Звания для уровней медиа
+const MEDIA_LEVEL_TITLES = {
+  1: 'Зритель', 2: 'Новичок Кино', 3: 'Любитель Кино', 4: 'Киноман', 5: 'Ценитель',
+  6: 'Поклонник', 7: 'Фанат Кино', 8: 'Знаток Кино', 9: 'Киноэнтузиаст', 10: 'Посвящённый',
+  11: 'Искатель Сюжетов', 12: 'Охотник за Фильмами', 13: 'Исследователь Жанров', 14: 'Коллекционер', 15: 'Архивариус',
+  16: 'Киновед', 17: 'Киноискатель', 18: 'Знаток Жанров', 19: 'Эксперт', 20: 'Киноветеран',
+  21: 'Опытный Зритель', 22: 'Бывалый Киноман', 23: 'Матёрый Зритель', 24: 'Профессионал', 25: 'Мастер Жанров',
+  26: 'Киномастер', 27: 'Виртуоз Кино', 28: 'Гуру Кинематографа', 29: 'Талантливый Критик', 30: 'Авторитет',
+  31: 'Знаменитый Критик', 32: 'Герой Кинозалов', 33: 'Защитник Кино', 34: 'Хранитель Фильмов', 35: 'Рыцарь Экрана',
+  36: 'Паладин Кинематографа', 37: 'Крестоносец Жанров', 38: 'Воитель Вкуса', 39: 'Боец за Качество', 40: 'Гладиатор Рейтингов',
+  41: 'Элитный Критик', 42: 'Непревзойдённый', 43: 'Неудержимый Зритель', 44: 'Доминатор Жанров', 45: 'Покоритель Экранов',
+  46: 'Завоеватель Кинозалов', 47: 'Триумфатор', 48: 'Победитель Фестивалей', 49: 'Повелитель Вкуса', 50: 'Властелин Кино',
+  51: 'Император Экранов', 52: 'Монарх Кинематографа', 53: 'Владыка Жанров', 54: 'Кинотиран', 55: 'Деспот Рейтингов',
+  56: 'Диктатор Вкуса', 57: 'Верховный Критик', 58: 'Абсолютный Знаток', 59: 'Превосходный Ценитель', 60: 'Совершенный Киноман',
+  61: 'Легендарный Критик', 62: 'Мифический Зритель', 63: 'Эпический Киноман', 64: 'Легендарный Ценитель', 65: 'Баснословный Критик',
+  66: 'Знаменитость Кино', 67: 'Прославленный Критик', 68: 'Великий Киновед', 69: 'Величайший Зритель', 70: 'Грандиозный Критик',
+  71: 'Колоссальный Эксперт', 72: 'Титан Кинематографа', 73: 'Гигант Киноиндустрии', 74: 'Огромный Авторитет', 75: 'Исполин Кино',
+  76: 'Монумент Кинематографа', 77: 'Грандиозный Мэтр', 78: 'Невероятный Критик', 79: 'Фантастический Знаток', 80: 'Феноменальный Киновед',
+  81: 'Божество Кино', 82: 'Небесный Критик', 83: 'Ангел Кинематографа', 84: 'Святой Покровитель', 85: 'Священный Хранитель',
+  86: 'Благословенный Мэтр', 87: 'Просветлённый Гуру', 88: 'Возвышенный Критик', 89: 'Трансцендентный Знаток', 90: 'Бессмертная Легенда',
+  91: 'Вечный Ценитель', 92: 'Бесконечный Критик', 93: 'Всемогущий Киновед', 94: 'Всезнающий Мэтр', 95: 'Вездесущий Критик',
+  96: 'Абсолютный Мэтр Кино', 97: 'Запредельный Критик', 98: 'Несравненный Киновед', 99: 'Единственный и Неповторимый', 100: 'ОСКАР'
+};
+
+// Получение цвета рамки для уровня медиа
+function getMediaBorderColorForLevel(level) {
+  if (level <= 10) {
+    return { color: '#4ade80', gradient: 'linear-gradient(135deg, #4ade80, #22c55e)', name: 'Зритель', icon: '🎬', glow: 'rgba(74, 222, 128, 0.3)' };
+  } else if (level <= 25) {
+    return { color: '#3b82f6', gradient: 'linear-gradient(135deg, #3b82f6, #2563eb)', name: 'Киноман', icon: '🎥', glow: 'rgba(59, 130, 246, 0.3)' };
+  } else if (level <= 40) {
+    return { color: '#a855f7', gradient: 'linear-gradient(135deg, #a855f7, #9333ea)', name: 'Критик', icon: '🎭', glow: 'rgba(168, 85, 247, 0.3)' };
+  } else if (level <= 60) {
+    return { color: '#eab308', gradient: 'linear-gradient(135deg, #eab308, #ca8a04)', name: 'Мэтр', icon: '⭐', glow: 'rgba(234, 179, 8, 0.4)' };
+  } else if (level <= 80) {
+    return { color: '#ef4444', gradient: 'linear-gradient(135deg, #ef4444, #dc2626)', name: 'Легенда', icon: '🔥', glow: 'rgba(239, 68, 68, 0.4)' };
+  } else if (level <= 95) {
+    return { color: '#f0f0f0', gradient: 'linear-gradient(135deg, #f0f0f0, #d4d4d4)', name: 'Божество', icon: '✨', glow: 'rgba(240, 240, 240, 0.5)' };
+  } else {
+    return { color: '#ffd700', gradient: 'linear-gradient(135deg, #ffd700, #ffed4e, #ffd700)', name: 'Оскар', icon: '🏆', glow: 'rgba(255, 215, 0, 0.6)' };
+  }
+}
+
+// Расчет прогресса до следующего уровня медиа
+function getMediaProgressToNextLevel(totalXP, currentLevel) {
+  const currentLevelXP = MEDIA_LEVEL_XP_TABLE[currentLevel] || 0;
+  const nextLevel = Math.min(currentLevel + 1, 100);
+  const nextLevelXP = MEDIA_LEVEL_XP_TABLE[nextLevel] || MEDIA_LEVEL_XP_TABLE[100];
+  
+  const xpNeeded = nextLevelXP - currentLevelXP;
+  const xpProgress = totalXP - currentLevelXP;
+  const percentage = Math.min((xpProgress / xpNeeded) * 100, 100);
+  
+  return {
+    percentage: Math.round(percentage * 100) / 100,
+    current: xpProgress,
+    needed: xpNeeded,
+    nextLevel: nextLevel
+  };
+}
+
 // --- Переиспользуемые UI-компоненты (идентичны странице игр) ---
 
 // === ЭПИЧЕСКАЯ АНИМАЦИЯ 5 ЗВЕЗД ===
@@ -1142,13 +1219,145 @@ const Icon = ({ name, className = "w-5 h-5" }) => {
   return icons[name] || null;
 };
 
-const Avatar = ({ src, size = 'md', className = '' }) => {
+const Avatar = ({ src, size = 'md', className = '', mediaLevel = null, showBorder = false }) => {
   const sizes = { sm: 'w-8 h-8', md: 'w-12 h-12', lg: 'w-20 h-20', xl: 'w-32 h-32' };
-  return src ? (
-    <img src={src} className={`${sizes[size]} avatar-circle ${className}`} alt="avatar" />
+  
+  const avatarContent = src ? (
+    <img src={src} className={`${sizes[size]} rounded-full object-cover ${className}`} alt="avatar" />
   ) : (
-    <div className={`${sizes[size]} avatar-circle bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold ${className}`}>
+    <div className={`${sizes[size]} rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold ${className}`}>
       <Icon name="user" className={size === 'sm' ? 'w-4 h-4' : 'w-6 h-6'} />
+    </div>
+  );
+  
+  if (showBorder && mediaLevel) {
+    const levelInfo = getMediaBorderColorForLevel(mediaLevel);
+    return (
+      <div 
+        className="relative rounded-full p-0.5 transition-all duration-300"
+        style={{
+          background: levelInfo.gradient,
+          boxShadow: `0 0 ${size === 'xl' ? '20px' : size === 'lg' ? '15px' : '10px'} ${levelInfo.glow}`,
+          animation: mediaLevel >= 96 ? 'borderPulse 2s ease-in-out infinite' : 'none'
+        }}
+      >
+        {avatarContent}
+      </div>
+    );
+  }
+  
+  return avatarContent;
+};
+
+// Компонент полоски опыта медиа
+const MediaXPBar = ({ level, totalXP, title, progress, borderColor, borderGradient, compact = false }) => {
+  const [animatedXP, setAnimatedXP] = useState(totalXP || 0);
+  const [xpChange, setXpChange] = useState(0);
+  const prevXPRef = useRef(totalXP || 0);
+  
+  useEffect(() => {
+    if (totalXP !== prevXPRef.current) {
+      const change = totalXP - prevXPRef.current;
+      setXpChange(change);
+      
+      const startXP = prevXPRef.current;
+      const endXP = totalXP;
+      const duration = 800;
+      const steps = 30;
+      const stepTime = duration / steps;
+      const stepValue = (endXP - startXP) / steps;
+      
+      let currentStep = 0;
+      const interval = setInterval(() => {
+        currentStep++;
+        if (currentStep <= steps) {
+          setAnimatedXP(Math.round(startXP + stepValue * currentStep));
+        } else {
+          setAnimatedXP(endXP);
+          clearInterval(interval);
+          setTimeout(() => setXpChange(0), 2000);
+        }
+      }, stepTime);
+      
+      prevXPRef.current = totalXP;
+      
+      return () => clearInterval(interval);
+    }
+  }, [totalXP]);
+  
+  const levelInfo = getMediaBorderColorForLevel(level || 1);
+  const finalProgress = progress || getMediaProgressToNextLevel(totalXP || 0, level || 1);
+  
+  if (compact) {
+    return (
+      <div className="w-full min-w-[120px]">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs font-semibold text-white">Уровень {level || 1}</span>
+          <span className="text-xs text-gray-400 flex items-center gap-1">
+            <span className="text-gray-400">{finalProgress.current} / {finalProgress.needed} XP</span>
+            {xpChange !== 0 && (
+              <span 
+                className={`text-xs font-bold transition-all duration-300 ${
+                  xpChange > 0 ? 'text-green-400' : 'text-red-400'
+                }`}
+                style={{ animation: 'pulse 0.5s ease-in-out' }}
+              >
+                {xpChange > 0 ? '+' : ''}{xpChange} XP
+              </span>
+            )}
+          </span>
+        </div>
+        <div className="w-full h-1.5 bg-gray-800/50 rounded-full overflow-hidden">
+          <div 
+            className="h-full rounded-full transition-all duration-500 relative"
+            style={{
+              width: `${finalProgress.percentage}%`,
+              background: levelInfo.gradient,
+              boxShadow: `0 0 8px ${levelInfo.glow}`
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="w-full space-y-2">
+      <div className="flex items-center justify-between">
+        <div>
+          <span className="text-sm font-semibold text-white">Уровень {level || 1}</span>
+          <span className="text-xs ml-2" style={{ color: levelInfo.color }}>
+            {title || MEDIA_LEVEL_TITLES[level || 1] || 'Зритель'}
+          </span>
+        </div>
+        <span className="text-xs text-gray-400 flex items-center gap-1">
+          <span className="text-gray-400">{finalProgress.current} / {finalProgress.needed} XP</span>
+          {xpChange !== 0 && (
+            <span 
+              className={`text-xs font-bold transition-all duration-300 ${
+                xpChange > 0 ? 'text-green-400' : 'text-red-400'
+              }`}
+              style={{ animation: 'pulse 0.5s ease-in-out' }}
+            >
+              {xpChange > 0 ? '+' : ''}{xpChange} XP
+            </span>
+          )}
+        </span>
+      </div>
+      <div className="w-full h-2 bg-gray-800/50 rounded-full overflow-hidden">
+        <div 
+          className="h-full rounded-full transition-all duration-500 relative"
+          style={{
+            width: `${finalProgress.percentage}%`,
+            background: levelInfo.gradient,
+            boxShadow: `0 0 10px ${levelInfo.glow}`
+          }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -1860,9 +2069,41 @@ function MovieApp() {
   const fileInputRef = useRef(null);
   const token = localStorage.getItem('token');
   
+  // Состояния для системы уровней медиа
+  const [userMediaLevel, setUserMediaLevel] = useState(null);
+  const [showMediaLevelUpModal, setShowMediaLevelUpModal] = useState(false);
+  const [mediaLevelUpData, setMediaLevelUpData] = useState(null);
+  const loadingMediaLevelRef = useRef(false);
+  const initializedMediaLevelRef = useRef(false);
+  
   // Состояния для drag & drop
   const [isDragging, setIsDragging] = useState(false);
   const [dragOverColumn, setDragOverColumn] = useState(null);
+  
+  // Загрузка уровня медиа пользователя
+  const loadUserMediaLevel = useCallback(async (userId = null) => {
+    if (!token || loadingMediaLevelRef.current) return;
+    loadingMediaLevelRef.current = true;
+    try {
+      const url = userId ? `${API_URL}/api/user/media-level?userId=${userId}` : `${API_URL}/api/user/media-level`;
+      const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (response.ok) {
+        const data = await response.json();
+        setUserMediaLevel(data);
+        if (!userId) {
+          // Обновляем localStorage только для текущего пользователя
+          const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
+          savedUser.media_level = data.level;
+          savedUser.media_total_xp = data.totalXP;
+          localStorage.setItem('user', JSON.stringify(savedUser));
+        }
+      }
+    } catch (err) {
+      console.error('Ошибка загрузки уровня медиа:', err);
+    } finally {
+      loadingMediaLevelRef.current = false;
+    }
+  }, [token]);
   
   const loadBoards = useCallback(async (userId = null) => {
     if (!token) return;
@@ -1875,6 +2116,8 @@ function MovieApp() {
         setViewingUser(data.user);
         setFriendshipStatus(data.friendship || 'none');
         setUserNickname(data.nickname || '');
+        // Загружаем уровень медиа для просматриваемого пользователя
+        loadUserMediaLevel(userId);
       } else {
         setViewingUser(null);
         setFriendshipStatus('none');
@@ -1927,12 +2170,27 @@ function MovieApp() {
           show_stats: parsedUser.show_stats ?? true,
           allow_friend_requests: parsedUser.allow_friend_requests ?? true
         });
-        loadBoards();
-        loadFriends();
+        if (!initializedMediaLevelRef.current) {
+          initializedMediaLevelRef.current = true;
+          setTimeout(() => {
+            loadBoards();
+            loadUserMediaLevel();
+            loadFriends();
+          }, 100);
+        }
     } else {
         window.location.href = '/index.html'; 
     }
-  }, [token, loadBoards, loadFriends]);
+  }, [token, loadBoards, loadUserMediaLevel, loadFriends]);
+  
+  // Загрузка уровня медиа при просмотре другого пользователя
+  useEffect(() => {
+    if (viewingUser) {
+      loadUserMediaLevel(viewingUser.id);
+    } else {
+      loadUserMediaLevel();
+    }
+  }, [viewingUser, loadUserMediaLevel]);
 
   useEffect(() => {
     document.body.className = theme;
@@ -2001,10 +2259,22 @@ function MovieApp() {
   );
 
   const addItem = async (item, board = 'wishlist') => {
-    await fetch(`${API_URL}/api/user/media`, {
+    const response = await fetch(`${API_URL}/api/user/media`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ item, board })
     });
+    if (response.ok) {
+      const data = await response.json();
+      if (data.mediaLevelUp) {
+        await loadUserMediaLevel(user?.id);
+        if (data.mediaLevelUp.leveledUp) {
+          setMediaLevelUpData(data.mediaLevelUp);
+          setShowMediaLevelUpModal(true);
+        }
+      } else if (board === 'watched') {
+        await loadUserMediaLevel(user?.id);
+      }
+    }
     await loadBoards();
     setShowSearch(false);
     setQuery('');
@@ -2026,7 +2296,18 @@ function MovieApp() {
       body: JSON.stringify(updates)
     });
     console.log('Server response:', response.status, response.ok);
-    if (!response.ok) {
+    if (response.ok) {
+      const data = await response.json();
+      if (data.mediaLevelUp) {
+        await loadUserMediaLevel(user?.id);
+        if (data.mediaLevelUp.leveledUp) {
+          setMediaLevelUpData(data.mediaLevelUp);
+          setShowMediaLevelUpModal(true);
+        }
+      } else if (updates.board) {
+        await loadUserMediaLevel(user?.id);
+      }
+    } else {
       const errorText = await response.text();
       console.error('Server error:', errorText);
     }
@@ -2051,7 +2332,11 @@ function MovieApp() {
   const removeItem = async (e, item) => {
     e.stopPropagation();
     if (confirm(`Вы уверены, что хотите удалить "${item.title}"?`)) {
-      await fetch(`${API_URL}/api/user/media/${item.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      const wasWatched = item.board === 'watched';
+      const response = await fetch(`${API_URL}/api/user/media/${item.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      if (response.ok && wasWatched) {
+        await loadUserMediaLevel(user?.id);
+      }
       await loadBoards();
     }
   };
@@ -2351,10 +2636,35 @@ function MovieApp() {
             </div>
             {user && (
                 <div className="flex items-center gap-2 md:gap-3">
-                    <div className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-[#8458B3]/25 to-[#a0d2eb]/20 rounded-lg border border-[#a0d2eb]/40">
-                        <Avatar src={viewingUser ? viewingUser.avatar : user.avatar} size="sm" />
-                        <span className="text-white font-semibold text-sm md:text-base block">{viewingUser ? (userNickname || viewingUser.username) : user.username}</span>
-                        {viewingUser && userNickname && <span className="text-xs text-gray-400">@{viewingUser.username}</span>}
+                    <div className="flex items-center gap-3 px-3 md:px-4 py-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg border border-purple-500/30">
+                        <Avatar 
+                          src={viewingUser ? viewingUser.avatar : user.avatar} 
+                          size="sm" 
+                          mediaLevel={viewingUser ? (viewingUser.media_level || 1) : (userMediaLevel?.level || user?.media_level || 1)}
+                          showBorder={true}
+                        />
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <span className="text-white font-semibold text-sm md:text-base whitespace-nowrap">
+                            {viewingUser ? (userNickname || viewingUser.username) : user.username}
+                          </span>
+                          {viewingUser && userNickname && (
+                            <span className="text-xs text-gray-400 whitespace-nowrap">@{viewingUser.username}</span>
+                          )}
+                          <span className="text-xs font-medium whitespace-nowrap" style={{
+                            color: getMediaBorderColorForLevel(viewingUser ? (viewingUser.media_level || 1) : (userMediaLevel?.level || user?.media_level || 1)).color
+                          }}>
+                            {viewingUser ? (MEDIA_LEVEL_TITLES[viewingUser.media_level || 1] || 'Зритель') : (userMediaLevel?.title || MEDIA_LEVEL_TITLES[user?.media_level || 1] || 'Зритель')}
+                          </span>
+                        </div>
+                        <div className="hidden md:block min-w-[120px]">
+                          <MediaXPBar
+                            level={viewingUser ? (viewingUser.media_level || 1) : (userMediaLevel?.level || user?.media_level || 1)}
+                            totalXP={viewingUser ? (viewingUser.media_total_xp || 0) : (userMediaLevel?.totalXP || user?.media_total_xp || 0)}
+                            title={viewingUser ? (MEDIA_LEVEL_TITLES[viewingUser.media_level || 1] || 'Зритель') : (userMediaLevel?.title || MEDIA_LEVEL_TITLES[user?.media_level || 1] || 'Зритель')}
+                            progress={viewingUser ? getMediaProgressToNextLevel(viewingUser.media_total_xp || 0, viewingUser.media_level || 1) : (userMediaLevel?.progress || getMediaProgressToNextLevel(user?.media_total_xp || 0, user?.media_level || 1))}
+                            compact={true}
+                          />
+                        </div>
                     </div>
                     {viewingUser ? (
                        <Fragment>
