@@ -13,7 +13,7 @@ const { JSDOM } = require('jsdom');
 const DOMPurify = require('dompurify');
 const { Parser } = require('json2csv');
 const crypto = require('crypto');
-const howlongtobeat = require('howlongtobeat-api');
+const { find: hltbFind } = require('howlongtobeat-api');
 
 // Загружаем SendGrid лениво (только когда нужно)
 let sgMail = null;
@@ -1879,7 +1879,7 @@ app.get('/api/games/:gameId/details', authenticateToken, async (req, res) => {
     if (game.name) {
       try {
         console.log(`[HowLongToBeat] Поиск игры: "${game.name}"`);
-        const hltbResults = await howlongtobeat.find({ search: game.name });
+        const hltbResults = await hltbFind({ search: game.name });
         
         if (hltbResults && hltbResults.data && hltbResults.data.length > 0) {
           // Берем первый результат (обычно самый релевантный)
