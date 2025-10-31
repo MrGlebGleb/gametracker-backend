@@ -4170,11 +4170,21 @@
         };
       }, [showAuth, viewingUser]);
 
+      // Защита от множественных одновременных запросов уровня
+      const loadingLevelRef = useRef(false);
+      
       // Функция загрузки уровня пользователя
       const loadUserLevel = useCallback(async (token, userId = null) => {
+        // Если уже идет загрузка уровня, пропускаем
+        if (loadingLevelRef.current) {
+          return;
+        }
+        
         try {
           const targetUserId = userId || user?.id;
           if (!targetUserId || !token) return;
+          
+          loadingLevelRef.current = true;
           
           const response = await fetch(`${API_URL}/api/user/level?userId=${targetUserId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -4195,10 +4205,22 @@
           }
         } catch (error) {
           console.error('Ошибка загрузки уровня:', error);
+        } finally {
+          loadingLevelRef.current = false;
         }
       }, [user]);
 
+      // Защита от множественных одновременных запросов
+      const loadingBoardsRef = useRef(false);
+      
       const loadBoards = useCallback(async (token, userId = null, tagId = null) => {
+        // Если уже идет загрузка, пропускаем
+        if (loadingBoardsRef.current) {
+          console.log('Загрузка досок уже идет, пропускаем запрос');
+          return;
+        }
+        
+        loadingBoardsRef.current = true;
         setBoardsLoading(true);
         try {
           let url = userId ? `${API_URL}/api/user/${userId}/boards` : `${API_URL}/api/user/boards`;
@@ -4261,20 +4283,11 @@
           console.error('Ошибка загрузки:', err);
         } finally {
           setBoardsLoading(false);
+          loadingBoardsRef.current = false;
         }
       }, []);
 
-      useEffect(() => {
-        const token = localStorage.getItem('token');
-        const savedUser = localStorage.getItem('user');
-        if (token && savedUser) {
-          const parsedUser = JSON.parse(savedUser);
-          setUser(parsedUser);
-          setTheme(parsedUser.theme || 'default');
-          setShowAuth(false);
-          loadBoards(token);
-        }
-      }, [loadBoards]);
+      // Удаляем дублирующий useEffect - он уже есть ниже с более полной логикой
       
       useEffect(() => {
         document.body.className = theme;
@@ -4715,12 +4728,19 @@
       }, [loadBoards, loadUserLevel, user]);
 
       // Инициализация пользователя и загрузка уровня при загрузке страницы
+      // Используем useRef чтобы предотвратить повторные вызовы
+      const initializedRef = useRef(false);
+      
       useEffect(() => {
+        // Предотвращаем повторную инициализацию
+        if (initializedRef.current) return;
+        
         const token = localStorage.getItem('token');
         const savedUser = localStorage.getItem('user');
         
         if (token && savedUser) {
           try {
+            initializedRef.current = true;
             const user = JSON.parse(savedUser);
             setUser(user);
             setTheme(user.theme || 'default');
@@ -4731,18 +4751,22 @@
               allow_friend_requests: user.allow_friend_requests ?? true
             });
             setShowAuth(false);
-            loadBoards(token);
-            // Загружаем уровень пользователя
-            if (user.id) {
-              loadUserLevel(token, user.id);
-            }
+            // Загружаем доски и уровень после небольшой задержки чтобы избежать гонки
+            setTimeout(() => {
+              loadBoards(token);
+              // Загружаем уровень пользователя
+              if (user.id) {
+                loadUserLevel(token, user.id);
+              }
+            }, 100);
           } catch (err) {
             console.error('Ошибка инициализации пользователя:', err);
+            initializedRef.current = false;
             localStorage.removeItem('token');
             localStorage.removeItem('user');
           }
         }
-      }, [loadBoards, loadUserLevel]);
+      }, []); // Убираем зависимости чтобы избежать циклов
       
       const submitDeepReview = useCallback(async (gameId, answers) => {
           const token = localStorage.getItem('token');
