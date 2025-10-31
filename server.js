@@ -653,21 +653,19 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    console.log('CORS request from origin:', origin);
-    console.log('Allowed origins:', allowedOrigins);
-    
     // Разрешить запросы без origin (например, мобильные приложения, Postman)
     if (!origin) {
-      console.log('No origin, allowing request');
       return callback(null, true);
     }
     
     // Разрешаем Railway домены и Vercel домены
     if (origin.includes('railway.app') || origin.includes('vercel.app') || origin.includes('localhost') || allowedOrigins.indexOf(origin) !== -1) {
-      console.log('Origin allowed:', origin);
       callback(null, true);
     } else {
-      console.log('CORS blocked origin:', origin);
+      // Логируем только заблокированные запросы
+      if (process.env.NODE_ENV === 'development') {
+        console.log('CORS blocked origin:', origin);
+      }
       callback(new Error('Не разрешено CORS политикой'));
     }
   },
@@ -1230,23 +1228,28 @@ function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   
-  console.log('Auth header:', authHeader);
-  console.log('Token:', token ? 'Present' : 'Missing');
-  console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'Present' : 'Missing');
+  // Логируем только в режиме разработки
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Auth header:', authHeader ? 'Present' : 'Missing');
+    console.log('Token:', token ? 'Present' : 'Missing');
+  }
   
   if (!token) {
-    console.log('No token provided');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('No token provided');
+    }
     return res.status(401).json({ error: 'Требуется авторизация' });
   }
   
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) {
-      console.log('Token verification failed:', err.message);
-      console.log('Token:', token);
-      console.log('JWT_SECRET length:', process.env.JWT_SECRET?.length);
+      // Логируем ошибки верификации только в режиме разработки
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Token verification failed:', err.message);
+      }
       return res.status(403).json({ error: 'Недействительный токен' });
     }
-    console.log('User authenticated:', user.id);
+    // Убираем логирование успешной аутентификации
     req.user = user;
     next();
   });
@@ -6088,10 +6091,18 @@ const server = app.listen(PORT, '0.0.0.0', async (err) => {
   console.log(`🌐 Доступен по адресу: http://0.0.0.0:${PORT}`);
   console.log(`📊 Healthcheck endpoint: http://0.0.0.0:${PORT}/api/health`);
   
-  // Запускаем автоматическую миграцию XP (не блокируем запуск сервера)
-  runAutoMigration().catch(error => {
-    console.error('❌ Ошибка автоматической миграции:', error);
-  });
+  // Автоматическая миграция XP отключена для предотвращения перегрузки
+  // Запустить миграцию можно вручную через API endpoints:
+  // POST /api/admin/recalculate-xp (для игр)
+  // POST /api/admin/recalculate-media-xp (для медиа)
+  // Для включения автоматической миграции установите AUTO_MIGRATE_XP=true
+  if (process.env.AUTO_MIGRATE_XP === 'true') {
+    runAutoMigration().catch(error => {
+      console.error('❌ Ошибка автоматической миграции:', error);
+    });
+  } else {
+    console.log('ℹ️  Автоматическая миграция XP отключена (безопасность)');
+  }
   
   console.log(`✅ Сервер готов принимать запросы`);
 });
