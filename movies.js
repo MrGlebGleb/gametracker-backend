@@ -1294,11 +1294,24 @@ const MediaXPBar = ({ level, totalXP, title, progress, borderColor, borderGradie
     const formattedNeeded = finalProgress.needed.toLocaleString('ru-RU');
     
     return (
-      <div className="w-full min-w-[120px]">
-        <div className="flex items-center justify-between mb-1">
+      <div className="w-full min-w-[120px] relative">
+        <div className="flex items-center justify-between mb-1 relative">
           <span className="text-xs font-semibold text-white">Уровень {currentLevel}</span>
+          {xpChange !== 0 && (
+            <span 
+              className={`xp-change-indicator text-xs font-bold ${
+                xpChange > 0 ? 'text-green-400' : 'text-red-400'
+              }`}
+              style={{
+                right: 0,
+                top: 0
+              }}
+            >
+              {xpChange > 0 ? '+' : ''}{Math.abs(xpChange).toLocaleString('ru-RU')} XP
+            </span>
+          )}
         </div>
-        <div className="w-full h-1.5 bg-gray-800/50 rounded-full overflow-hidden mb-0.5">
+        <div className="w-full h-1.5 bg-gray-800/50 rounded-full overflow-hidden mb-0.5 relative">
           <div 
             className="h-full rounded-full transition-all duration-500 relative"
             style={{
@@ -1310,8 +1323,10 @@ const MediaXPBar = ({ level, totalXP, title, progress, borderColor, borderGradie
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
           </div>
         </div>
-        <div className="text-[10px] text-gray-400 text-right">
-          {formattedCurrent} / {formattedNeeded} XP
+        <div className="flex justify-end relative">
+          <span className="text-[10px] text-gray-400">
+            {formattedCurrent} / {formattedNeeded} XP
+          </span>
         </div>
       </div>
     );
@@ -1322,17 +1337,31 @@ const MediaXPBar = ({ level, totalXP, title, progress, borderColor, borderGradie
   const formattedNeeded = finalProgress.needed.toLocaleString('ru-RU');
   
   return (
-    <div className="w-full space-y-2">
-      <div className="flex items-center justify-between">
+    <div className="w-full space-y-2 relative">
+      <div className="flex items-center justify-between relative">
         <div>
           <span className="text-sm font-semibold text-white">Уровень {currentLevel}</span>
           <span className="text-xs ml-2" style={{ color: levelInfo.color }}>
             {title || MEDIA_LEVEL_TITLES[level || 1] || 'Зритель'}
           </span>
         </div>
-        <span className="text-xs text-gray-400">
-          {formattedCurrent} / {formattedNeeded} XP
-        </span>
+        <div className="flex items-center gap-2 relative">
+          <span className="text-xs text-gray-400">
+            {formattedCurrent} / {formattedNeeded} XP
+          </span>
+          {xpChange !== 0 && (
+            <span 
+              className={`xp-change-indicator text-xs font-bold ${
+                xpChange > 0 ? 'text-green-400' : 'text-red-400'
+              }`}
+              style={{
+                right: 0
+              }}
+            >
+              {xpChange > 0 ? '+' : ''}{Math.abs(xpChange).toLocaleString('ru-RU')} XP
+            </span>
+          )}
+        </div>
       </div>
       <div className="w-full h-2 bg-gray-800/50 rounded-full overflow-hidden">
         <div 

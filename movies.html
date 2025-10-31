@@ -935,6 +935,55 @@
       transition: outline-offset 0.2s ease;
     }
 
+    /* Анимация изменения XP */
+    @keyframes xpChangeFadeIn {
+      0% {
+        opacity: 0;
+        transform: translateY(10px) scale(0.8);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes xpChangeFloatUp {
+      0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(-20px) scale(1.2);
+      }
+    }
+
+    @keyframes xpChangeGlow {
+      0%, 100% {
+        filter: drop-shadow(0 0 4px currentColor);
+      }
+      50% {
+        filter: drop-shadow(0 0 12px currentColor) drop-shadow(0 0 8px currentColor);
+      }
+    }
+
+    @keyframes xpChangePulse {
+      0%, 100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.1);
+      }
+    }
+
+    .xp-change-indicator {
+      animation: xpChangeFadeIn 0.4s ease-out, xpChangeFloatUp 1.6s ease-out 0.4s forwards, xpChangeGlow 2s ease-in-out, xpChangePulse 0.6s ease-in-out;
+      position: absolute;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 10;
+    }
+
     /* Текст selection */
     ::selection {
       background: rgba(160, 210, 235, 0.3);

@@ -325,6 +325,55 @@
       scroll-behavior: smooth;
     }
 
+    /* Анимация изменения XP */
+    @keyframes xpChangeFadeIn {
+      0% {
+        opacity: 0;
+        transform: translateY(10px) scale(0.8);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes xpChangeFloatUp {
+      0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(-20px) scale(1.2);
+      }
+    }
+
+    @keyframes xpChangeGlow {
+      0%, 100% {
+        filter: drop-shadow(0 0 4px currentColor);
+      }
+      50% {
+        filter: drop-shadow(0 0 12px currentColor) drop-shadow(0 0 8px currentColor);
+      }
+    }
+
+    @keyframes xpChangePulse {
+      0%, 100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.1);
+      }
+    }
+
+    .xp-change-indicator {
+      animation: xpChangeFadeIn 0.4s ease-out, xpChangeFloatUp 1.6s ease-out 0.4s forwards, xpChangeGlow 2s ease-in-out, xpChangePulse 0.6s ease-in-out;
+      position: absolute;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 10;
+    }
+
     /* Custom scrollbar с анимацией */
     ::-webkit-scrollbar {
       width: 10px;
@@ -1589,11 +1638,24 @@
         const formattedNeeded = finalProgress.needed.toLocaleString('ru-RU');
         
         return (
-          <div className="w-full">
+          <div className="w-full relative">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-semibold text-white">Уровень {level}</span>
+              {xpChange !== 0 && (
+                <span 
+                  className={`xp-change-indicator text-xs font-bold ${
+                    xpChange > 0 ? 'text-green-400' : 'text-red-400'
+                  }`}
+                  style={{
+                    right: 0,
+                    top: 0
+                  }}
+                >
+                  {xpChange > 0 ? '+' : ''}{Math.abs(xpChange).toLocaleString('ru-RU')} XP
+                </span>
+              )}
             </div>
-            <div className="w-full h-1.5 bg-gray-800/50 rounded-full overflow-hidden mb-0.5">
+            <div className="w-full h-1.5 bg-gray-800/50 rounded-full overflow-hidden mb-0.5 relative">
               <div 
                 className="h-full rounded-full transition-all duration-500 relative"
                 style={{
@@ -1605,8 +1667,10 @@
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
               </div>
             </div>
-            <div className="text-[10px] text-gray-400 text-right">
-              {formattedCurrent} / {formattedNeeded} XP
+            <div className="flex justify-end relative">
+              <span className="text-[10px] text-gray-400">
+                {formattedCurrent} / {formattedNeeded} XP
+              </span>
             </div>
           </div>
         );
@@ -1616,14 +1680,28 @@
       const formattedNeeded = finalProgress.needed.toLocaleString('ru-RU');
       
       return (
-          <div className="w-full space-y-1">
-          <div className="flex items-center justify-between">
+          <div className="w-full space-y-1 relative">
+          <div className="flex items-center justify-between relative">
             <span className="text-sm font-semibold" style={{ color: levelInfo.color }}>
               Уровень {level}: {title}
             </span>
-            <span className="text-xs text-gray-400">
-              {formattedCurrent} / {formattedNeeded} XP
-            </span>
+            <div className="flex items-center gap-2 relative">
+              <span className="text-xs text-gray-400">
+                {formattedCurrent} / {formattedNeeded} XP
+              </span>
+              {xpChange !== 0 && (
+                <span 
+                  className={`xp-change-indicator text-xs font-bold ${
+                    xpChange > 0 ? 'text-green-400' : 'text-red-400'
+                  }`}
+                  style={{
+                    right: 0
+                  }}
+                >
+                  {xpChange > 0 ? '+' : ''}{Math.abs(xpChange).toLocaleString('ru-RU')} XP
+                </span>
+              )}
+            </div>
           </div>
           <div className="w-full h-2 bg-gray-800/50 rounded-full overflow-hidden backdrop-blur-sm border border-gray-700/30">
             <div 
