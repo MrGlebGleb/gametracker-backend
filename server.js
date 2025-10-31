@@ -1873,21 +1873,32 @@ app.get('/api/games/:gameId/details', authenticateToken, async (req, res) => {
     // Получаем время прохождения из отдельной таблицы IGDB
     let normalizedTimeToBeat = null;
     try {
+      console.log(`[IGDB] Запрос time_to_beat для gameId=${gameId}`);
       const ttbResp = await axios.post(
         'https://api.igdb.com/v4/game_time_to_beats',
         `fields normally, completely, hastly; where game = ${gameId}; limit 1;`,
         { headers: { 'Client-ID': TWITCH_CLIENT_ID, 'Authorization': `Bearer ${token}`, 'Content-Type': 'text/plain' } }
       );
-      console.log('[IGDB] game_time_to_beats:', Array.isArray(ttbResp.data) ? ttbResp.data : ttbResp.data);
-      const ttb = Array.isArray(ttbResp.data) && ttbResp.data[0] ? ttbResp.data[0] : null;
+      console.log('[IGDB] game_time_to_beats ответ:', JSON.stringify(ttbResp.data));
+      console.log('[IGDB] game_time_to_beats тип данных:', typeof ttbResp.data, 'является массивом?', Array.isArray(ttbResp.data));
+      const ttb = Array.isArray(ttbResp.data) && ttbResp.data.length > 0 && ttbResp.data[0] ? ttbResp.data[0] : null;
+      console.log('[IGDB] Распарсенные данные ttb:', ttb);
       if (ttb) {
-        const normally = Number.isFinite(ttb.normally) ? ttb.normally : null;
-        const completely = Number.isFinite(ttb.completely) ? ttb.completely : null;
-        const hastly = Number.isFinite(ttb.hastly) ? ttb.hastly : null;
+        const normally = (ttb.normally && Number.isFinite(ttb.normally)) ? ttb.normally : null;
+        const completely = (ttb.completely && Number.isFinite(ttb.completely)) ? ttb.completely : null;
+        const hastly = (ttb.hastly && Number.isFinite(ttb.hastly)) ? ttb.hastly : null;
         normalizedTimeToBeat = [normally, completely, hastly];
+        console.log('[IGDB] Нормализованное время:', normalizedTimeToBeat);
+      } else {
+        console.log('[IGDB] Данные time_to_beat отсутствуют или пустые');
       }
     } catch (e) {
-      console.warn('Не удалось получить time_to_beat из IGDB:', e.response?.data || e.message);
+      console.error('[IGDB] Ошибка получения time_to_beat:', {
+        message: e.message,
+        response: e.response?.data,
+        status: e.response?.status,
+        headers: e.response?.headers
+      });
     }
     const gameDetails = {
       id: game.id,
@@ -1900,6 +1911,7 @@ app.get('/api/games/:gameId/details', authenticateToken, async (req, res) => {
       time_to_beat: normalizedTimeToBeat
     };
     
+    console.log('[IGDB] Финальный ответ gameDetails:', JSON.stringify(gameDetails, null, 2));
     res.json(gameDetails);
   } catch (error) {
     console.error('Ошибка получения деталей игры:', error.message);
