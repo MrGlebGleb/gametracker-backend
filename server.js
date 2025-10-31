@@ -13,6 +13,7 @@ const { JSDOM } = require('jsdom');
 const DOMPurify = require('dompurify');
 const { Parser } = require('json2csv');
 const crypto = require('crypto');
+const howlongtobeat = require('howlongtobeat-api');
 
 // Загружаем SendGrid лениво (только когда нужно)
 let sgMail = null;
@@ -1859,10 +1860,10 @@ app.get('/api/games/:gameId/details', authenticateToken, async (req, res) => {
     
     const token = await getTwitchToken();
     console.log(`[IGDB] details for gameId=${gameId}`);
-    // Запрашиваем games с расширением для time_to_beat через expansion
+    // Запрашиваем только основные данные игры (время прохождения получаем из HowLongToBeat)
     const response = await axios.post(
       'https://api.igdb.com/v4/games',
-      `fields name, cover.url, summary, rating, genres.name, videos.video_id, game_time_to_beats; expand game_time_to_beats; where id = ${gameId}; limit 1;`,
+      `fields name, cover.url, summary, rating, genres.name, videos.video_id; where id = ${gameId}; limit 1;`,
       { headers: { 'Client-ID': TWITCH_CLIENT_ID, 'Authorization': `Bearer ${token}`, 'Content-Type': 'text/plain' } }
     );
     
@@ -1871,48 +1872,43 @@ app.get('/api/games/:gameId/details', authenticateToken, async (req, res) => {
     }
     
     const game = response.data[0];
-    console.log('[IGDB] Игра получена:', JSON.stringify(game, null, 2));
+    console.log('[IGDB] Игра получена:', game.name);
     
-    // Извлекаем время прохождения из ответа games
+    // Получаем время прохождения ТОЛЬКО из HowLongToBeat API
     let normalizedTimeToBeat = null;
-    
-    // Если game_time_to_beats пришел через expansion как массив
-    if (game.game_time_to_beats && Array.isArray(game.game_time_to_beats) && game.game_time_to_beats.length > 0) {
-      const ttb = game.game_time_to_beats[0];
-      console.log('[IGDB] game_time_to_beats из expansion:', JSON.stringify(ttb, null, 2));
-      
-      const normally = (ttb.normally !== undefined && ttb.normally !== null && Number.isFinite(Number(ttb.normally))) 
-        ? Number(ttb.normally) : null;
-      const completely = (ttb.completely !== undefined && ttb.completely !== null && Number.isFinite(Number(ttb.completely))) 
-        ? Number(ttb.completely) : null;
-      const hastly = (ttb.hastly !== undefined && ttb.hastly !== null && Number.isFinite(Number(ttb.hastly))) 
-        ? Number(ttb.hastly) : null;
-      
-      if (normally !== null || completely !== null || hastly !== null) {
-        normalizedTimeToBeat = [normally, completely, hastly];
-        console.log('[IGDB] ✅ Время прохождения из expansion:', normalizedTimeToBeat);
+    if (game.name) {
+      try {
+        console.log(`[HowLongToBeat] Поиск игры: "${game.name}"`);
+        const hltbResults = await howlongtobeat.find({ search: game.name });
+        
+        if (hltbResults && hltbResults.data && hltbResults.data.length > 0) {
+          // Берем первый результат (обычно самый релевантный)
+          const hltbGame = hltbResults.data[0];
+          console.log('[HowLongToBeat] Найдена игра:', hltbGame.name, hltbGame.id);
+          
+          // Конвертируем часы в секунды для фронтенда
+          // HowLongToBeat возвращает часы (например, 11.5 часов = 11 часов 30 минут)
+          const toSeconds = (hours) => {
+            if (!hours || hours === 0) return null;
+            return Math.round(hours * 3600); // часы * 3600 = секунды
+          };
+          
+          const normally = toSeconds(hltbGame.gameplayMain);
+          const completely = toSeconds(hltbGame.gameplayCompletionist);
+          const hastly = null; // HowLongToBeat не имеет "hastly", но можно использовать extended как альтернативу
+          const extended = toSeconds(hltbGame.gameplayExtended);
+          
+          // Используем extended как альтернативу hastly, если есть
+          if ((normally !== null || completely !== null || extended !== null)) {
+            normalizedTimeToBeat = [normally, completely, extended];
+            console.log('[HowLongToBeat] ✅ Время прохождения:', normalizedTimeToBeat);
+          }
+        } else {
+          console.log('[HowLongToBeat] ⚠️ Игра не найдена в HowLongToBeat');
+        }
+      } catch (hltbError) {
+        console.error('[HowLongToBeat] ❌ Ошибка получения данных:', hltbError.message);
       }
-    } else if (game.game_time_to_beats && typeof game.game_time_to_beats === 'object' && !Array.isArray(game.game_time_to_beats)) {
-      // Если пришел как объект (не массив)
-      const ttb = game.game_time_to_beats;
-      const normally = (ttb.normally !== undefined && ttb.normally !== null && Number.isFinite(Number(ttb.normally))) 
-        ? Number(ttb.normally) : null;
-      const completely = (ttb.completely !== undefined && ttb.completely !== null && Number.isFinite(Number(ttb.completely))) 
-        ? Number(ttb.completely) : null;
-      const hastly = (ttb.hastly !== undefined && ttb.hastly !== null && Number.isFinite(Number(ttb.hastly))) 
-        ? Number(ttb.hastly) : null;
-      
-      if (normally !== null || completely !== null || hastly !== null) {
-        normalizedTimeToBeat = [normally, completely, hastly];
-        console.log('[IGDB] ✅ Время прохождения из объекта:', normalizedTimeToBeat);
-      }
-    } else {
-      console.log('[IGDB] ⚠️ game_time_to_beats не найден в ответе games');
-    }
-    
-    // Если не получили через games expansion, значит данных нет в IGDB для этой игры
-    if (!normalizedTimeToBeat) {
-      console.log('[IGDB] ⚠️ Данные time_to_beat отсутствуют для этой игры в IGDB');
     }
     const gameDetails = {
       id: game.id,
