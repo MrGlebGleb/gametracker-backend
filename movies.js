@@ -1290,13 +1290,15 @@ const MediaXPBar = ({ level, totalXP, title, progress, borderColor, borderGradie
   
   if (compact) {
     const currentLevel = level || 1;
+    const formattedCurrent = finalProgress.current.toLocaleString('ru-RU');
+    const formattedNeeded = finalProgress.needed.toLocaleString('ru-RU');
     
     return (
       <div className="w-full min-w-[120px]">
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs font-semibold text-white">Уровень {currentLevel}</span>
         </div>
-        <div className="w-full h-1.5 bg-gray-800/50 rounded-full overflow-hidden">
+        <div className="w-full h-1.5 bg-gray-800/50 rounded-full overflow-hidden mb-0.5">
           <div 
             className="h-full rounded-full transition-all duration-500 relative"
             style={{
@@ -1308,11 +1310,16 @@ const MediaXPBar = ({ level, totalXP, title, progress, borderColor, borderGradie
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
           </div>
         </div>
+        <div className="text-[10px] text-gray-400 text-right">
+          {formattedCurrent} / {formattedNeeded} XP
+        </div>
       </div>
     );
   }
   
   const currentLevel = level || 1;
+  const formattedCurrent = finalProgress.current.toLocaleString('ru-RU');
+  const formattedNeeded = finalProgress.needed.toLocaleString('ru-RU');
   
   return (
     <div className="w-full space-y-2">
@@ -1323,6 +1330,9 @@ const MediaXPBar = ({ level, totalXP, title, progress, borderColor, borderGradie
             {title || MEDIA_LEVEL_TITLES[level || 1] || 'Зритель'}
           </span>
         </div>
+        <span className="text-xs text-gray-400">
+          {formattedCurrent} / {formattedNeeded} XP
+        </span>
       </div>
       <div className="w-full h-2 bg-gray-800/50 rounded-full overflow-hidden">
         <div 
