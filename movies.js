@@ -1289,15 +1289,14 @@ const MediaXPBar = ({ level, totalXP, title, progress, borderColor, borderGradie
   const finalProgress = progress || getMediaProgressToNextLevel(totalXP || 0, level || 1);
   
   if (compact) {
-    const currentLevel = level || 1;
-    const formattedLevel = currentLevel.toLocaleString('ru-RU');
     const formattedCurrent = finalProgress.current.toLocaleString('ru-RU');
     const formattedNeeded = finalProgress.needed.toLocaleString('ru-RU');
+    const currentLevel = level || 1;
     
     return (
       <div className="w-full min-w-[120px]">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-xs font-semibold text-white">Уровень {formattedLevel}</span>
+          <span className="text-xs font-semibold text-white">Уровень {currentLevel}</span>
           <span className="text-xs text-gray-400 flex items-center gap-1">
             <span className="text-gray-400">{formattedCurrent} / {formattedNeeded} XP</span>
               {xpChange !== 0 && (
@@ -1329,7 +1328,6 @@ const MediaXPBar = ({ level, totalXP, title, progress, borderColor, borderGradie
   }
   
   const currentLevel = level || 1;
-  const formattedLevel = currentLevel.toLocaleString('ru-RU');
   const formattedCurrent = finalProgress.current.toLocaleString('ru-RU');
   const formattedNeeded = finalProgress.needed.toLocaleString('ru-RU');
   
@@ -1337,7 +1335,7 @@ const MediaXPBar = ({ level, totalXP, title, progress, borderColor, borderGradie
     <div className="w-full space-y-2">
       <div className="flex items-center justify-between">
         <div>
-          <span className="text-sm font-semibold text-white">Уровень {formattedLevel}</span>
+          <span className="text-sm font-semibold text-white">Уровень {currentLevel}</span>
           <span className="text-xs ml-2" style={{ color: levelInfo.color }}>
             {title || MEDIA_LEVEL_TITLES[level || 1] || 'Зритель'}
           </span>
@@ -3337,15 +3335,15 @@ const MediaLevelUpModal = ({ showMediaLevelUpModal, setShowMediaLevelUpModal, me
         <div className="text-center space-y-6">
           {/* Заголовок */}
           <div className="space-y-2">
-            <h2 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text" style={{
-              background: newLevelInfo.gradient
+            <h2 className="text-4xl md:text-5xl font-bold text-white" style={{
+              textShadow: `2px 2px 4px rgba(0,0,0,0.5)`
             }}>
               🎉 УРОВЕНЬ ПОВЫШЕН! 🎉
             </h2>
             <p 
-              className="text-gray-300 text-lg relative inline-block px-4 py-2"
+              className="text-gray-200 text-lg relative inline-block px-4 py-2"
               style={{
-                textShadow: `0 0 20px ${newLevelInfo.glow}, 0 0 40px ${newLevelInfo.glow}, 0 0 60px ${newLevelInfo.glow}`,
+                textShadow: `1px 1px 2px rgba(0,0,0,0.8), 0 0 15px ${newLevelInfo.glow}`,
                 animation: 'pulse 2s ease-in-out infinite'
               }}
             >
@@ -3354,7 +3352,7 @@ const MediaLevelUpModal = ({ showMediaLevelUpModal, setShowMediaLevelUpModal, me
           </div>
           
           {/* Анимация смены уровня */}
-          <div className="relative h-40 flex items-center justify-center overflow-visible">
+          <div className="relative h-40 flex items-center justify-center">
             {/* Старый уровень - исчезает */}
             <div 
               key={`old-${oldLevel}`}
@@ -3371,7 +3369,7 @@ const MediaLevelUpModal = ({ showMediaLevelUpModal, setShowMediaLevelUpModal, me
               <div className="text-sm text-gray-400 mt-2">{oldTitle}</div>
             </div>
             
-            {/* Новый уровень - появляется с искрами */}
+            {/* Новый уровень - появляется с сиянием */}
             <div 
               key={`new-${newLevel}`}
               className="absolute inset-0 flex flex-col items-center justify-center relative"
@@ -3380,65 +3378,19 @@ const MediaLevelUpModal = ({ showMediaLevelUpModal, setShowMediaLevelUpModal, me
                 opacity: 0
               }}
             >
-              {/* Искры вокруг цифры */}
-              {[...Array(12)].map((_, i) => {
-                const angle = (360 / 12) * i;
-                const distance = 80;
-                const x = Math.cos(angle * Math.PI / 180) * distance;
-                const y = Math.sin(angle * Math.PI / 180) * distance;
-                return (
-                  <div
-                    key={i}
-                    className="absolute w-3 h-3 rounded-full"
-                    style={{
-                      left: `50%`,
-                      top: `50%`,
-                      transform: `translate(${x}px, ${y}px)`,
-                      background: newLevelInfo.color,
-                      boxShadow: `0 0 10px ${newLevelInfo.color}, 0 0 20px ${newLevelInfo.color}`,
-                      animation: `sparkle 2s ease-in-out infinite ${i * 0.1}s`,
-                      opacity: 0
-                    }}
-                  />
-                );
-              })}
-              
-              {/* Дополнительные искры - блики */}
-              {[...Array(8)].map((_, i) => {
-                const angle = (360 / 8) * i + 22.5;
-                const distance = 100;
-                const x = Math.cos(angle * Math.PI / 180) * distance;
-                const y = Math.sin(angle * Math.PI / 180) * distance;
-                return (
-                  <div
-                    key={`spark-${i}`}
-                    className="absolute w-2 h-2"
-                    style={{
-                      left: `50%`,
-                      top: `50%`,
-                      transform: `translate(${x}px, ${y}px)`,
-                      background: `radial-gradient(circle, ${newLevelInfo.color} 0%, transparent 70%)`,
-                      borderRadius: '50%',
-                      animation: `sparkRotate 3s linear infinite ${i * 0.2}s`,
-                      opacity: 0.8
-                    }}
-                  />
-                );
-              })}
-              
-              {/* Цифра уровня с эффектами */}
+              {/* Цифра уровня с сиянием */}
               <div 
-                className="text-7xl md:text-8xl font-bold mb-2 relative z-10"
+                className="text-7xl md:text-8xl font-bold mb-2"
                 style={{ 
                   color: newLevelInfo.color,
                   textShadow: `0 0 30px ${newLevelInfo.glow}, 0 0 60px ${newLevelInfo.glow}, 0 0 90px ${newLevelInfo.glow}`,
-                  animation: 'pulse 1.5s ease-in-out infinite 1.5s, levelGlow 2s ease-in-out infinite',
+                  animation: 'pulse 1.5s ease-in-out infinite 1.5s',
                   animationFillMode: 'both'
                 }}
               >
                 {newLevel}
               </div>
-              <div className="text-lg font-semibold mt-2 relative z-10" style={{ color: newLevelInfo.color }}>
+              <div className="text-lg font-semibold mt-2" style={{ color: newLevelInfo.color }}>
                 {newTitle}
               </div>
             </div>
