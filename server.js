@@ -1876,29 +1876,44 @@ app.get('/api/games/:gameId/details', authenticateToken, async (req, res) => {
       console.log(`[IGDB] Запрос time_to_beat для gameId=${gameId}`);
       const ttbResp = await axios.post(
         'https://api.igdb.com/v4/game_time_to_beats',
-        `fields normally, completely, hastly; where game = ${gameId}; limit 1;`,
+        `fields game, normally, completely, hastly; where game = ${gameId}; limit 1;`,
         { headers: { 'Client-ID': TWITCH_CLIENT_ID, 'Authorization': `Bearer ${token}`, 'Content-Type': 'text/plain' } }
       );
-      console.log('[IGDB] game_time_to_beats ответ:', JSON.stringify(ttbResp.data));
+      console.log('[IGDB] game_time_to_beats статус:', ttbResp.status);
+      console.log('[IGDB] game_time_to_beats ответ (raw):', ttbResp.data);
+      console.log('[IGDB] game_time_to_beats ответ (JSON):', JSON.stringify(ttbResp.data, null, 2));
       console.log('[IGDB] game_time_to_beats тип данных:', typeof ttbResp.data, 'является массивом?', Array.isArray(ttbResp.data));
-      const ttb = Array.isArray(ttbResp.data) && ttbResp.data.length > 0 && ttbResp.data[0] ? ttbResp.data[0] : null;
-      console.log('[IGDB] Распарсенные данные ttb:', ttb);
-      if (ttb) {
-        const normally = (ttb.normally && Number.isFinite(ttb.normally)) ? ttb.normally : null;
-        const completely = (ttb.completely && Number.isFinite(ttb.completely)) ? ttb.completely : null;
-        const hastly = (ttb.hastly && Number.isFinite(ttb.hastly)) ? ttb.hastly : null;
-        normalizedTimeToBeat = [normally, completely, hastly];
-        console.log('[IGDB] Нормализованное время:', normalizedTimeToBeat);
+      
+      if (Array.isArray(ttbResp.data) && ttbResp.data.length > 0) {
+        const ttb = ttbResp.data[0];
+        console.log('[IGDB] Первый элемент массива:', JSON.stringify(ttb, null, 2));
+        
+        // Проверяем все возможные варианты полей
+        const normally = ttb.normally !== undefined && ttb.normally !== null && Number.isFinite(Number(ttb.normally)) 
+          ? Number(ttb.normally) : null;
+        const completely = ttb.completely !== undefined && ttb.completely !== null && Number.isFinite(Number(ttb.completely)) 
+          ? Number(ttb.completely) : null;
+        const hastly = ttb.hastly !== undefined && ttb.hastly !== null && Number.isFinite(Number(ttb.hastly)) 
+          ? Number(ttb.hastly) : null;
+        
+        console.log('[IGDB] Извлеченные значения:', { normally, completely, hastly });
+        
+        if (normally !== null || completely !== null || hastly !== null) {
+          normalizedTimeToBeat = [normally, completely, hastly];
+          console.log('[IGDB] ✅ Нормализованное время (успех):', normalizedTimeToBeat);
+        } else {
+          console.log('[IGDB] ⚠️ Все значения времени null или undefined');
+        }
       } else {
-        console.log('[IGDB] Данные time_to_beat отсутствуют или пустые');
+        console.log('[IGDB] ⚠️ Ответ не является массивом или массив пустой. Ответ:', ttbResp.data);
       }
     } catch (e) {
-      console.error('[IGDB] Ошибка получения time_to_beat:', {
-        message: e.message,
-        response: e.response?.data,
-        status: e.response?.status,
-        headers: e.response?.headers
-      });
+      console.error('[IGDB] ❌ Ошибка получения time_to_beat:');
+      console.error('  - Message:', e.message);
+      console.error('  - Status:', e.response?.status);
+      console.error('  - Status Text:', e.response?.statusText);
+      console.error('  - Response Data:', JSON.stringify(e.response?.data, null, 2));
+      console.error('  - Stack:', e.stack);
     }
     const gameDetails = {
       id: game.id,
