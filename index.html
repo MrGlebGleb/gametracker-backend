@@ -3329,65 +3329,91 @@
                   </div>
                   
                   {/* Часы игры */}
-                  <div className="relative">
+                  <div className="relative w-fit">
                     <div className="relative group">
                       {/* Анимированный градиентный фон с переливами */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-purple-500/10 rounded-xl blur-sm opacity-50 group-hover:opacity-75 transition-opacity duration-500 animate-[pulse_4s_ease-in-out_infinite]"></div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-purple-500/10 rounded-lg blur-sm opacity-50 group-hover:opacity-75 transition-opacity duration-500 animate-[pulse_4s_ease-in-out_infinite]"></div>
                       
                       {/* Основной контейнер */}
-                      <div className="relative bg-gradient-to-br from-purple-500/5 via-gray-800/40 to-blue-500/5 border border-purple-500/20 rounded-xl p-4 backdrop-blur-sm transition-all duration-500 hover:border-purple-500/40 hover:shadow-xl hover:shadow-purple-500/20 group-hover:from-purple-500/10 group-hover:to-blue-500/10">
+                      <div className="relative bg-gradient-to-br from-purple-500/5 via-gray-800/40 to-blue-500/5 border border-purple-500/20 rounded-lg px-3 py-2 backdrop-blur-sm transition-all duration-500 hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/20 group-hover:from-purple-500/10 group-hover:to-blue-500/10">
                         {/* Тонкое свечение при hover */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/5 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/5 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                         
-                        <div className="relative flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 flex-1">
-                            {/* Иконка часов с градиентом */}
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400/25 to-blue-400/25 flex items-center justify-center border border-purple-400/30 shadow-lg shadow-purple-500/10 transition-all duration-300 group-hover:scale-110 group-hover:shadow-purple-500/20 group-hover:from-purple-400/35 group-hover:to-blue-400/35">
-                              <span className="text-lg filter drop-shadow-sm">⏱️</span>
-                            </div>
-                            
-                            <div className="flex-1">
-                              <label className="text-gray-400 text-xs block mb-1.5 font-medium tracking-wide">Часы игры</label>
-                              <div className="flex items-baseline gap-2">
-                                <input
-                                  type="number"
-                                  value={hoursPlayed || ''}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setHoursPlayed(val === '' ? '' : parseInt(val) || 0);
-                                  }}
-                                  onBlur={(e) => {
-                                    const value = parseInt(e.target.value) || 0;
-                                    setHoursPlayed(value);
-                                    handleHoursChange(value);
-                                  }}
-                                  className="bg-transparent border-none outline-none text-white text-3xl font-bold w-20 p-0 focus:ring-0 placeholder:text-gray-600/50 transition-all duration-300 hover:text-purple-200 focus:text-purple-100"
-                                  placeholder="0"
-                                  min="0"
-                                  step="1"
-                                  style={{ 
-                                    caretColor: '#a78bfa',
-                                    WebkitAppearance: 'textfield',
-                                    textShadow: '0 0 10px rgba(139, 92, 246, 0.3)'
-                                  }}
-                                />
-                                <span className="text-gray-400 text-sm font-medium tracking-tight">часов</span>
-                              </div>
-                            </div>
+                        <div className="relative flex items-center gap-2.5">
+                          {/* Иконка часов */}
+                          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-400/25 to-blue-400/25 flex items-center justify-center border border-purple-400/30 shadow-md shadow-purple-500/10 transition-all duration-300 group-hover:scale-105 group-hover:shadow-purple-500/20">
+                            <span className="text-sm filter drop-shadow-sm">⏱️</span>
                           </div>
                           
-                          {/* Индикатор активности с анимацией */}
+                          {/* Число часов */}
+                          <input
+                            type="number"
+                            value={hoursPlayed || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setHoursPlayed(val === '' ? '' : parseInt(val) || 0);
+                            }}
+                            onBlur={(e) => {
+                              const value = parseInt(e.target.value) || 0;
+                              setHoursPlayed(value);
+                              handleHoursChange(value);
+                            }}
+                            className="bg-transparent border-none outline-none text-white text-lg font-semibold w-12 p-0 focus:ring-0 placeholder:text-gray-600/50 transition-all duration-300 hover:text-purple-200 focus:text-purple-100 text-center"
+                            placeholder="0"
+                            min="0"
+                            step="1"
+                            style={{ 
+                              caretColor: '#a78bfa',
+                              WebkitAppearance: 'textfield',
+                              textShadow: '0 0 8px rgba(139, 92, 246, 0.3)'
+                            }}
+                          />
+                          
+                          {/* Векторные стрелки */}
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newValue = (hoursPlayed || 0) + 1;
+                                setHoursPlayed(newValue);
+                                handleHoursChange(newValue);
+                              }}
+                              className="w-4 h-3.5 rounded-t-sm bg-gradient-to-br from-purple-400/20 to-blue-400/20 border border-purple-400/30 hover:from-purple-400/35 hover:to-blue-400/35 active:scale-90 transition-all duration-200 flex items-center justify-center group/btn"
+                            >
+                              <svg width="8" height="5" viewBox="0 0 8 5" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-purple-300 group-hover/btn:text-purple-200 transition-colors">
+                                <path d="M4 0L7.5 4H0.5L4 0Z" fill="currentColor" className="drop-shadow-sm"/>
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newValue = Math.max(0, (hoursPlayed || 0) - 1);
+                                setHoursPlayed(newValue);
+                                handleHoursChange(newValue);
+                              }}
+                              className="w-4 h-3.5 rounded-b-sm bg-gradient-to-br from-purple-400/20 to-blue-400/20 border border-purple-400/30 hover:from-purple-400/35 hover:to-blue-400/35 active:scale-90 transition-all duration-200 flex items-center justify-center group/btn"
+                            >
+                              <svg width="8" height="5" viewBox="0 0 8 5" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-purple-300 group-hover/btn:text-purple-200 transition-colors">
+                                <path d="M4 5L0.5 1H7.5L4 5Z" fill="currentColor" className="drop-shadow-sm"/>
+                              </svg>
+                            </button>
+                          </div>
+                          
+                          {/* Текст "Часов игры" */}
+                          <span className="text-gray-400 text-xs font-medium ml-1">Часов игры</span>
+                          
+                          {/* Индикатор активности */}
                           {hoursPlayed > 0 && (
-                            <div className="flex-shrink-0 flex flex-col items-center gap-1.5">
-                              <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-purple-400 via-blue-400 to-purple-400 animate-pulse shadow-lg shadow-purple-400/50"></div>
-                              <div className="w-0.5 h-4 bg-gradient-to-b from-purple-400/50 to-transparent rounded-full"></div>
+                            <div className="flex-shrink-0 flex flex-col items-center gap-1">
+                              <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-purple-400 via-blue-400 to-purple-400 animate-pulse shadow-md shadow-purple-400/50"></div>
+                              <div className="w-0.5 h-3 bg-gradient-to-b from-purple-400/50 to-transparent rounded-full"></div>
                             </div>
                           )}
                         </div>
                         
-                        {/* Тонкая линия прогресса снизу (опционально) */}
+                        {/* Тонкая линия прогресса снизу */}
                         {hoursPlayed > 0 && (
-                          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-purple-400/30 to-transparent rounded-b-xl"></div>
+                          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-purple-400/30 to-transparent rounded-b-lg"></div>
                         )}
                       </div>
                     </div>
@@ -3395,19 +3421,21 @@
                     <style>{`
                       input[type="number"]::-webkit-inner-spin-button,
                       input[type="number"]::-webkit-outer-spin-button {
-                        opacity: 1;
-                        height: auto;
-                        width: 20px;
+                        -webkit-appearance: none;
+                        margin: 0;
+                      }
+                      input[type="number"] {
+                        -moz-appearance: textfield;
                       }
                       input[type="number"]:focus {
                         animation: glow 2s ease-in-out infinite alternate;
                       }
                       @keyframes glow {
                         from {
-                          text-shadow: 0 0 10px rgba(139, 92, 246, 0.3), 0 0 20px rgba(139, 92, 246, 0.1);
+                          text-shadow: 0 0 8px rgba(139, 92, 246, 0.3), 0 0 15px rgba(139, 92, 246, 0.1);
                         }
                         to {
-                          text-shadow: 0 0 15px rgba(139, 92, 246, 0.5), 0 0 30px rgba(139, 92, 246, 0.2);
+                          text-shadow: 0 0 12px rgba(139, 92, 246, 0.5), 0 0 25px rgba(139, 92, 246, 0.2);
                         }
                       }
                     `}</style>
