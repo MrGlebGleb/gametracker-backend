@@ -8140,12 +8140,12 @@
                     })
                   )}
                   
-                  {/* Слоты для стикеров под столбцами (8 слотов, по 2 под каждым столбцом) */}
+                  {/* Слоты для стикеров под столбцами (8 слотов в одну линию, по 2 под каждым столбцом) */}
                   {!viewingUser && (
                     <div className="col-span-full mt-8">
                       <div className="grid grid-cols-4 gap-6">
                         {Object.values(boards).map((board, boardIndex) => (
-                          <div key={board.id} className="flex flex-col gap-3">
+                          <div key={board.id} className="flex flex-row justify-center gap-3">
                             {[0, 1].map(slotOffset => {
                               const slotIndex = boardIndex * 2 + slotOffset;
                               const headerSticker = headerStickers[slotIndex];
