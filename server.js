@@ -1120,9 +1120,21 @@ async function initDatabase() {
         UNIQUE(user_id, user_sticker_id, board_type)
       );
 
+      -- HEADER STICKERS (stickers in header slots)
+      CREATE TABLE IF NOT EXISTS header_stickers (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        user_sticker_id INTEGER NOT NULL REFERENCES user_stickers(id) ON DELETE CASCADE,
+        slot_index INTEGER NOT NULL CHECK (slot_index >= 0 AND slot_index <= 5),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, slot_index)
+      );
+
       CREATE INDEX IF NOT EXISTS idx_user_stickers_user_id ON user_stickers(user_id);
       CREATE INDEX IF NOT EXISTS idx_board_stickers_user_id ON board_stickers(user_id);
       CREATE INDEX IF NOT EXISTS idx_board_stickers_board_type ON board_stickers(board_type);
+      CREATE INDEX IF NOT EXISTS idx_header_stickers_user_id ON header_stickers(user_id);
 
       -- MEDIA (movies/series)
       CREATE TABLE IF NOT EXISTS media_items (
@@ -5480,6 +5492,121 @@ app.get('/api/board/stickers/:userId', authenticateToken, async (req, res) => {
     res.json({ stickers });
   } catch (error) {
     console.error('Ошибка получения стикеров:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// === HEADER STICKERS API ===
+
+// Получить стикеры в слотах хедера
+app.get('/api/header/stickers/:userId', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { userId } = req.params;
+    
+    const result = await client.query(
+      `SELECT hs.id, hs.slot_index, s.filename, us.id as user_sticker_id
+       FROM header_stickers hs
+       JOIN user_stickers us ON hs.user_sticker_id = us.id
+       JOIN stickers s ON us.sticker_id = s.id
+       WHERE hs.user_id = $1
+       ORDER BY hs.slot_index`,
+      [userId]
+    );
+    
+    const stickers = {};
+    result.rows.forEach(row => {
+      stickers[row.slot_index] = {
+        id: row.id,
+        filename: row.filename,
+        slotIndex: row.slot_index,
+        userStickerId: row.user_sticker_id
+      };
+    });
+    
+    res.json({ stickers });
+  } catch (error) {
+    console.error('Ошибка получения стикеров хедера:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// Поместить стикер в слот хедера
+app.post('/api/header/stickers/place', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { userStickerId, slotIndex } = req.body;
+    
+    if (userStickerId === undefined || slotIndex === undefined) {
+      return res.status(400).json({ error: 'userStickerId и slotIndex обязательны' });
+    }
+    
+    if (slotIndex < 0 || slotIndex > 5) {
+      return res.status(400).json({ error: 'slotIndex должен быть от 0 до 5' });
+    }
+    
+    // Проверяем, что стикер принадлежит пользователю
+    const userStickerResult = await client.query(
+      'SELECT id FROM user_stickers WHERE id = $1 AND user_id = $2',
+      [userStickerId, req.user.id]
+    );
+    
+    if (userStickerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Стикер не найден' });
+    }
+    
+    // Удаляем стикер из слота, если он уже там есть
+    await client.query(
+      'DELETE FROM header_stickers WHERE user_id = $1 AND slot_index = $2',
+      [req.user.id, slotIndex]
+    );
+    
+    // Удаляем этот стикер из других слотов, если он там есть
+    await client.query(
+      'DELETE FROM header_stickers WHERE user_id = $1 AND user_sticker_id = $2',
+      [req.user.id, userStickerId]
+    );
+    
+    // Вставляем стикер в слот
+    const result = await client.query(
+      `INSERT INTO header_stickers (user_id, user_sticker_id, slot_index)
+       VALUES ($1, $2, $3)
+       RETURNING id`,
+      [req.user.id, userStickerId, slotIndex]
+    );
+    
+    res.json({ success: true, id: result.rows[0].id });
+  } catch (error) {
+    console.error('Ошибка размещения стикера в слоте:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// Удалить стикер из слота хедера
+app.delete('/api/header/stickers/:id', authenticateToken, validateIdParam('id'), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    
+    // Проверяем, что стикер принадлежит пользователю
+    const result = await client.query(
+      'DELETE FROM header_stickers WHERE id = $1 AND user_id = $2 RETURNING id',
+      [id, req.user.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Стикер не найден' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Ошибка удаления стикера из слота:', error);
     res.status(500).json({ error: 'Ошибка сервера' });
   } finally {
     client.release();
