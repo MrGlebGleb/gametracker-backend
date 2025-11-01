@@ -8142,7 +8142,7 @@
                   
                   {/* Слоты для стикеров под столбцами (8 слотов в одну линию, по 2 под каждым столбцом) */}
                   {!viewingUser && (
-                    <div className="col-span-full mt-8">
+                    <div className="col-span-full mt-4">
                       <div className="grid grid-cols-4 gap-6">
                         {Object.values(boards).map((board, boardIndex) => (
                           <div key={board.id} className="flex flex-row justify-center gap-3">
@@ -8172,7 +8172,7 @@
                                   key={slotIndex}
                                   data-slot-index={slotIndex}
                                   className={`
-                                    relative w-24 h-24 rounded-lg border-2 border-dashed transition-all duration-200 flex items-center justify-center
+                                    relative w-[125px] h-[125px] rounded-lg border-2 border-dashed transition-all duration-200 flex items-center justify-center
                                     ${headerSticker 
                                       ? `${getBorderColor()} bg-gray-800/30` 
                                       : isDraggingOver
