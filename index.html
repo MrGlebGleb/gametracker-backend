@@ -4866,44 +4866,120 @@
       useEffect(() => {
         if (!placingMode || !stickerToPlace) return;
         
-        const handleMouseMove = (e) => {
-          if (isDragging) {
-            const deltaX = e.clientX - dragStart.x;
-            const deltaY = e.clientY - dragStart.y;
-            setStickerPosition(prev => ({
-              x: Math.max(50, Math.min(window.innerWidth - 200, prev.x + deltaX)),
-              y: Math.max(50, Math.min(window.innerHeight - 200, prev.y + deltaY))
-            }));
-            setDragStart({ x: e.clientX, y: e.clientY });
-          } else if (isResizing) {
-            const deltaX = e.clientX - dragStart.x;
-            const delta = deltaX * 0.01; // Коэффициент для изменения размера
-            const newScale = Math.max(0.33, Math.min(3.0, stickerScale + delta));
-            setStickerScale(newScale);
-            setDragStart({ x: e.clientX, y: e.clientY });
-          } else if (isRotating) {
-            const centerX = stickerPosition.x;
-            const centerY = stickerPosition.y;
-            const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI);
-            const normalizedAngle = ((angle + 90) % 360 + 360) % 360; // Нормализуем к 0-360
-            setStickerRotation(Math.round(normalizedAngle));
-          }
-        };
+        // Для режима размещения в слот - простое перемещение за курсором
+        if (stickerToPlace.placementType === 'slot' && isDragging) {
+          const handleMouseMove = (e) => {
+            setStickerPosition({
+              x: e.clientX,
+              y: e.clientY
+            });
+          };
+          
+          const handleMouseUp = async (e) => {
+            setIsDragging(false);
+            
+            // Проверяем, над каким слотом был отпущен курсор
+            const slots = document.querySelectorAll('[data-slot-index]');
+            let droppedOnSlot = null;
+            
+            slots.forEach(slot => {
+              const rect = slot.getBoundingClientRect();
+              if (e.clientX >= rect.left && e.clientX <= rect.right &&
+                  e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                droppedOnSlot = parseInt(slot.getAttribute('data-slot-index'));
+              }
+            });
+            
+            if (droppedOnSlot !== null) {
+              // Размещаем стикер в слот
+              const token = localStorage.getItem('token');
+              try {
+                const response = await fetch(`${API_URL}/api/header/stickers/place`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    userStickerId: stickerToPlace.id,
+                    slotIndex: droppedOnSlot
+                  })
+                });
+                
+                if (response.ok) {
+                  await loadHeaderStickers();
+                  setPlacingMode(false);
+                  setStickerToPlace(null);
+                  setStickerPosition({ x: 400, y: 300 });
+                } else {
+                  const errorData = await response.json().catch(() => ({}));
+                  alert(errorData.error || 'Ошибка размещения стикера');
+                }
+              } catch (error) {
+                console.error('Ошибка размещения стикера:', error);
+                alert('Ошибка размещения стикера');
+              }
+            } else {
+              // Если стикер отпущен не над слотом, выходим из режима размещения
+              setPlacingMode(false);
+              setStickerToPlace(null);
+              setStickerPosition({ x: 400, y: 300 });
+            }
+            
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+          };
+          
+          document.addEventListener('mousemove', handleMouseMove);
+          document.addEventListener('mouseup', handleMouseUp);
+          
+          return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+          };
+        }
         
-        const handleMouseUp = () => {
-          setIsDragging(false);
-          setIsResizing(false);
-          setIsRotating(false);
-        };
-        
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-        
-        return () => {
-          document.removeEventListener('mousemove', handleMouseMove);
-          document.removeEventListener('mouseup', handleMouseUp);
-        };
-      }, [placingMode, stickerToPlace, isDragging, isResizing, isRotating, dragStart, stickerScale, stickerRotation, stickerPosition]);
+        // Для режима размещения на доску - существующая логика
+        if (stickerToPlace.placementType !== 'slot') {
+          const handleMouseMove = (e) => {
+            if (isDragging) {
+              const deltaX = e.clientX - dragStart.x;
+              const deltaY = e.clientY - dragStart.y;
+              setStickerPosition(prev => ({
+                x: Math.max(50, Math.min(window.innerWidth - 200, prev.x + deltaX)),
+                y: Math.max(50, Math.min(window.innerHeight - 200, prev.y + deltaY))
+              }));
+              setDragStart({ x: e.clientX, y: e.clientY });
+            } else if (isResizing) {
+              const deltaX = e.clientX - dragStart.x;
+              const delta = deltaX * 0.01; // Коэффициент для изменения размера
+              const newScale = Math.max(0.33, Math.min(3.0, stickerScale + delta));
+              setStickerScale(newScale);
+              setDragStart({ x: e.clientX, y: e.clientY });
+            } else if (isRotating) {
+              const centerX = stickerPosition.x;
+              const centerY = stickerPosition.y;
+              const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI);
+              const normalizedAngle = ((angle + 90) % 360 + 360) % 360; // Нормализуем к 0-360
+              setStickerRotation(Math.round(normalizedAngle));
+            }
+          };
+          
+          const handleMouseUp = () => {
+            setIsDragging(false);
+            setIsResizing(false);
+            setIsRotating(false);
+          };
+          
+          document.addEventListener('mousemove', handleMouseMove);
+          document.addEventListener('mouseup', handleMouseUp);
+          
+          return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+          };
+        }
+      }, [placingMode, stickerToPlace, isDragging, isResizing, isRotating, dragStart, stickerScale, stickerRotation, stickerPosition, loadHeaderStickers]);
       
       // Интерактивное управление размещенными стикерами при редактировании
       useEffect(() => {
@@ -6809,6 +6885,7 @@
                       return (
                         <div
                           key={slotIndex}
+                          data-slot-index={slotIndex}
                           className={`
                             relative w-16 h-16 rounded-lg border-2 border-dashed transition-all duration-200
                             ${headerSticker 
@@ -6818,48 +6895,14 @@
                               : 'border-gray-600/30 bg-gray-800/20 hover:border-purple-500/50 hover:bg-purple-500/10'
                             }
                           `}
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                            setDragOverSlotIndex(slotIndex);
+                          onMouseEnter={() => {
+                            if (placingMode && stickerToPlace?.placementType === 'slot' && isDragging) {
+                              setDragOverSlotIndex(slotIndex);
+                            }
                           }}
-                          onDragLeave={() => {
-                            setDragOverSlotIndex(null);
-                          }}
-                          onDrop={async (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setDragOverSlotIndex(null);
-                            const stickerData = e.dataTransfer.getData('application/json');
-                            if (stickerData) {
-                              try {
-                                const sticker = JSON.parse(stickerData);
-                                if (sticker.userStickerId && sticker.placementType === 'slot') {
-                                  const token = localStorage.getItem('token');
-                                  const response = await fetch(`${API_URL}/api/header/stickers/place`, {
-                                    method: 'POST',
-                                    headers: {
-                                      'Authorization': `Bearer ${token}`,
-                                      'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify({
-                                      userStickerId: sticker.userStickerId,
-                                      slotIndex: slotIndex
-                                    })
-                                  });
-                                  
-                                  if (response.ok) {
-                                    await loadHeaderStickers();
-                                    setPlacingMode(false);
-                                    setStickerToPlace(null);
-                                  } else {
-                                    const errorData = await response.json().catch(() => ({}));
-                                    alert(errorData.error || 'Ошибка размещения стикера');
-                                  }
-                                }
-                              } catch (error) {
-                                console.error('Ошибка размещения стикера:', error);
-                                alert('Ошибка размещения стикера');
-                              }
+                          onMouseLeave={() => {
+                            if (placingMode && stickerToPlace?.placementType === 'slot') {
+                              setDragOverSlotIndex(null);
                             }
                           }}
                         >
@@ -8055,40 +8098,36 @@
                   {placingMode && stickerToPlace && !viewingUser && (
                     <>
                       {stickerToPlace.placementType === 'slot' ? (
-                        /* Режим размещения в слот - перетаскиваемый стикер */
+                        /* Режим размещения в слот - интерактивный стикер, следующий за курсором */
                         <div
-                          className="fixed z-[200] cursor-move select-none"
+                          className="fixed z-[200] cursor-move select-none pointer-events-auto"
                           style={{
                             left: `${stickerPosition.x}px`,
                             top: `${stickerPosition.y}px`,
                             width: '80px',
                             height: '80px',
-                            transform: 'translate(-50%, -50%)'
+                            transform: 'translate(-50%, -50%)',
+                            opacity: isDragging ? 1.0 : 0.9
                           }}
-                          draggable={true}
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData('application/json', JSON.stringify({
-                              userStickerId: stickerToPlace.id,
-                              placementType: 'slot'
-                            }));
-                            e.dataTransfer.effectAllowed = 'move';
-                          }}
-                          onDragEnd={() => {
-                            setPlacingMode(false);
-                            setStickerToPlace(null);
-                            setStickerPosition({ x: 400, y: 300 });
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setIsDragging(true);
+                            setDragStart({ x: e.clientX, y: e.clientY });
+                            // Сразу перемещаем стикер на позицию курсора
+                            setStickerPosition({ x: e.clientX, y: e.clientY });
                           }}
                         >
                           <div className="relative w-full h-full">
                             <img
                               src={`/images/${stickerToPlace.filename}`}
                               alt="sticker preview"
-                              className="w-full h-full object-contain pointer-events-none opacity-90"
+                              className="w-full h-full object-contain pointer-events-none"
                               draggable={false}
                             />
                           </div>
                           <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-1 bg-purple-500/80 text-white text-xs rounded-lg whitespace-nowrap pointer-events-none">
-                            Перетащите на слот в хедере
+                            Поместите в любой свободный слот
                           </div>
                         </div>
                       ) : (
