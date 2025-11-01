@@ -2833,7 +2833,7 @@
     };
 
     // Компонент магазина стикеров
-    const ShopModal = ({ onClose, token, userBalance, onBalanceUpdate }) => {
+    const ShopModal = ({ onClose, token, userBalance, onBalanceUpdate, onStartPlacing }) => {
       const [shopStickers, setShopStickers] = useState([]);
       const [myStickers, setMyStickers] = useState([]);
       const [loading, setLoading] = useState(false);
@@ -2842,8 +2842,6 @@
       const [selectedRarity, setSelectedRarity] = useState(null); // null = все, 1-5 = фильтр
       const [currentPage, setCurrentPage] = useState(1);
       const [totalPages, setTotalPages] = useState(1);
-      const [placingMode, setPlacingMode] = useState(false);
-      const [stickerToPlace, setStickerToPlace] = useState(null);
 
       // Загрузка баланса
       const loadBalance = useCallback(async () => {
@@ -3050,21 +3048,6 @@
           loadingRef.current = false;
         });
       }, [selectedRarity, currentPage, loadShop, activeTab]); // Загружаем только при смене фильтра или страницы
-      
-      // Обновление превью стикера при движении мыши
-      useEffect(() => {
-        if (placingMode && stickerToPlace) {
-          const updatePreview = (e) => {
-            const preview = document.getElementById('sticker-preview-cursor');
-            if (preview) {
-              preview.style.left = `${e.clientX - 40}px`; // Центрируем превью относительно курсора
-              preview.style.top = `${e.clientY - 40}px`;
-            }
-          };
-          document.addEventListener('mousemove', updatePreview);
-          return () => document.removeEventListener('mousemove', updatePreview);
-        }
-      }, [placingMode, stickerToPlace]);
 
       return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={onClose}>
@@ -3252,10 +3235,9 @@
                               {!sticker.placedOnBoard && (
                                 <button
                                   onClick={() => {
-                                    setPlacingMode(true);
-                                    setStickerToPlace(sticker);
-                                    setStickerScale(1.0);
-                                    setStickerRotation(0);
+                                    if (onStartPlacing) {
+                                      onStartPlacing(sticker);
+                                    }
                                     onClose();
                                   }}
                                   className="flex-1 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm font-medium"
@@ -4757,6 +4739,21 @@
 
       const canvasRef = useRef(null);
       const gameInstance = useRef(null);
+      
+      // Обновление превью стикера при движении мыши
+      useEffect(() => {
+        if (placingMode && stickerToPlace) {
+          const updatePreview = (e) => {
+            const preview = document.getElementById('sticker-preview-cursor');
+            if (preview) {
+              preview.style.left = `${e.clientX - 40}px`; // Центрируем превью относительно курсора
+              preview.style.top = `${e.clientY - 40}px`;
+            }
+          };
+          document.addEventListener('mousemove', updatePreview);
+          return () => document.removeEventListener('mousemove', updatePreview);
+        }
+      }, [placingMode, stickerToPlace]);
 
       const [boards, setBoards] = useState({
         backlog: { id: 'backlog', title: 'Беклог', emoji: '📋', color: 'from-blue-500/20 to-cyan-500/20', borderColor: 'border-2 border-blue-500/40', accentColor: '#3B82F6', cards: [] },
@@ -6384,6 +6381,12 @@
             token={localStorage.getItem('token')}
             userBalance={userBalance}
             onBalanceUpdate={(balance) => setUserBalance(balance)}
+            onStartPlacing={(sticker) => {
+              setPlacingMode(true);
+              setStickerToPlace(sticker);
+              setStickerScale(1.0);
+              setStickerRotation(0);
+            }}
           />}
           
           {imageForCrop && <AvatarCropModal src={imageForCrop} onCancel={() => setImageForCrop(null)} onComplete={handleAvatarUpdate} />}
