@@ -1125,7 +1125,7 @@ async function initDatabase() {
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         user_sticker_id INTEGER NOT NULL REFERENCES user_stickers(id) ON DELETE CASCADE,
-        slot_index INTEGER NOT NULL CHECK (slot_index >= 0 AND slot_index <= 5),
+        slot_index INTEGER NOT NULL CHECK (slot_index >= 0 AND slot_index <= 7),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id, slot_index)
@@ -5287,7 +5287,14 @@ app.get('/api/user/stickers', authenticateToken, async (req, res) => {
       'SELECT user_sticker_id FROM board_stickers WHERE user_id = $1',
       [req.user.id]
     );
-    const placedIds = new Set(placedResult.rows.map(row => row.user_sticker_id));
+    const placedOnBoardIds = new Set(placedResult.rows.map(row => row.user_sticker_id));
+    
+    // Проверяем, какие стикеры размещены в слотах
+    const slotResult = await client.query(
+      'SELECT user_sticker_id FROM header_stickers WHERE user_id = $1',
+      [req.user.id]
+    );
+    const placedInSlotIds = new Set(slotResult.rows.map(row => row.user_sticker_id));
     
     const stickers = result.rows.map(row => ({
       id: row.id,
@@ -5295,7 +5302,7 @@ app.get('/api/user/stickers', authenticateToken, async (req, res) => {
       filename: row.filename,
       rarity: row.rarity,
       sellPrice: getStickerSellPrice(row.rarity),
-      placedOnBoard: placedIds.has(row.id),
+      placedOnBoard: placedOnBoardIds.has(row.id) || placedInSlotIds.has(row.id),
       purchased_at: row.purchased_at
     }));
     
@@ -5508,7 +5515,7 @@ app.get('/api/header/stickers/:userId', authenticateToken, async (req, res) => {
     const { userId } = req.params;
     
     const result = await client.query(
-      `SELECT hs.id, hs.slot_index, s.filename, us.id as user_sticker_id
+      `SELECT hs.id, hs.slot_index, s.filename, s.rarity, us.id as user_sticker_id
        FROM header_stickers hs
        JOIN user_stickers us ON hs.user_sticker_id = us.id
        JOIN stickers s ON us.sticker_id = s.id
@@ -5522,6 +5529,7 @@ app.get('/api/header/stickers/:userId', authenticateToken, async (req, res) => {
       stickers[row.slot_index] = {
         id: row.id,
         filename: row.filename,
+        rarity: row.rarity,
         slotIndex: row.slot_index,
         userStickerId: row.user_sticker_id
       };
@@ -5546,8 +5554,8 @@ app.post('/api/header/stickers/place', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'userStickerId и slotIndex обязательны' });
     }
     
-    if (slotIndex < 0 || slotIndex > 5) {
-      return res.status(400).json({ error: 'slotIndex должен быть от 0 до 5' });
+    if (slotIndex < 0 || slotIndex > 7) {
+      return res.status(400).json({ error: 'slotIndex должен быть от 0 до 7' });
     }
     
     // Проверяем, что стикер принадлежит пользователю
