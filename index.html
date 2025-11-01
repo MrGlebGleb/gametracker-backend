@@ -4736,24 +4736,57 @@
       const [stickerToPlace, setStickerToPlace] = useState(null);
       const [stickerScale, setStickerScale] = useState(1.0);
       const [stickerRotation, setStickerRotation] = useState(0);
+      const [stickerPosition, setStickerPosition] = useState({ x: 400, y: 300 }); // Начальная позиция стикера
+      const [isDragging, setIsDragging] = useState(false);
+      const [isResizing, setIsResizing] = useState(false);
+      const [isRotating, setIsRotating] = useState(false);
+      const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
       const canvasRef = useRef(null);
       const gameInstance = useRef(null);
       
-      // Обновление превью стикера при движении мыши
+      // Интерактивное управление стикером при размещении
       useEffect(() => {
-        if (placingMode && stickerToPlace) {
-          const updatePreview = (e) => {
-            const preview = document.getElementById('sticker-preview-cursor');
-            if (preview) {
-              preview.style.left = `${e.clientX - 40}px`; // Центрируем превью относительно курсора
-              preview.style.top = `${e.clientY - 40}px`;
-            }
-          };
-          document.addEventListener('mousemove', updatePreview);
-          return () => document.removeEventListener('mousemove', updatePreview);
-        }
-      }, [placingMode, stickerToPlace]);
+        if (!placingMode || !stickerToPlace) return;
+        
+        const handleMouseMove = (e) => {
+          if (isDragging) {
+            const deltaX = e.clientX - dragStart.x;
+            const deltaY = e.clientY - dragStart.y;
+            setStickerPosition(prev => ({
+              x: Math.max(50, Math.min(window.innerWidth - 200, prev.x + deltaX)),
+              y: Math.max(50, Math.min(window.innerHeight - 200, prev.y + deltaY))
+            }));
+            setDragStart({ x: e.clientX, y: e.clientY });
+          } else if (isResizing) {
+            const deltaX = e.clientX - dragStart.x;
+            const delta = deltaX * 0.01; // Коэффициент для изменения размера
+            const newScale = Math.max(0.33, Math.min(3.0, stickerScale + delta));
+            setStickerScale(newScale);
+            setDragStart({ x: e.clientX, y: e.clientY });
+          } else if (isRotating) {
+            const centerX = stickerPosition.x;
+            const centerY = stickerPosition.y;
+            const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI);
+            const normalizedAngle = ((angle + 90) % 360 + 360) % 360; // Нормализуем к 0-360
+            setStickerRotation(Math.round(normalizedAngle));
+          }
+        };
+        
+        const handleMouseUp = () => {
+          setIsDragging(false);
+          setIsResizing(false);
+          setIsRotating(false);
+        };
+        
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        
+        return () => {
+          document.removeEventListener('mousemove', handleMouseMove);
+          document.removeEventListener('mouseup', handleMouseUp);
+        };
+      }, [placingMode, stickerToPlace, isDragging, isResizing, isRotating, dragStart, stickerScale, stickerRotation, stickerPosition]);
 
       const [boards, setBoards] = useState({
         backlog: { id: 'backlog', title: 'Беклог', emoji: '📋', color: 'from-blue-500/20 to-cyan-500/20', borderColor: 'border-2 border-blue-500/40', accentColor: '#3B82F6', cards: [] },
@@ -5358,6 +5391,10 @@
           });
           
           if (response.ok) {
+            // Плавно скрываем режим размещения
+            setPlacingMode(false);
+            setStickerToPlace(null);
+            
             // Обновляем список стикеров на доске
             const userId = viewingUser?.id || user?.id;
             if (userId) {
@@ -5370,7 +5407,8 @@
               }
             }
           } else {
-            const errorData = await response.json();
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Ошибка размещения стикера:', errorData.error || 'Неизвестная ошибка');
             alert(errorData.error || 'Ошибка размещения стикера');
           }
         } catch (error) {
@@ -6386,6 +6424,10 @@
               setStickerToPlace(sticker);
               setStickerScale(1.0);
               setStickerRotation(0);
+              setStickerPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+              setIsDragging(false);
+              setIsResizing(false);
+              setIsRotating(false);
             }}
           />}
           
@@ -7068,18 +7110,6 @@
               <div 
                 className="container mx-auto px-4 py-6 relative" 
                 style={{ zIndex: 1 }}
-                onClick={(e) => {
-                  if (placingMode && stickerToPlace && !viewingUser) {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    
-                    // Размещаем стикер
-                    placeStickerOnBoard(stickerToPlace.id, x, y, stickerScale, stickerRotation);
-                    setPlacingMode(false);
-                    setStickerToPlace(null);
-                  }
-                }}
               >
                   {/* Стикеры на доске (отображаются под колонками, но видны рядом с ними) */}
                   {boardStickers.map(sticker => (
@@ -7439,88 +7469,112 @@
                     })
                   )}
                   
-                  {/* Режим размещения стикера */}
+                  {/* Интерактивный стикер для размещения */}
                   {placingMode && stickerToPlace && !viewingUser && (
-                    <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center pointer-events-none">
-                      <div className="bg-gray-900 rounded-xl p-6 w-full max-w-md border border-purple-500/30 pointer-events-auto">
-                        <h3 className="text-xl font-bold text-white mb-4">Размещение стикера</h3>
-                        <p className="text-gray-400 text-sm mb-4">Кликните на доске, чтобы разместить стикер</p>
-                        <div className="mb-4 flex items-center gap-4">
-                          <div className="flex-1">
-                            <label className="text-gray-400 text-sm mb-1 block">Масштаб: {stickerScale.toFixed(2)}×</label>
-                            <input
-                              type="range"
-                              min="0.33"
-                              max="3"
-                              step="0.1"
-                              value={stickerScale}
-                              onChange={(e) => setStickerScale(parseFloat(e.target.value))}
-                              className="w-full"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <label className="text-gray-400 text-sm mb-1 block">Поворот: {stickerRotation}°</label>
-                            <input
-                              type="range"
-                              min="0"
-                              max="359"
-                              step="1"
-                              value={stickerRotation}
-                              onChange={(e) => setStickerRotation(parseInt(e.target.value))}
-                              className="w-full"
-                            />
-                          </div>
-                        </div>
-                        <div className="mb-4 flex justify-center">
+                    <>
+                      <div
+                        className="fixed z-[200] cursor-move select-none"
+                        style={{
+                          left: `${stickerPosition.x}px`,
+                          top: `${stickerPosition.y}px`,
+                          transform: `translate(-50%, -50%) rotate(${stickerRotation}deg)`,
+                          width: `${100 * stickerScale}px`,
+                          height: `${100 * stickerScale}px`
+                        }}
+                        onMouseDown={(e) => {
+                          if (e.target.closest('.resize-handle') || e.target.closest('.rotate-handle')) return;
+                          setIsDragging(true);
+                          setDragStart({ x: e.clientX, y: e.clientY });
+                          e.preventDefault();
+                        }}
+                      >
+                        {/* Основное изображение стикера */}
+                        <div className="relative w-full h-full">
+                          <img
+                            src={`/images/${stickerToPlace.filename}`}
+                            alt="sticker preview"
+                            className="w-full h-full object-contain pointer-events-none"
+                            draggable={false}
+                          />
+                          
+                          {/* Handle для изменения размера (правый нижний угол) */}
                           <div
-                            style={{
-                              transform: `scale(${stickerScale}) rotate(${stickerRotation}deg)`,
-                              width: '100px',
-                              height: '100px'
+                            className="resize-handle absolute bottom-0 right-0 w-6 h-6 bg-purple-500/80 rounded-full border-2 border-white cursor-se-resize flex items-center justify-center transform translate-x-1/2 translate-y-1/2"
+                            style={{ transform: 'translate(50%, 50%) rotate(-45deg)' }}
+                            onMouseDown={(e) => {
+                              setIsResizing(true);
+                              setDragStart({ x: e.clientX, y: e.clientY });
+                              e.stopPropagation();
+                              e.preventDefault();
                             }}
                           >
-                            <img
-                              src={`/images/${stickerToPlace.filename}`}
-                              alt="sticker preview"
-                              className="w-full h-full object-contain"
-                            />
+                            <div className="w-3 h-3 border-t-2 border-r-2 border-white" style={{ transform: 'rotate(45deg)' }}></div>
+                          </div>
+                          
+                          {/* Handle для поворота (сверху по центру) */}
+                          <div
+                            className="rotate-handle absolute -top-8 left-1/2 w-6 h-6 bg-purple-500/80 rounded-full border-2 border-white cursor-grab flex items-center justify-center transform -translate-x-1/2"
+                            style={{ transform: 'translate(-50%, 0) rotate(-90deg)' }}
+                            onMouseDown={(e) => {
+                              setIsRotating(true);
+                              setDragStart({ x: e.clientX, y: e.clientY });
+                              e.stopPropagation();
+                              e.preventDefault();
+                            }}
+                          >
+                            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        
+                        {/* Кнопки управления под стикером */}
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-4 flex gap-2">
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Находим контейнер доски и рассчитываем координаты относительно него
+                              const boardContainer = document.querySelector('.container.mx-auto.px-4.py-6.relative');
+                              if (boardContainer) {
+                                const rect = boardContainer.getBoundingClientRect();
+                                // Рассчитываем координаты относительно контейнера доски
+                                const x = Math.round(stickerPosition.x - rect.left);
+                                const y = Math.round(stickerPosition.y - rect.top);
+                                
+                                // Проверяем, что координаты в пределах контейнера
+                                if (x >= 0 && x <= rect.width && y >= 0 && y <= rect.height) {
+                                  placeStickerOnBoard(stickerToPlace.id, x, y, stickerScale, stickerRotation);
+                                } else {
+                                  alert('Пожалуйста, разместите стикер в пределах доски');
+                                }
+                              } else {
+                                // Fallback - используем абсолютные координаты
+                                placeStickerOnBoard(stickerToPlace.id, Math.round(stickerPosition.x), Math.round(stickerPosition.y), stickerScale, stickerRotation);
+                              }
+                            }}
+                            className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm font-medium shadow-lg transition-colors"
+                          >
+                            Разместить
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setPlacingMode(false);
                               setStickerToPlace(null);
+                              setStickerScale(1.0);
+                              setStickerRotation(0);
+                              setStickerPosition({ x: 400, y: 300 });
                             }}
-                            className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg"
+                            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium shadow-lg transition-colors"
                           >
                             Отмена
                           </button>
                         </div>
                       </div>
-                    </div>
-                  )}
-                  
-                  {/* Превью стикера при размещении (следует за курсором) */}
-                  {placingMode && stickerToPlace && (
-                    <div
-                      className="fixed pointer-events-none z-[180]"
-                      id="sticker-preview-cursor"
-                      style={{
-                        width: '80px',
-                        height: '80px',
-                        opacity: 0.8
-                      }}
-                    >
-                      <img
-                        src={`/images/${stickerToPlace.filename}`}
-                        alt="sticker preview"
-                        className="w-full h-full object-contain"
-                        style={{
-                          transform: `scale(${stickerScale}) rotate(${stickerRotation}deg)`
-                        }}
-                      />
-                    </div>
+                      
+                      {/* Затемнение фона */}
+                      <div className="fixed inset-0 bg-black/40 z-[199]" onClick={() => {}}></div>
+                    </>
                   )}
                   </div>
 

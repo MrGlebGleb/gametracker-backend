@@ -5304,9 +5304,15 @@ app.post('/api/board/stickers/place', authenticateToken, async (req, res) => {
   try {
     const { userStickerId, boardType = 'games', position, scale = 1.0, rotation = 0 } = req.body;
     
-    if (!userStickerId || !position || !position.x || !position.y) {
+    if (!userStickerId || !position || position.x === undefined || position.y === undefined) {
       return res.status(400).json({ error: 'Необходимы userStickerId, position.x и position.y' });
     }
+    
+    // Округляем координаты до INTEGER (требование БД)
+    const positionX = Math.round(Number(position.x));
+    const positionY = Math.round(Number(position.y));
+    const scaleValue = Math.max(0.33, Math.min(3.0, Number(scale))); // Ограничиваем диапазон
+    const rotationValue = Math.round(Number(rotation)) % 360; // Нормализуем поворот
     
     // Проверяем, что стикер принадлежит пользователю
     const userStickerCheck = await client.query(
@@ -5331,7 +5337,7 @@ app.post('/api/board/stickers/place', authenticateToken, async (req, res) => {
          SET position_x = $1, position_y = $2, scale = $3, rotation = $4, updated_at = CURRENT_TIMESTAMP
          WHERE id = $5
          RETURNING id`,
-        [position.x, position.y, scale, rotation, existingCheck.rows[0].id]
+        [positionX, positionY, scaleValue, rotationValue, existingCheck.rows[0].id]
       );
       
       return res.json({
@@ -5345,7 +5351,7 @@ app.post('/api/board/stickers/place', authenticateToken, async (req, res) => {
       `INSERT INTO board_stickers (user_id, user_sticker_id, board_type, position_x, position_y, scale, rotation)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id`,
-      [req.user.id, userStickerId, boardType, position.x, position.y, scale, rotation]
+      [req.user.id, userStickerId, boardType, positionX, positionY, scaleValue, rotationValue]
     );
     
     res.json({
