@@ -1388,6 +1388,27 @@ async function loadStickersFromFolder() {
       }
     }
     
+    // Проверяем, существует ли таблица user_stickers
+    try {
+      await client.query('SELECT 1 FROM user_stickers LIMIT 1');
+    } catch (err) {
+      // Если таблица user_stickers еще не создана, создаем ее
+      if (err.code === '42P01') { // relation does not exist
+        console.warn('⚠️  Таблица user_stickers еще не создана, создаем ее');
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS user_stickers (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            sticker_id INTEGER NOT NULL REFERENCES stickers(id) ON DELETE CASCADE,
+            purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, sticker_id)
+          )
+        `);
+      } else {
+        throw err; // Если это не ошибка отсутствующей таблицы, пробрасываем дальше
+      }
+    }
+    
     const imagesDir = path.join(__dirname, 'images');
     
     // Проверяем, существует ли папка

@@ -2881,14 +2881,20 @@
             const data = await response.json();
             setShopStickers(data.stickers || []);
             setTotalPages(data.totalPages || 1);
-            setBalance({ coins: data.userBalance || 0, level: balance.level });
+            // Обновляем только монеты, не уровень (баланс загружается отдельно)
+            setBalance(prev => ({ coins: data.userBalance || 0, level: prev?.level || 1 }));
+          } else {
+            // При ошибке не устанавливаем пустой массив, чтобы избежать мигания
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Ошибка загрузки магазина:', errorData.error || 'Неизвестная ошибка');
           }
         } catch (error) {
           console.error('Ошибка загрузки магазина:', error);
+          // При ошибке сети не обнуляем данные
         } finally {
           setLoading(false);
         }
-      }, [token, currentPage, selectedRarity, balance.level]);
+      }, [token, currentPage, selectedRarity]);
 
       // Загрузка моих стикеров
       const loadMyStickers = useCallback(async () => {
@@ -2982,21 +2988,68 @@
         5: 'text-orange-400'
       };
 
+      // Используем ref для предотвращения множественных одновременных вызовов
+      const loadingRef = useRef(false);
+      const initializedRef = useRef(false);
+      
+      // Первоначальная загрузка при открытии модалки
       useEffect(() => {
-        loadBalance();
-        if (activeTab === 'shop') {
-          loadShop();
-        } else {
-          loadMyStickers();
-        }
-      }, [activeTab, loadBalance, loadShop, loadMyStickers]);
+        if (initializedRef.current) return;
+        initializedRef.current = true;
+        
+        const loadData = async () => {
+          if (loadingRef.current) return;
+          loadingRef.current = true;
+          
+          try {
+            await loadBalance();
+            if (activeTab === 'shop') {
+              await loadShop();
+            } else {
+              await loadMyStickers();
+            }
+          } finally {
+            loadingRef.current = false;
+          }
+        };
+        
+        loadData();
+      }, []); // Загружаем только при первом открытии
 
+      // Обновление при смене таба
       useEffect(() => {
-        if (activeTab === 'shop') {
-          setCurrentPage(1);
-          loadShop();
-        }
-      }, [selectedRarity]);
+        if (!initializedRef.current) return;
+        if (loadingRef.current) return;
+        
+        loadingRef.current = true;
+        
+        const loadData = async () => {
+          try {
+            if (activeTab === 'shop') {
+              await loadShop();
+            } else {
+              await loadMyStickers();
+            }
+          } finally {
+            loadingRef.current = false;
+          }
+        };
+        
+        loadData();
+      }, [activeTab, token]); // Загружаем только при смене таба
+
+      // Обновление при смене фильтра редкости или страницы
+      useEffect(() => {
+        if (!initializedRef.current) return;
+        if (activeTab !== 'shop') return;
+        if (loadingRef.current) return;
+        
+        loadingRef.current = true;
+        
+        loadShop().finally(() => {
+          loadingRef.current = false;
+        });
+      }, [selectedRarity, currentPage, loadShop, activeTab]); // Загружаем только при смене фильтра или страницы
       
       // Обновление превью стикера при движении мыши
       useEffect(() => {
