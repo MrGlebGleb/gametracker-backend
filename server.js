@@ -5473,7 +5473,7 @@ app.get('/api/board/stickers/:userId', authenticateToken, async (req, res) => {
     const { board = 'games' } = req.query;
     
     const result = await client.query(
-      `SELECT bs.id, bs.position_x, bs.position_y, bs.scale, bs.rotation, s.filename
+      `SELECT bs.id, bs.position_x, bs.position_y, bs.scale, bs.rotation, s.filename, bs.user_sticker_id
        FROM board_stickers bs
        JOIN user_stickers us ON bs.user_sticker_id = us.id
        JOIN stickers s ON us.sticker_id = s.id
@@ -5484,6 +5484,7 @@ app.get('/api/board/stickers/:userId', authenticateToken, async (req, res) => {
     const stickers = result.rows.map(row => ({
       id: row.id,
       filename: row.filename,
+      user_sticker_id: row.user_sticker_id,
       position: { x: row.position_x, y: row.position_y },
       scale: parseFloat(row.scale),
       rotation: row.rotation
