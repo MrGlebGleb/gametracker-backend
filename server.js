@@ -1078,6 +1078,52 @@ async function initDatabase() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS media_level INTEGER DEFAULT 1;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS media_total_xp INTEGER DEFAULT 0;
 
+      -- COINS SYSTEM
+      CREATE TABLE IF NOT EXISTS user_coins (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        coins INTEGER DEFAULT 10,
+        level INTEGER DEFAULT 1,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- STICKERS
+      CREATE TABLE IF NOT EXISTS stickers (
+        id SERIAL PRIMARY KEY,
+        filename VARCHAR(255) UNIQUE NOT NULL,
+        rarity TINYINT NOT NULL CHECK (rarity BETWEEN 1 AND 5),
+        price INTEGER NOT NULL,
+        level INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- USER STICKERS (purchased stickers)
+      CREATE TABLE IF NOT EXISTS user_stickers (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        sticker_id INTEGER NOT NULL REFERENCES stickers(id) ON DELETE CASCADE,
+        purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, sticker_id)
+      );
+
+      -- BOARD STICKERS (placed stickers on boards)
+      CREATE TABLE IF NOT EXISTS board_stickers (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        user_sticker_id INTEGER NOT NULL REFERENCES user_stickers(id) ON DELETE CASCADE,
+        board_type VARCHAR(50) DEFAULT 'games',
+        position_x INTEGER NOT NULL,
+        position_y INTEGER NOT NULL,
+        scale DECIMAL(3,2) DEFAULT 1.00 CHECK (scale >= 0.33 AND scale <= 3.00),
+        rotation INTEGER DEFAULT 0 CHECK (rotation >= 0 AND rotation < 360),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, user_sticker_id, board_type)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_user_stickers_user_id ON user_stickers(user_id);
+      CREATE INDEX IF NOT EXISTS idx_board_stickers_user_id ON board_stickers(user_id);
+      CREATE INDEX IF NOT EXISTS idx_board_stickers_board_type ON board_stickers(board_type);
+
       -- MEDIA (movies/series)
       CREATE TABLE IF NOT EXISTS media_items (
         id SERIAL PRIMARY KEY,
@@ -1196,6 +1242,130 @@ initDatabase().catch(error => {
   console.error('❌ Ошибка инициализации базы данных:', error.message);
   console.warn('⚠️ Сервер продолжит работу, но некоторые функции могут быть недоступны');
 });
+
+// === COINS & STICKERS SYSTEM ===
+
+// Calculate coins reward for a level
+function getCoinsForLevel(level) {
+  if (level === 1) return 10; // При регистрации
+  if (level < 1) return 0;
+  
+  // Base formula: 5 + (уровень - 1) × 1.8
+  let baseCoins = Math.round(5 + (level - 1) * 1.8);
+  
+  // Бонусы
+  let bonus = 0;
+  if (level % 10 === 0) bonus += 25; // Каждые 10 уровней
+  if (level % 25 === 0) bonus += 50; // Каждые 25 уровней
+  
+  return baseCoins + bonus;
+}
+
+// Award coins when user levels up
+async function awardCoinsForLevel(userId, newLevel, oldLevel = null) {
+  if (!oldLevel || newLevel > oldLevel) {
+    // Only award for new level (not for initial level)
+    const coinsToAward = getCoinsForLevel(newLevel);
+    const client = await pool.connect();
+    try {
+      // Update or insert coins
+      await client.query(
+        `INSERT INTO user_coins (user_id, coins, level) 
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id) 
+         DO UPDATE SET 
+           coins = user_coins.coins + EXCLUDED.coins,
+           level = EXCLUDED.level,
+           updated_at = CURRENT_TIMESTAMP`,
+        [userId, coinsToAward, newLevel]
+      );
+      return coinsToAward;
+    } finally {
+      client.release();
+    }
+  }
+  return 0;
+}
+
+// Initialize coins for new user
+async function initializeUserCoins(userId) {
+  const client = await pool.connect();
+  try {
+    await client.query(
+      `INSERT INTO user_coins (user_id, coins, level) 
+       VALUES ($1, 10, 1)
+       ON CONFLICT (user_id) DO NOTHING`,
+      [userId]
+    );
+  } finally {
+    client.release();
+  }
+}
+
+// Parse sticker rarity from filename (e.g., "1_item (3).png" -> 3)
+function parseStickerRarity(filename) {
+  const match = filename.match(/\((\d+)\)/);
+  return match ? parseInt(match[1], 10) : 1;
+}
+
+// Parse sticker level from filename (e.g., "1_item (3).png" -> 1)
+function parseStickerLevel(filename) {
+  const match = filename.match(/^(\d+)_/);
+  return match ? parseInt(match[1], 10) : 1;
+}
+
+// Get sticker price by rarity
+function getStickerPrice(rarity) {
+  const prices = {
+    1: 12,  // Стандартный
+    2: 30,  // Необычный
+    3: 70,  // Редкий
+    4: 180, // Эпический
+    5: 450  // Легендарный
+  };
+  return prices[rarity] || prices[1];
+}
+
+// Get sticker sell price (50% of purchase price)
+function getStickerSellPrice(rarity) {
+  return Math.floor(getStickerPrice(rarity) / 2);
+}
+
+// Scan and load stickers from /images folder
+const fs = require('fs');
+const path = require('path');
+
+async function loadStickersFromFolder() {
+  const client = await pool.connect();
+  try {
+    const imagesDir = path.join(__dirname, 'images');
+    const files = fs.readdirSync(imagesDir);
+    const stickerFiles = files.filter(f => f.endsWith('.png') && /^\d+_item\s*\(\d+\).png$/i.test(f));
+    
+    for (const filename of stickerFiles) {
+      const rarity = parseStickerRarity(filename);
+      const level = parseStickerLevel(filename);
+      const price = getStickerPrice(rarity);
+      
+      // Insert or update sticker
+      await client.query(
+        `INSERT INTO stickers (filename, rarity, price, level)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (filename) 
+         DO UPDATE SET rarity = EXCLUDED.rarity, price = EXCLUDED.price, level = EXCLUDED.level`,
+        [filename, rarity, price, level]
+      );
+    }
+    
+    console.log(`✅ Загружено ${stickerFiles.length} стикеров из папки images`);
+    return stickerFiles.length;
+  } catch (error) {
+    console.error('Ошибка загрузки стикеров:', error);
+    return 0;
+  } finally {
+    client.release();
+  }
+}
 
 async function getTwitchToken() {
   if (twitchAccessToken && tokenExpiry && Date.now() < tokenExpiry) {
@@ -1788,6 +1958,11 @@ async function updateUserXP(userId, additionalXP) {
       [newTotalXP, newLevel, userId]
     );
     
+    // Начисляем монеты при повышении уровня
+    if (newLevel > currentLevel) {
+      await awardCoinsForLevel(userId, newLevel, currentLevel);
+    }
+    
     // Возвращаем информацию об изменении уровня
     return {
       oldLevel: currentLevel,
@@ -1896,6 +2071,9 @@ app.post('/api/auth/register', registerLimiter, validateRegister, async (req, re
     );
     const user = result.rows[0];
     console.log('✅ User created successfully:', user.id);
+    
+    // Инициализируем монеты для нового пользователя (10 монет при регистрации)
+    await initializeUserCoins(user.id);
     
     // Отправляем email подтверждения (не блокируем регистрацию если email не отправился)
     try {
@@ -4513,6 +4691,491 @@ app.post('/api/friends/reject', authenticateToken, async (req, res) => {
     }
 });
 
+// === COINS & STICKERS API ENDPOINTS ===
+
+// Получить баланс пользователя
+app.get('/api/user/balance', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `SELECT uc.coins, u.level 
+       FROM user_coins uc
+       RIGHT JOIN users u ON uc.user_id = u.id
+       WHERE u.id = $1`,
+      [req.user.id]
+    );
+    
+    if (result.rows.length === 0) {
+      // Если записи нет, создаем с дефолтными значениями
+      await initializeUserCoins(req.user.id);
+      return res.json({ coins: 10, level: 1 });
+    }
+    
+    const coins = result.rows[0].coins || 10;
+    const level = result.rows[0].level || 1;
+    
+    res.json({ coins, level });
+  } catch (error) {
+    console.error('Ошибка получения баланса:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// Получить магазин стикеров
+app.get('/api/stickers/shop', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { rarity, page = 1, limit = 20 } = req.query;
+    const offset = (page - 1) * limit;
+    
+    let query = 'SELECT id, filename, rarity, price, level FROM stickers WHERE 1=1';
+    let params = [];
+    let paramIndex = 1;
+    
+    if (rarity) {
+      query += ` AND rarity = $${paramIndex}`;
+      params.push(parseInt(rarity, 10));
+      paramIndex++;
+    }
+    
+    query += ` ORDER BY rarity, level LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    params.push(parseInt(limit, 10), parseInt(offset, 10));
+    
+    const result = await client.query(query, params);
+    
+    // Получаем купленные стикеры пользователя
+    const ownedResult = await client.query(
+      'SELECT sticker_id FROM user_stickers WHERE user_id = $1',
+      [req.user.id]
+    );
+    const ownedIds = new Set(ownedResult.rows.map(row => row.sticker_id));
+    
+    // Получаем общее количество
+    let countQuery = 'SELECT COUNT(*) FROM stickers WHERE 1=1';
+    if (rarity) {
+      countQuery += ` AND rarity = $1`;
+    }
+    const countResult = await client.query(countQuery, rarity ? [parseInt(rarity, 10)] : []);
+    const total = parseInt(countResult.rows[0].count, 10);
+    
+    // Получаем баланс
+    const balanceResult = await client.query(
+      'SELECT coins FROM user_coins WHERE user_id = $1',
+      [req.user.id]
+    );
+    const userBalance = balanceResult.rows[0]?.coins || 10;
+    
+    const stickers = result.rows.map(sticker => ({
+      ...sticker,
+      owned: ownedIds.has(sticker.id)
+    }));
+    
+    res.json({
+      stickers,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page, 10),
+      total,
+      userBalance
+    });
+  } catch (error) {
+    console.error('Ошибка получения магазина:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// Купить стикер
+app.post('/api/stickers/buy', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { stickerId } = req.body;
+    
+    if (!stickerId) {
+      return res.status(400).json({ error: 'ID стикера обязателен' });
+    }
+    
+    // Получаем информацию о стикере
+    const stickerResult = await client.query(
+      'SELECT id, filename, rarity, price FROM stickers WHERE id = $1',
+      [stickerId]
+    );
+    
+    if (stickerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Стикер не найден' });
+    }
+    
+    const sticker = stickerResult.rows[0];
+    
+    // Проверяем, не куплен ли уже стикер
+    const ownedCheck = await client.query(
+      'SELECT id FROM user_stickers WHERE user_id = $1 AND sticker_id = $2',
+      [req.user.id, stickerId]
+    );
+    
+    if (ownedCheck.rows.length > 0) {
+      return res.status(400).json({ error: 'Стикер уже куплен' });
+    }
+    
+    // Получаем баланс пользователя
+    const balanceResult = await client.query(
+      'SELECT coins FROM user_coins WHERE user_id = $1',
+      [req.user.id]
+    );
+    
+    const currentCoins = balanceResult.rows[0]?.coins || 10;
+    
+    if (currentCoins < sticker.price) {
+      return res.status(400).json({ error: 'Недостаточно монет' });
+    }
+    
+    // Вычитаем монеты и добавляем стикер
+    await client.query('BEGIN');
+    
+    try {
+      // Обновляем баланс
+      await client.query(
+        `UPDATE user_coins 
+         SET coins = coins - $1, updated_at = CURRENT_TIMESTAMP 
+         WHERE user_id = $2`,
+        [sticker.price, req.user.id]
+      );
+      
+      // Добавляем стикер в коллекцию пользователя
+      const userStickerResult = await client.query(
+        `INSERT INTO user_stickers (user_id, sticker_id) 
+         VALUES ($1, $2) 
+         RETURNING id, purchased_at`,
+        [req.user.id, stickerId]
+      );
+      
+      await client.query('COMMIT');
+      
+      const newBalanceResult = await client.query(
+        'SELECT coins FROM user_coins WHERE user_id = $1',
+        [req.user.id]
+      );
+      const newBalance = newBalanceResult.rows[0].coins;
+      
+      res.json({
+        success: true,
+        newBalance,
+        userSticker: {
+          id: userStickerResult.rows[0].id,
+          sticker_id: stickerId,
+          purchased_at: userStickerResult.rows[0].purchased_at
+        }
+      });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('Ошибка покупки стикера:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// Продать стикер (50% от цены покупки)
+app.post('/api/stickers/sell', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { userStickerId } = req.body;
+    
+    if (!userStickerId) {
+      return res.status(400).json({ error: 'ID купленного стикера обязателен' });
+    }
+    
+    // Получаем информацию о купленном стикере
+    const userStickerResult = await client.query(
+      `SELECT us.id, us.sticker_id, s.rarity, s.price 
+       FROM user_stickers us
+       JOIN stickers s ON us.sticker_id = s.id
+       WHERE us.id = $1 AND us.user_id = $2`,
+      [userStickerId, req.user.id]
+    );
+    
+    if (userStickerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Стикер не найден в вашей коллекции' });
+    }
+    
+    const userSticker = userStickerResult.rows[0];
+    const sellPrice = getStickerSellPrice(userSticker.rarity);
+    
+    // Проверяем, не размещен ли стикер на доске
+    const placedCheck = await client.query(
+      'SELECT id FROM board_stickers WHERE user_sticker_id = $1',
+      [userStickerId]
+    );
+    
+    if (placedCheck.rows.length > 0) {
+      return res.status(400).json({ error: 'Стикер размещен на доске. Сначала удалите его с доски' });
+    }
+    
+    await client.query('BEGIN');
+    
+    try {
+      // Удаляем стикер из коллекции
+      await client.query(
+        'DELETE FROM user_stickers WHERE id = $1 AND user_id = $2',
+        [userStickerId, req.user.id]
+      );
+      
+      // Возвращаем монеты (50% от цены покупки)
+      await client.query(
+        `UPDATE user_coins 
+         SET coins = coins + $1, updated_at = CURRENT_TIMESTAMP 
+         WHERE user_id = $2`,
+        [sellPrice, req.user.id]
+      );
+      
+      await client.query('COMMIT');
+      
+      const newBalanceResult = await client.query(
+        'SELECT coins FROM user_coins WHERE user_id = $1',
+        [req.user.id]
+      );
+      const newBalance = newBalanceResult.rows[0].coins;
+      
+      res.json({
+        success: true,
+        newBalance,
+        coinsReceived: sellPrice
+      });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('Ошибка продажи стикера:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// Получить мои купленные стикеры
+app.get('/api/user/stickers', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `SELECT us.id, us.sticker_id, us.purchased_at, s.filename, s.rarity, s.price
+       FROM user_stickers us
+       JOIN stickers s ON us.sticker_id = s.id
+       WHERE us.user_id = $1
+       ORDER BY us.purchased_at DESC`,
+      [req.user.id]
+    );
+    
+    // Проверяем, какие стикеры размещены на доске
+    const placedResult = await client.query(
+      'SELECT user_sticker_id FROM board_stickers WHERE user_id = $1',
+      [req.user.id]
+    );
+    const placedIds = new Set(placedResult.rows.map(row => row.user_sticker_id));
+    
+    const stickers = result.rows.map(row => ({
+      id: row.id,
+      sticker_id: row.sticker_id,
+      filename: row.filename,
+      rarity: row.rarity,
+      sellPrice: getStickerSellPrice(row.rarity),
+      placedOnBoard: placedIds.has(row.id),
+      purchased_at: row.purchased_at
+    }));
+    
+    res.json({ stickers });
+  } catch (error) {
+    console.error('Ошибка получения стикеров:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// === BOARD STICKERS API ENDPOINTS ===
+
+// Разместить стикер на доске
+app.post('/api/board/stickers/place', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { userStickerId, boardType = 'games', position, scale = 1.0, rotation = 0 } = req.body;
+    
+    if (!userStickerId || !position || !position.x || !position.y) {
+      return res.status(400).json({ error: 'Необходимы userStickerId, position.x и position.y' });
+    }
+    
+    // Проверяем, что стикер принадлежит пользователю
+    const userStickerCheck = await client.query(
+      'SELECT id FROM user_stickers WHERE id = $1 AND user_id = $2',
+      [userStickerId, req.user.id]
+    );
+    
+    if (userStickerCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Стикер не найден в вашей коллекции' });
+    }
+    
+    // Проверяем, не размещен ли уже этот стикер
+    const existingCheck = await client.query(
+      'SELECT id FROM board_stickers WHERE user_id = $1 AND user_sticker_id = $2 AND board_type = $3',
+      [req.user.id, userStickerId, boardType]
+    );
+    
+    if (existingCheck.rows.length > 0) {
+      // Обновляем существующее размещение
+      const updateResult = await client.query(
+        `UPDATE board_stickers 
+         SET position_x = $1, position_y = $2, scale = $3, rotation = $4, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $5
+         RETURNING id`,
+        [position.x, position.y, scale, rotation, existingCheck.rows[0].id]
+      );
+      
+      return res.json({
+        success: true,
+        boardStickerId: updateResult.rows[0].id
+      });
+    }
+    
+    // Создаем новое размещение
+    const result = await client.query(
+      `INSERT INTO board_stickers (user_id, user_sticker_id, board_type, position_x, position_y, scale, rotation)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id`,
+      [req.user.id, userStickerId, boardType, position.x, position.y, scale, rotation]
+    );
+    
+    res.json({
+      success: true,
+      boardStickerId: result.rows[0].id
+    });
+  } catch (error) {
+    console.error('Ошибка размещения стикера:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// Обновить стикер на доске
+app.put('/api/board/stickers/:id', authenticateToken, validateIdParam('id'), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const { position, scale, rotation } = req.body;
+    
+    // Проверяем, что стикер принадлежит пользователю
+    const checkResult = await client.query(
+      'SELECT id FROM board_stickers WHERE id = $1 AND user_id = $2',
+      [id, req.user.id]
+    );
+    
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Стикер не найден' });
+    }
+    
+    const updates = [];
+    const values = [];
+    let paramIndex = 1;
+    
+    if (position) {
+      updates.push(`position_x = $${paramIndex++}, position_y = $${paramIndex++}`);
+      values.push(position.x, position.y);
+    }
+    if (scale !== undefined) {
+      updates.push(`scale = $${paramIndex++}`);
+      values.push(scale);
+    }
+    if (rotation !== undefined) {
+      updates.push(`rotation = $${paramIndex++}`);
+      values.push(rotation);
+    }
+    
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'Нет данных для обновления' });
+    }
+    
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+    values.push(id);
+    
+    await client.query(
+      `UPDATE board_stickers 
+       SET ${updates.join(', ')}
+       WHERE id = $${paramIndex}`,
+      values
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Ошибка обновления стикера:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// Удалить стикер с доски
+app.delete('/api/board/stickers/:id', authenticateToken, validateIdParam('id'), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    
+    // Проверяем, что стикер принадлежит пользователю
+    const result = await client.query(
+      'DELETE FROM board_stickers WHERE id = $1 AND user_id = $2 RETURNING id',
+      [id, req.user.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Стикер не найден' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Ошибка удаления стикера:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// Получить стикеры на доске пользователя
+app.get('/api/board/stickers/:userId', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { userId } = req.params;
+    const { board = 'games' } = req.query;
+    
+    const result = await client.query(
+      `SELECT bs.id, bs.position_x, bs.position_y, bs.scale, bs.rotation, s.filename
+       FROM board_stickers bs
+       JOIN user_stickers us ON bs.user_sticker_id = us.id
+       JOIN stickers s ON us.sticker_id = s.id
+       WHERE bs.user_id = $1 AND bs.board_type = $2`,
+      [userId, board]
+    );
+    
+    const stickers = result.rows.map(row => ({
+      id: row.id,
+      filename: row.filename,
+      position: { x: row.position_x, y: row.position_y },
+      scale: parseFloat(row.scale),
+      rotation: row.rotation
+    }));
+    
+    res.json({ stickers });
+  } catch (error) {
+    console.error('Ошибка получения стикеров:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
 app.put('/api/friends/:friendId/nickname', authenticateToken, validateIdParam('friendId'), sanitizeInput, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -6145,6 +6808,11 @@ const server = app.listen(PORT, '0.0.0.0', async (err) => {
   } else {
     console.log('ℹ️  Автоматическая миграция XP отключена (безопасность)');
   }
+  
+  // Загружаем стикеры из папки images при старте сервера
+  loadStickersFromFolder().catch(error => {
+    console.error('❌ Ошибка загрузки стикеров:', error);
+  });
   
   console.log(`✅ Сервер готов принимать запросы`);
 });

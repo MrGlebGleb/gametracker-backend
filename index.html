@@ -2832,6 +2832,411 @@
       );
     };
 
+    // Компонент магазина стикеров
+    const ShopModal = ({ onClose, token, userBalance, onBalanceUpdate }) => {
+      const [shopStickers, setShopStickers] = useState([]);
+      const [myStickers, setMyStickers] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [balance, setBalance] = useState(userBalance);
+      const [activeTab, setActiveTab] = useState('shop'); // 'shop' или 'my-stickers'
+      const [selectedRarity, setSelectedRarity] = useState(null); // null = все, 1-5 = фильтр
+      const [currentPage, setCurrentPage] = useState(1);
+      const [totalPages, setTotalPages] = useState(1);
+      const [placingMode, setPlacingMode] = useState(false);
+      const [stickerToPlace, setStickerToPlace] = useState(null);
+
+      // Загрузка баланса
+      const loadBalance = useCallback(async () => {
+        if (!token) return;
+        try {
+          const response = await fetch(`${API_URL}/api/user/balance`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setBalance(data);
+            if (onBalanceUpdate) onBalanceUpdate(data);
+          }
+        } catch (error) {
+          console.error('Ошибка загрузки баланса:', error);
+        }
+      }, [token, onBalanceUpdate]);
+
+      // Загрузка магазина стикеров
+      const loadShop = useCallback(async () => {
+        if (!token) return;
+        setLoading(true);
+        try {
+          const params = new URLSearchParams({
+            page: currentPage.toString(),
+            limit: '20'
+          });
+          if (selectedRarity) {
+            params.append('rarity', selectedRarity.toString());
+          }
+          const response = await fetch(`${API_URL}/api/stickers/shop?${params}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setShopStickers(data.stickers || []);
+            setTotalPages(data.totalPages || 1);
+            setBalance({ coins: data.userBalance || 0, level: balance.level });
+          }
+        } catch (error) {
+          console.error('Ошибка загрузки магазина:', error);
+        } finally {
+          setLoading(false);
+        }
+      }, [token, currentPage, selectedRarity, balance.level]);
+
+      // Загрузка моих стикеров
+      const loadMyStickers = useCallback(async () => {
+        if (!token) return;
+        setLoading(true);
+        try {
+          const response = await fetch(`${API_URL}/api/user/stickers`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setMyStickers(data.stickers || []);
+          }
+        } catch (error) {
+          console.error('Ошибка загрузки стикеров:', error);
+        } finally {
+          setLoading(false);
+        }
+      }, [token]);
+
+      // Покупка стикера
+      const buySticker = async (stickerId) => {
+        if (!token) return;
+        try {
+          const response = await fetch(`${API_URL}/api/stickers/buy`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ stickerId })
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setBalance({ coins: data.newBalance, level: balance.level });
+            if (onBalanceUpdate) onBalanceUpdate({ coins: data.newBalance, level: balance.level });
+            await loadShop();
+            await loadMyStickers();
+          } else {
+            const errorData = await response.json();
+            alert(errorData.error || 'Ошибка покупки стикера');
+          }
+        } catch (error) {
+          console.error('Ошибка покупки:', error);
+          alert('Ошибка покупки стикера');
+        }
+      };
+
+      // Продажа стикера
+      const sellSticker = async (userStickerId) => {
+        if (!confirm('Продать стикер обратно в магазин? Вы получите 50% от стоимости покупки.')) return;
+        if (!token) return;
+        try {
+          const response = await fetch(`${API_URL}/api/stickers/sell`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ userStickerId })
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setBalance({ coins: data.newBalance, level: balance.level });
+            if (onBalanceUpdate) onBalanceUpdate({ coins: data.newBalance, level: balance.level });
+            await loadMyStickers();
+          } else {
+            const errorData = await response.json();
+            alert(errorData.error || 'Ошибка продажи стикера');
+          }
+        } catch (error) {
+          console.error('Ошибка продажи:', error);
+          alert('Ошибка продажи стикера');
+        }
+      };
+
+      // Редкости стикеров
+      const rarityNames = {
+        1: 'Стандартный',
+        2: 'Необычный',
+        3: 'Редкий',
+        4: 'Эпический',
+        5: 'Легендарный'
+      };
+
+      const rarityColors = {
+        1: 'text-white',
+        2: 'text-green-400',
+        3: 'text-blue-400',
+        4: 'text-purple-400',
+        5: 'text-orange-400'
+      };
+
+      useEffect(() => {
+        loadBalance();
+        if (activeTab === 'shop') {
+          loadShop();
+        } else {
+          loadMyStickers();
+        }
+      }, [activeTab, loadBalance, loadShop, loadMyStickers]);
+
+      useEffect(() => {
+        if (activeTab === 'shop') {
+          setCurrentPage(1);
+          loadShop();
+        }
+      }, [selectedRarity]);
+      
+      // Обновление превью стикера при движении мыши
+      useEffect(() => {
+        if (placingMode && stickerToPlace) {
+          const updatePreview = (e) => {
+            const preview = document.getElementById('sticker-preview-cursor');
+            if (preview) {
+              preview.style.left = `${e.clientX - 40}px`; // Центрируем превью относительно курсора
+              preview.style.top = `${e.clientY - 40}px`;
+            }
+          };
+          document.addEventListener('mousemove', updatePreview);
+          return () => document.removeEventListener('mousemove', updatePreview);
+        }
+      }, [placingMode, stickerToPlace]);
+
+      return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={onClose}>
+          <div className="bg-gray-900 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-purple-500/30" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-700">
+              <div className="flex items-center gap-4">
+                <h2 className="text-2xl font-bold text-white">🛒 Магазин Стикеров</h2>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-lg border border-yellow-500/30">
+                  <span className="text-lg">🪙</span>
+                  <span className="text-white font-semibold">{balance.coins || 0}</span>
+                </div>
+              </div>
+              <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-lg transition-colors">
+                <Icon name="x" className="w-6 h-6 text-gray-400" />
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-gray-700">
+              <button
+                onClick={() => setActiveTab('shop')}
+                className={`px-6 py-4 font-medium transition-colors ${
+                  activeTab === 'shop'
+                    ? 'text-purple-400 border-b-2 border-purple-400 bg-purple-500/10'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Магазин
+              </button>
+              <button
+                onClick={() => setActiveTab('my-stickers')}
+                className={`px-6 py-4 font-medium transition-colors ${
+                  activeTab === 'my-stickers'
+                    ? 'text-purple-400 border-b-2 border-purple-400 bg-purple-500/10'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Мои стикеры ({myStickers.length})
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {activeTab === 'shop' ? (
+                <>
+                  {/* Фильтры */}
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    <button
+                      onClick={() => setSelectedRarity(null)}
+                      className={`px-4 py-2 rounded-lg transition-colors ${
+                        selectedRarity === null
+                          ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                      }`}
+                    >
+                      Все
+                    </button>
+                    {[1, 2, 3, 4, 5].map(rarity => (
+                      <button
+                        key={rarity}
+                        onClick={() => setSelectedRarity(rarity)}
+                        className={`px-4 py-2 rounded-lg transition-colors ${
+                          selectedRarity === rarity
+                            ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                        }`}
+                      >
+                        {rarityNames[rarity]}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Сетка стикеров */}
+                  {loading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Icon name="loader" className="w-8 h-8 animate-spin text-purple-400" />
+                    </div>
+                  ) : shopStickers.length === 0 ? (
+                    <div className="text-center py-12 text-gray-400">
+                      <div className="text-4xl mb-2">🎨</div>
+                      <p>Стикеры не найдены</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+                        {shopStickers.map(sticker => (
+                          <div
+                            key={sticker.id}
+                            className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 hover:border-purple-500/50 transition-colors"
+                          >
+                            <div className="aspect-square mb-3 flex items-center justify-center bg-gray-700/50 rounded-lg overflow-hidden">
+                              <img
+                                src={`/images/${sticker.filename}`}
+                                alt={sticker.filename}
+                                className="w-full h-full object-contain"
+                                onError={(e) => { e.target.src = '/images/default-sticker.png'; }}
+                              />
+                            </div>
+                            <div className="text-center">
+                              <p className={`text-xs font-semibold mb-1 ${rarityColors[sticker.rarity]}`}>
+                                {rarityNames[sticker.rarity]}
+                              </p>
+                              <p className="text-white font-bold mb-2">{sticker.price} 🪙</p>
+                              {sticker.owned ? (
+                                <button disabled className="w-full py-2 bg-gray-700 text-gray-500 rounded-lg text-sm">
+                                  Куплено
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => buySticker(sticker.id)}
+                                  disabled={balance.coins < sticker.price}
+                                  className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
+                                    balance.coins >= sticker.price
+                                      ? 'bg-purple-500 hover:bg-purple-600 text-white'
+                                      : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                  }`}
+                                >
+                                  Купить
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Пагинация */}
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Icon name="arrowLeft" className="w-5 h-5" />
+                          </button>
+                          <span className="text-gray-400">
+                            Страница {currentPage} / {totalPages}
+                          </span>
+                          <button
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages}
+                            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Icon name="arrowRight" className="w-5 h-5" />
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Мои стикеры */}
+                  {loading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Icon name="loader" className="w-8 h-8 animate-spin text-purple-400" />
+                    </div>
+                  ) : myStickers.length === 0 ? (
+                    <div className="text-center py-12 text-gray-400">
+                      <div className="text-4xl mb-2">🎨</div>
+                      <p>У вас пока нет стикеров</p>
+                      <p className="text-sm mt-1">Купите стикеры в магазине</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {myStickers.map(sticker => (
+                        <div
+                          key={sticker.id}
+                          className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 hover:border-purple-500/50 transition-colors"
+                        >
+                          <div className="aspect-square mb-3 flex items-center justify-center bg-gray-700/50 rounded-lg overflow-hidden">
+                            <img
+                              src={`/images/${sticker.filename}`}
+                              alt={sticker.filename}
+                              className="w-full h-full object-contain"
+                              onError={(e) => { e.target.src = '/images/default-sticker.png'; }}
+                            />
+                          </div>
+                          <div className="text-center">
+                            <p className={`text-xs font-semibold mb-2 ${rarityColors[sticker.rarity]}`}>
+                              {rarityNames[sticker.rarity]}
+                            </p>
+                            <div className="flex gap-2">
+                              {!sticker.placedOnBoard && (
+                                <button
+                                  onClick={() => {
+                                    setPlacingMode(true);
+                                    setStickerToPlace(sticker);
+                                    setStickerScale(1.0);
+                                    setStickerRotation(0);
+                                    onClose();
+                                  }}
+                                  className="flex-1 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm font-medium"
+                                >
+                                  Разместить
+                                </button>
+                              )}
+                              {!sticker.placedOnBoard && (
+                                <button
+                                  onClick={() => sellSticker(sticker.id)}
+                                  className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium"
+                                >
+                                  Продать ({sticker.sellPrice} 🪙)
+                                </button>
+                              )}
+                              {sticker.placedOnBoard && (
+                                <span className="flex-1 py-2 bg-green-500/20 text-green-400 rounded-lg text-sm text-center">
+                                  На доске
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
     // Компонент управления тегами
     const TagsManager = ({ isOpen, onClose, token, onTagsUpdate }) => {
       const [tags, setTags] = useState([]);
@@ -4289,6 +4694,13 @@
       const [imageForCrop, setImageForCrop] = useState(null);
       const [gameForReview, setGameForReview] = useState(null);
       const [targetBoardForAdd, setTargetBoardForAdd] = useState(null); // НОВОЕ СОСТОЯНИЕ
+      const [showShop, setShowShop] = useState(false);
+      const [userBalance, setUserBalance] = useState({ coins: 10, level: 1 });
+      const [boardStickers, setBoardStickers] = useState([]);
+      const [placingMode, setPlacingMode] = useState(false);
+      const [stickerToPlace, setStickerToPlace] = useState(null);
+      const [stickerScale, setStickerScale] = useState(1.0);
+      const [stickerRotation, setStickerRotation] = useState(0);
 
       const canvasRef = useRef(null);
       const gameInstance = useRef(null);
@@ -4430,6 +4842,24 @@
                 completed: { ...prev.completed, cards: data.boards.completed || [] },
                 dropped: { ...prev.dropped, cards: data.boards.dropped || [] }
               }));
+              
+              // Загружаем стикеры на доске
+              if (userId || !viewingUser) {
+                const stickersUserId = userId || user?.id;
+                if (stickersUserId) {
+                  try {
+                    const stickersResponse = await fetch(`${API_URL}/api/board/stickers/${stickersUserId}?board=games`, {
+                      headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (stickersResponse.ok) {
+                      const stickersData = await stickersResponse.json();
+                      setBoardStickers(stickersData.stickers || []);
+                    }
+                  } catch (err) {
+                    console.error('Ошибка загрузки стикеров:', err);
+                  }
+                }
+              }
             } else if (data.games) {
               // Если загружаем игры по тегу, распределяем их по доскам
               const boards = { backlog: [], playing: [], completed: [], dropped: [] };
@@ -4853,6 +5283,49 @@
         } catch (err) {
           console.error('Ошибка добавления игры:', err);
           alert('Ошибка при добавлении игры. Попробуйте еще раз.');
+        }
+      };
+
+      // Разместить стикер на доске
+      const placeStickerOnBoard = async (userStickerId, x, y, scale, rotation) => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        
+        try {
+          const response = await fetch(`${API_URL}/api/board/stickers/place`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              userStickerId,
+              boardType: 'games',
+              position: { x, y },
+              scale,
+              rotation
+            })
+          });
+          
+          if (response.ok) {
+            // Обновляем список стикеров на доске
+            const userId = viewingUser?.id || user?.id;
+            if (userId) {
+              const stickersResponse = await fetch(`${API_URL}/api/board/stickers/${userId}?board=games`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              });
+              if (stickersResponse.ok) {
+                const stickersData = await stickersResponse.json();
+                setBoardStickers(stickersData.stickers || []);
+              }
+            }
+          } else {
+            const errorData = await response.json();
+            alert(errorData.error || 'Ошибка размещения стикера');
+          }
+        } catch (error) {
+          console.error('Ошибка размещения стикера:', error);
+          alert('Ошибка размещения стикера');
         }
       };
 
@@ -5852,6 +6325,14 @@
           {/* Модальное окно получения нового уровня */}
           <LevelUpModal />
           
+          {/* Модальное окно магазина стикеров */}
+          {showShop && <ShopModal 
+            onClose={() => setShowShop(false)} 
+            token={localStorage.getItem('token')}
+            userBalance={userBalance}
+            onBalanceUpdate={(balance) => setUserBalance(balance)}
+          />}
+          
           {imageForCrop && <AvatarCropModal src={imageForCrop} onCancel={() => setImageForCrop(null)} onComplete={handleAvatarUpdate} />}
           {gameForReview && <DeepReviewModal game={gameForReview} existingAnswers={gameForReview.deep_review_answers} onClose={() => setGameForReview(null)} onSubmit={submitDeepReview} />}
           <StatisticsPage 
@@ -6015,6 +6496,9 @@
                     </Fragment>
                   ) : (
                     <Fragment>
+                      <button onClick={() => setShowShop(true)} className="p-2 hover:bg-gray-800 rounded-lg border border-purple-500/30" title="Магазин стикеров">
+                        🛒
+                      </button>
                       <button onClick={() => setShowStatistics(true)} className="p-2 hover:bg-gray-800 rounded-lg border border-purple-500/30" title="Статистика игр">
                         <Icon name="barChart" className="w-4 h-4 md:w-5 md:h-5 text-purple-400" />
                       </button>
@@ -6524,7 +7008,47 @@
                   </div>
               )}
 
-              <div className="container mx-auto px-4 py-6">
+              {/* Контейнер досок с относительным позиционированием для стикеров */}
+              <div 
+                className="container mx-auto px-4 py-6 relative" 
+                style={{ zIndex: 1 }}
+                onClick={(e) => {
+                  if (placingMode && stickerToPlace && !viewingUser) {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    
+                    // Размещаем стикер
+                    placeStickerOnBoard(stickerToPlace.id, x, y, stickerScale, stickerRotation);
+                    setPlacingMode(false);
+                    setStickerToPlace(null);
+                  }
+                }}
+              >
+                  {/* Стикеры на доске (отображаются под колонками, но видны рядом с ними) */}
+                  {boardStickers.map(sticker => (
+                    <div
+                      key={sticker.id}
+                      className="absolute pointer-events-none"
+                      style={{
+                        left: `${sticker.position.x}px`,
+                        top: `${sticker.position.y}px`,
+                        transform: `scale(${sticker.scale}) rotate(${sticker.rotation}deg)`,
+                        transformOrigin: 'center center',
+                        zIndex: 5, // Под колонками (колонки имеют z-index 10+)
+                        width: '80px',
+                        height: '80px'
+                      }}
+                    >
+                      <img
+                        src={`/images/${sticker.filename}`}
+                        alt="sticker"
+                        className="w-full h-full object-contain"
+                        onError={(e) => { e.target.src = '/images/default-sticker.png'; }}
+                      />
+                    </div>
+                  ))}
+                  
                   {viewingUser && (
                   <div className="mb-6 bg-gradient-to-r from-purple-900/50 to-blue-900/50 backdrop-blur-xl rounded-xl p-6 border border-purple-500/30">
                       <div className="flex items-center gap-4">
@@ -6857,6 +7381,90 @@
                       </div>
                       );
                     })
+                  )}
+                  
+                  {/* Режим размещения стикера */}
+                  {placingMode && stickerToPlace && !viewingUser && (
+                    <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center pointer-events-none">
+                      <div className="bg-gray-900 rounded-xl p-6 w-full max-w-md border border-purple-500/30 pointer-events-auto">
+                        <h3 className="text-xl font-bold text-white mb-4">Размещение стикера</h3>
+                        <p className="text-gray-400 text-sm mb-4">Кликните на доске, чтобы разместить стикер</p>
+                        <div className="mb-4 flex items-center gap-4">
+                          <div className="flex-1">
+                            <label className="text-gray-400 text-sm mb-1 block">Масштаб: {stickerScale.toFixed(2)}×</label>
+                            <input
+                              type="range"
+                              min="0.33"
+                              max="3"
+                              step="0.1"
+                              value={stickerScale}
+                              onChange={(e) => setStickerScale(parseFloat(e.target.value))}
+                              className="w-full"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="text-gray-400 text-sm mb-1 block">Поворот: {stickerRotation}°</label>
+                            <input
+                              type="range"
+                              min="0"
+                              max="359"
+                              step="1"
+                              value={stickerRotation}
+                              onChange={(e) => setStickerRotation(parseInt(e.target.value))}
+                              className="w-full"
+                            />
+                          </div>
+                        </div>
+                        <div className="mb-4 flex justify-center">
+                          <div
+                            style={{
+                              transform: `scale(${stickerScale}) rotate(${stickerRotation}deg)`,
+                              width: '100px',
+                              height: '100px'
+                            }}
+                          >
+                            <img
+                              src={`/images/${stickerToPlace.filename}`}
+                              alt="sticker preview"
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setPlacingMode(false);
+                              setStickerToPlace(null);
+                            }}
+                            className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg"
+                          >
+                            Отмена
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Превью стикера при размещении (следует за курсором) */}
+                  {placingMode && stickerToPlace && (
+                    <div
+                      className="fixed pointer-events-none z-[180]"
+                      id="sticker-preview-cursor"
+                      style={{
+                        width: '80px',
+                        height: '80px',
+                        opacity: 0.8
+                      }}
+                    >
+                      <img
+                        src={`/images/${stickerToPlace.filename}`}
+                        alt="sticker preview"
+                        className="w-full h-full object-contain"
+                        style={{
+                          transform: `scale(${stickerScale}) rotate(${stickerRotation}deg)`
+                        }}
+                      />
+                    </div>
                   )}
                   </div>
 
