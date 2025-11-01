@@ -6921,21 +6921,35 @@
                       )}
                 </div>
                 
-                  {/* Слоты в хедере скрыты */}
-                  {false && !viewingUser && (
+                  {/* 6 слотов для стикеров в хедере */}
+                  {!viewingUser && (
                     <div className="flex items-center gap-9 px-4 flex-shrink-0">
-                    {[0, 1, 2, 3, 4, 5, 6, 7].map(slotIndex => {
+                    {[0, 1, 2, 3, 4, 5].map(slotIndex => {
                       const headerSticker = headerStickers[slotIndex];
                       const isDraggingOver = dragOverSlotIndex === slotIndex;
+                      
+                      // Определяем цвет рамки в зависимости от редкости стикера
+                      const getBorderColor = () => {
+                        if (!headerSticker) return 'border-gray-600/30';
+                        const rarity = headerSticker.rarity || 1;
+                        switch(rarity) {
+                          case 1: return 'border-white/50'; // Стандартный
+                          case 2: return 'border-green-500/50'; // Необычный
+                          case 3: return 'border-blue-500/50'; // Редкий
+                          case 4: return 'border-purple-500/50'; // Эпический
+                          case 5: return 'border-orange-500/50'; // Легендарный
+                          default: return 'border-purple-500/50';
+                        }
+                      };
                       
                       return (
                         <div
                           key={slotIndex}
                           data-slot-index={slotIndex}
                           className={`
-                            relative w-16 h-16 rounded-lg border-2 border-dashed transition-all duration-200
+                            relative w-16 h-16 rounded-lg border-2 border-dashed transition-all duration-200 flex items-center justify-center
                             ${headerSticker 
-                              ? 'border-purple-500/50 bg-purple-500/10' 
+                              ? `${getBorderColor()} bg-gray-800/30` 
                               : isDraggingOver
                               ? 'border-purple-400 bg-purple-500/30 scale-110'
                               : 'border-gray-600/30 bg-gray-800/20 hover:border-purple-500/50 hover:bg-purple-500/10'
@@ -6985,8 +6999,8 @@
                               </button>
                             </>
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs opacity-50">
-                              {slotIndex + 1}
+                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-2xl opacity-50">
+                              +
                             </div>
                           )}
                         </div>
@@ -8140,102 +8154,6 @@
                     })
                   )}
                   
-                  {/* Слоты для стикеров под столбцами (8 слотов в одну линию, по 2 под каждым столбцом) */}
-                  {!viewingUser && (
-                    <div className="col-span-full mt-4">
-                      <div className="grid grid-cols-4 gap-6">
-                        {Object.values(boards).map((board, boardIndex) => (
-                          <div key={board.id} className="flex flex-row justify-center gap-3">
-                            {[0, 1].map(slotOffset => {
-                              const slotIndex = boardIndex * 2 + slotOffset;
-                              const headerSticker = headerStickers[slotIndex];
-                              const isDraggingOver = dragOverSlotIndex === slotIndex;
-                              
-                              // Определяем цвет рамки в зависимости от редкости стикера
-                              const getBorderColor = () => {
-                                if (!headerSticker) return 'border-gray-600/30';
-                                // Получаем редкость стикера из API при загрузке
-                                // Пока используем стандартный фиолетовый, потом обновим через API
-                                const rarity = headerSticker.rarity || 1;
-                                switch(rarity) {
-                                  case 1: return 'border-white/50'; // Стандартный
-                                  case 2: return 'border-green-500/50'; // Необычный
-                                  case 3: return 'border-blue-500/50'; // Редкий
-                                  case 4: return 'border-purple-500/50'; // Эпический
-                                  case 5: return 'border-orange-500/50'; // Легендарный
-                                  default: return 'border-purple-500/50';
-                                }
-                              };
-                              
-                              return (
-                                <div
-                                  key={slotIndex}
-                                  data-slot-index={slotIndex}
-                                  className={`
-                                    relative w-[125px] h-[125px] rounded-lg border-2 border-dashed transition-all duration-200 flex items-center justify-center
-                                    ${headerSticker 
-                                      ? `${getBorderColor()} bg-gray-800/30` 
-                                      : isDraggingOver
-                                      ? 'border-purple-400 bg-purple-500/30 scale-110'
-                                      : 'border-gray-600/30 bg-gray-800/20 hover:border-purple-500/50 hover:bg-purple-500/10'
-                                    }
-                                  `}
-                                  onMouseEnter={() => {
-                                    if (placingMode && stickerToPlace?.placementType === 'slot' && isDragging) {
-                                      setDragOverSlotIndex(slotIndex);
-                                    }
-                                  }}
-                                  onMouseLeave={() => {
-                                    if (placingMode && stickerToPlace?.placementType === 'slot') {
-                                      setDragOverSlotIndex(null);
-                                    }
-                                  }}
-                                >
-                                  {headerSticker ? (
-                                    <>
-                                      <img
-                                        src={`/images/${headerSticker.filename}`}
-                                        alt="sticker"
-                                        className="w-full h-full object-contain p-2"
-                                        onError={(e) => { e.target.src = '/images/default-sticker.png'; }}
-                                        draggable={false}
-                                      />
-                                      <button
-                                        onClick={async () => {
-                                          if (confirm('Удалить стикер из слота?')) {
-                                            const token = localStorage.getItem('token');
-                                            try {
-                                              const response = await fetch(`${API_URL}/api/header/stickers/${headerSticker.id}`, {
-                                                method: 'DELETE',
-                                                headers: { 'Authorization': `Bearer ${token}` }
-                                              });
-                                              if (response.ok) {
-                                                await loadHeaderStickers();
-                                              }
-                                            } catch (error) {
-                                              console.error('Ошибка удаления стикера:', error);
-                                            }
-                                          }
-                                        }}
-                                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white text-xs opacity-0 hover:opacity-100 transition-opacity"
-                                        title="Удалить стикер"
-                                      >
-                                        ×
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-2xl opacity-50">
-                                      +
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                   
                   {/* Интерактивный стикер для размещения */}
                   {placingMode && stickerToPlace && !viewingUser && (
@@ -8554,9 +8472,9 @@
                     ))}
                   </div>
                   
-                  {/* Поиск по своим играм (под слотами) */}
+                  {/* Поиск по своим играм */}
                   {!viewingUser && (
-                    <div className="col-span-full mt-6">
+                    <div className="col-span-full mt-8">
                       <div className="relative">
                         <input
                           type="text"

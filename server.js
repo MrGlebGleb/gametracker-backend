@@ -1125,7 +1125,7 @@ async function initDatabase() {
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         user_sticker_id INTEGER NOT NULL REFERENCES user_stickers(id) ON DELETE CASCADE,
-        slot_index INTEGER NOT NULL CHECK (slot_index >= 0 AND slot_index <= 7),
+        slot_index INTEGER NOT NULL CHECK (slot_index >= 0 AND slot_index <= 5),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id, slot_index)
@@ -5554,8 +5554,8 @@ app.post('/api/header/stickers/place', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'userStickerId и slotIndex обязательны' });
     }
     
-    if (slotIndex < 0 || slotIndex > 7) {
-      return res.status(400).json({ error: 'slotIndex должен быть от 0 до 7' });
+    if (slotIndex < 0 || slotIndex > 5) {
+      return res.status(400).json({ error: 'slotIndex должен быть от 0 до 5' });
     }
     
     // Проверяем, что стикер принадлежит пользователю
