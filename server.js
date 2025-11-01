@@ -1090,7 +1090,7 @@ async function initDatabase() {
       CREATE TABLE IF NOT EXISTS stickers (
         id SERIAL PRIMARY KEY,
         filename VARCHAR(255) UNIQUE NOT NULL,
-        rarity TINYINT NOT NULL CHECK (rarity BETWEEN 1 AND 5),
+        rarity SMALLINT NOT NULL CHECK (rarity BETWEEN 1 AND 5),
         price INTEGER NOT NULL,
         level INTEGER NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -1291,12 +1291,40 @@ async function awardCoinsForLevel(userId, newLevel, oldLevel = null) {
 async function initializeUserCoins(userId) {
   const client = await pool.connect();
   try {
-    await client.query(
-      `INSERT INTO user_coins (user_id, coins, level) 
-       VALUES ($1, 10, 1)
-       ON CONFLICT (user_id) DO NOTHING`,
-      [userId]
-    );
+    // Проверяем, существует ли таблица user_coins
+    try {
+      await client.query(
+        `INSERT INTO user_coins (user_id, coins, level) 
+         VALUES ($1, 10, 1)
+         ON CONFLICT (user_id) DO NOTHING`,
+        [userId]
+      );
+    } catch (err) {
+      // Если таблица user_coins еще не создана, создаем ее
+      if (err.code === '42P01') { // relation does not exist
+        console.warn('⚠️  Таблица user_coins еще не создана, создаем ее');
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS user_coins (
+            user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            coins INTEGER DEFAULT 10,
+            level INTEGER DEFAULT 1,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        // Теперь повторяем INSERT
+        await client.query(
+          `INSERT INTO user_coins (user_id, coins, level) 
+           VALUES ($1, 10, 1)
+           ON CONFLICT (user_id) DO NOTHING`,
+          [userId]
+        );
+      } else {
+        throw err; // Если это не ошибка отсутствующей таблицы, пробрасываем дальше
+      }
+    }
+  } catch (error) {
+    console.error('❌ Ошибка инициализации монет пользователя:', error);
+    throw error;
   } finally {
     client.release();
   }
@@ -1338,9 +1366,40 @@ const path = require('path');
 async function loadStickersFromFolder() {
   const client = await pool.connect();
   try {
+    // Проверяем, существует ли таблица stickers
+    try {
+      await client.query('SELECT 1 FROM stickers LIMIT 1');
+    } catch (err) {
+      // Если таблица stickers еще не создана, создаем ее
+      if (err.code === '42P01') { // relation does not exist
+        console.warn('⚠️  Таблица stickers еще не создана, создаем ее');
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS stickers (
+            id SERIAL PRIMARY KEY,
+            filename VARCHAR(255) UNIQUE NOT NULL,
+            rarity SMALLINT NOT NULL CHECK (rarity BETWEEN 1 AND 5),
+            price INTEGER NOT NULL,
+            level INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+      } else {
+        throw err; // Если это не ошибка отсутствующей таблицы, пробрасываем дальше
+      }
+    }
+    
     const imagesDir = path.join(__dirname, 'images');
+    
+    // Проверяем, существует ли папка
+    if (!fs.existsSync(imagesDir)) {
+      console.warn('⚠️  Папка images не найдена:', imagesDir);
+      return 0;
+    }
+    
     const files = fs.readdirSync(imagesDir);
     const stickerFiles = files.filter(f => f.endsWith('.png') && /^\d+_item\s*\(\d+\).png$/i.test(f));
+    
+    console.log(`📂 Найдено ${stickerFiles.length} файлов стикеров в папке images`);
     
     for (const filename of stickerFiles) {
       const rarity = parseStickerRarity(filename);
@@ -1360,8 +1419,121 @@ async function loadStickersFromFolder() {
     console.log(`✅ Загружено ${stickerFiles.length} стикеров из папки images`);
     return stickerFiles.length;
   } catch (error) {
-    console.error('Ошибка загрузки стикеров:', error);
+    console.error('❌ Ошибка загрузки стикеров:', error);
+    console.error('❌ Stack trace:', error.stack);
+    console.error('❌ Error code:', error.code);
+    console.error('❌ Error message:', error.message);
     return 0;
+  } finally {
+    client.release();
+  }
+}
+
+// Пересчет монет для всех пользователей на основе их текущего уровня
+async function recalculateAllUsersCoins() {
+  const client = await pool.connect();
+  try {
+    // Проверяем, существует ли таблица user_coins
+    try {
+      await client.query('SELECT 1 FROM user_coins LIMIT 1');
+    } catch (err) {
+      // Если таблица user_coins еще не создана, создаем ее
+      if (err.code === '42P01') { // relation does not exist
+        console.warn('⚠️  Таблица user_coins еще не создана, создаем ее');
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS user_coins (
+            user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            coins INTEGER DEFAULT 10,
+            level INTEGER DEFAULT 1,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+      } else {
+        throw err; // Если это не ошибка отсутствующей таблицы, пробрасываем дальше
+      }
+    }
+    
+    // Получаем всех пользователей
+    const usersResult = await client.query('SELECT id, level FROM users WHERE level > 1');
+    
+    if (usersResult.rows.length === 0) {
+      console.log('ℹ️  Нет пользователей для пересчета монет');
+      return;
+    }
+    
+    console.log(`🔄 Начинаем пересчет монет для ${usersResult.rows.length} пользователей...`);
+    
+    let updated = 0;
+    let totalCoinsAwarded = 0;
+    
+    for (const user of usersResult.rows) {
+      const userId = user.id;
+      const userLevel = user.level || 1;
+      
+      // Проверяем, есть ли уже запись в user_coins
+      const coinsCheck = await client.query(
+        'SELECT coins, level FROM user_coins WHERE user_id = $1',
+        [userId]
+      );
+      
+      if (coinsCheck.rows.length === 0) {
+        // Если записи нет, создаем с расчетом монет за все уровни
+        let totalCoins = 10; // Стартовые монеты
+        for (let level = 2; level <= userLevel; level++) {
+          totalCoins += getCoinsForLevel(level);
+        }
+        
+        await client.query(
+          `INSERT INTO user_coins (user_id, coins, level) 
+           VALUES ($1, $2, $3)`,
+          [userId, totalCoins, userLevel]
+        );
+        updated++;
+        totalCoinsAwarded += totalCoins;
+      } else {
+        // Если запись есть, пересчитываем если уровень изменился
+        const currentCoins = coinsCheck.rows[0].coins || 10;
+        const currentLevel = coinsCheck.rows[0].level || 1;
+        
+        if (userLevel > currentLevel) {
+          // Пересчитываем монеты за все уровни
+          let totalCoins = 10; // Стартовые монеты
+          for (let level = 2; level <= userLevel; level++) {
+            totalCoins += getCoinsForLevel(level);
+          }
+          
+          // Если текущих монет меньше чем должно быть, добавляем разницу
+          if (totalCoins > currentCoins) {
+            await client.query(
+              `UPDATE user_coins 
+               SET coins = $1, level = $2, updated_at = CURRENT_TIMESTAMP
+               WHERE user_id = $3`,
+              [totalCoins, userLevel, userId]
+            );
+            updated++;
+            totalCoinsAwarded += (totalCoins - currentCoins);
+          } else {
+            // Просто обновляем уровень
+            await client.query(
+              `UPDATE user_coins 
+               SET level = $1, updated_at = CURRENT_TIMESTAMP
+               WHERE user_id = $2`,
+              [userLevel, userId]
+            );
+          }
+        }
+      }
+      
+      // Небольшая задержка каждые 10 пользователей
+      if (updated % 10 === 0) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    }
+    
+    console.log(`✅ Пересчет монет завершен: обновлено ${updated} пользователей, всего начислено ${totalCoinsAwarded} монет`);
+  } catch (error) {
+    console.error('❌ Ошибка пересчета монет:', error);
+    console.error('❌ Stack trace:', error.stack);
   } finally {
     client.release();
   }
@@ -4697,17 +4869,74 @@ app.post('/api/friends/reject', authenticateToken, async (req, res) => {
 app.get('/api/user/balance', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
-    const result = await client.query(
-      `SELECT uc.coins, u.level 
-       FROM user_coins uc
-       RIGHT JOIN users u ON uc.user_id = u.id
-       WHERE u.id = $1`,
-      [req.user.id]
-    );
+    // Сначала проверяем, есть ли запись в user_coins
+    let result;
+    try {
+      result = await client.query(
+        'SELECT coins, level FROM user_coins WHERE user_id = $1',
+        [req.user.id]
+      );
+    } catch (err) {
+      // Если таблица user_coins еще не создана, создаем ее
+      if (err.code === '42P01') { // relation does not exist
+        console.warn('⚠️  Таблица user_coins еще не создана, создаем запись для пользователя');
+        await initializeUserCoins(req.user.id);
+        // Получаем уровень пользователя из таблицы users
+        const userResult = await client.query(
+          'SELECT level FROM users WHERE id = $1',
+          [req.user.id]
+        );
+        const userLevel = userResult.rows[0]?.level || 1;
+        
+        // Пересчитываем монеты для текущего уровня
+        if (userLevel > 1) {
+          let totalCoins = 10; // Стартовые монеты
+          for (let level = 2; level <= userLevel; level++) {
+            totalCoins += getCoinsForLevel(level);
+          }
+          
+          await client.query(
+            `UPDATE user_coins 
+             SET coins = $1, level = $2, updated_at = CURRENT_TIMESTAMP
+             WHERE user_id = $3`,
+            [totalCoins, userLevel, req.user.id]
+          );
+          
+          return res.json({ coins: totalCoins, level: userLevel });
+        }
+        
+        return res.json({ coins: 10, level: 1 });
+      }
+      throw err; // Если это не ошибка отсутствующей таблицы, пробрасываем дальше
+    }
     
     if (result.rows.length === 0) {
       // Если записи нет, создаем с дефолтными значениями
       await initializeUserCoins(req.user.id);
+      // Получаем уровень пользователя из таблицы users
+      const userResult = await client.query(
+        'SELECT level FROM users WHERE id = $1',
+        [req.user.id]
+      );
+      const userLevel = userResult.rows[0]?.level || 1;
+      
+      // Пересчитываем монеты для текущего уровня
+      if (userLevel > 1) {
+        let totalCoins = 10; // Стартовые монеты
+        for (let level = 2; level <= userLevel; level++) {
+          totalCoins += getCoinsForLevel(level);
+        }
+        
+        await client.query(
+          `UPDATE user_coins 
+           SET coins = $1, level = $2, updated_at = CURRENT_TIMESTAMP
+           WHERE user_id = $3`,
+          [totalCoins, userLevel, req.user.id]
+        );
+        
+        return res.json({ coins: totalCoins, level: userLevel });
+      }
+      
       return res.json({ coins: 10, level: 1 });
     }
     
@@ -4716,8 +4945,14 @@ app.get('/api/user/balance', authenticateToken, async (req, res) => {
     
     res.json({ coins, level });
   } catch (error) {
-    console.error('Ошибка получения баланса:', error);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    console.error('❌ Ошибка получения баланса:', error);
+    console.error('❌ Stack trace:', error.stack);
+    console.error('❌ Error code:', error.code);
+    console.error('❌ Error message:', error.message);
+    res.status(500).json({ 
+      error: 'Ошибка сервера',
+      details: process.env.NODE_ENV !== 'production' ? error.message : undefined
+    });
   } finally {
     client.release();
   }
@@ -4727,6 +4962,30 @@ app.get('/api/user/balance', authenticateToken, async (req, res) => {
 app.get('/api/stickers/shop', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
+    // Проверяем, существует ли таблица stickers
+    let stickersExist = true;
+    try {
+      await client.query('SELECT 1 FROM stickers LIMIT 1');
+    } catch (err) {
+      if (err.code === '42P01') { // relation does not exist
+        stickersExist = false;
+        console.warn('⚠️  Таблица stickers еще не создана, возвращаем пустой список');
+      } else {
+        throw err; // Если это не ошибка отсутствующей таблицы, пробрасываем дальше
+      }
+    }
+    
+    if (!stickersExist) {
+      return res.json({
+        stickers: [],
+        owned: [],
+        totalPages: 0,
+        currentPage: 1,
+        total: 0,
+        userBalance: 10
+      });
+    }
+    
     const { rarity, page = 1, limit = 20 } = req.query;
     const offset = (page - 1) * limit;
     
@@ -4745,27 +5004,40 @@ app.get('/api/stickers/shop', authenticateToken, async (req, res) => {
     
     const result = await client.query(query, params);
     
-    // Получаем купленные стикеры пользователя
-    const ownedResult = await client.query(
-      'SELECT sticker_id FROM user_stickers WHERE user_id = $1',
-      [req.user.id]
-    );
-    const ownedIds = new Set(ownedResult.rows.map(row => row.sticker_id));
+    // Получаем купленные стикеры пользователя (если таблица существует)
+    let ownedIds = new Set();
+    try {
+      const ownedResult = await client.query(
+        'SELECT sticker_id FROM user_stickers WHERE user_id = $1',
+        [req.user.id]
+      );
+      ownedIds = new Set(ownedResult.rows.map(row => row.sticker_id));
+    } catch (err) {
+      // Если таблица еще не создана, просто игнорируем
+      console.warn('⚠️  Таблица user_stickers еще не создана:', err.message);
+    }
     
     // Получаем общее количество
     let countQuery = 'SELECT COUNT(*) FROM stickers WHERE 1=1';
+    const countParams = [];
     if (rarity) {
       countQuery += ` AND rarity = $1`;
+      countParams.push(parseInt(rarity, 10));
     }
-    const countResult = await client.query(countQuery, rarity ? [parseInt(rarity, 10)] : []);
+    const countResult = await client.query(countQuery, countParams.length > 0 ? countParams : []);
     const total = parseInt(countResult.rows[0].count, 10);
     
     // Получаем баланс
-    const balanceResult = await client.query(
-      'SELECT coins FROM user_coins WHERE user_id = $1',
-      [req.user.id]
-    );
-    const userBalance = balanceResult.rows[0]?.coins || 10;
+    let userBalance = 10;
+    try {
+      const balanceResult = await client.query(
+        'SELECT coins FROM user_coins WHERE user_id = $1',
+        [req.user.id]
+      );
+      userBalance = balanceResult.rows[0]?.coins || 10;
+    } catch (err) {
+      console.warn('⚠️  Таблица user_coins еще не создана:', err.message);
+    }
     
     const stickers = result.rows.map(sticker => ({
       ...sticker,
@@ -4780,8 +5052,14 @@ app.get('/api/stickers/shop', authenticateToken, async (req, res) => {
       userBalance
     });
   } catch (error) {
-    console.error('Ошибка получения магазина:', error);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    console.error('❌ Ошибка получения магазина:', error);
+    console.error('❌ Stack trace:', error.stack);
+    console.error('❌ Error code:', error.code);
+    console.error('❌ Error message:', error.message);
+    res.status(500).json({ 
+      error: 'Ошибка сервера',
+      details: process.env.NODE_ENV !== 'production' ? error.message : undefined
+    });
   } finally {
     client.release();
   }
@@ -6812,6 +7090,11 @@ const server = app.listen(PORT, '0.0.0.0', async (err) => {
   // Загружаем стикеры из папки images при старте сервера
   loadStickersFromFolder().catch(error => {
     console.error('❌ Ошибка загрузки стикеров:', error);
+  });
+  
+  // Пересчитываем монеты для всех существующих пользователей
+  recalculateAllUsersCoins().catch(error => {
+    console.error('❌ Ошибка пересчета монет:', error);
   });
   
   console.log(`✅ Сервер готов принимать запросы`);
