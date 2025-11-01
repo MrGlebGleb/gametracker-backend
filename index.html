@@ -3297,11 +3297,21 @@
                                   </span>
                                   <button
                                     onClick={async () => {
-                                      if (!confirm('Вернуть стикер с доски? Его можно будет разместить заново.')) return;
                                       const token = localStorage.getItem('token');
+                                      if (!token) return;
+                                      
                                       try {
+                                        // Получаем userId из localStorage, если user не доступен
+                                        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+                                        const userId = currentUser.id;
+                                        
+                                        if (!userId) {
+                                          alert('Ошибка: не удалось определить пользователя');
+                                          return;
+                                        }
+                                        
                                         // Получаем ID стикера на доске
-                                        const boardStickersResponse = await fetch(`${API_URL}/api/board/stickers/${user?.id || JSON.parse(localStorage.getItem('user') || '{}')?.id}?board=games`, {
+                                        const boardStickersResponse = await fetch(`${API_URL}/api/board/stickers/${userId}?board=games`, {
                                           headers: { 'Authorization': `Bearer ${token}` }
                                         });
                                         if (boardStickersResponse.ok) {
@@ -3320,13 +3330,20 @@
                                                 onStickerRemoved();
                                               }
                                             } else {
-                                              alert('Ошибка удаления стикера с доски');
+                                              const errorData = await deleteResponse.json().catch(() => ({}));
+                                              alert(errorData.error || 'Ошибка удаления стикера с доски');
                                             }
+                                          } else {
+                                            // Если стикер не найден на доске, все равно обновляем список
+                                            await loadMyStickers();
                                           }
+                                        } else {
+                                          const errorData = await boardStickersResponse.json().catch(() => ({}));
+                                          alert(errorData.error || 'Ошибка загрузки стикеров');
                                         }
                                       } catch (error) {
                                         console.error('Ошибка возврата стикера:', error);
-                                        alert('Ошибка возврата стикера');
+                                        alert('Ошибка возврата стикера: ' + error.message);
                                       }
                                     }}
                                     className="flex-1 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
@@ -6772,7 +6789,7 @@
                 
                 {/* 6 слотов для стикеров в хедере */}
                 {!viewingUser && (
-                  <div className="flex items-center gap-2 px-2">
+                  <div className="flex items-center gap-3 px-4">
                     {[0, 1, 2, 3, 4, 5].map(slotIndex => {
                       const headerSticker = headerStickers[slotIndex];
                       const isDraggingOver = dragOverSlotIndex === slotIndex;
@@ -6781,12 +6798,12 @@
                         <div
                           key={slotIndex}
                           className={`
-                            relative w-12 h-12 rounded-lg border-2 border-dashed transition-all duration-200
+                            relative w-24 h-24 rounded-lg border-2 border-dashed transition-all duration-200
                             ${headerSticker 
                               ? 'border-purple-500/50 bg-purple-500/10' 
                               : isDraggingOver
                               ? 'border-purple-400 bg-purple-500/30 scale-110'
-                              : 'border-gray-600/50 bg-gray-800/30 hover:border-purple-500/50 hover:bg-purple-500/10'
+                              : 'border-gray-600/30 bg-gray-800/20 hover:border-purple-500/50 hover:bg-purple-500/10'
                             }
                           `}
                           onDragOver={(e) => {
@@ -6867,7 +6884,7 @@
                               </button>
                             </>
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs opacity-0 hover:opacity-100 transition-opacity">
+                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs opacity-50">
                               {slotIndex + 1}
                             </div>
                           )}
@@ -7154,31 +7171,6 @@
                       <div>
                           <label className="text-gray-400 text-sm">Новый пароль:</label>
                           <input type="password" value={profileData.newPassword} onChange={(e) => setProfileData({ ...profileData, newPassword: e.target.value })} className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none text-white mt-1" />
-                      </div>
-                      
-                      {/* Секция редактирования стикеров */}
-                      <div className="mt-6">
-                          <button
-                              onClick={() => setEditingStickers(!editingStickers)}
-                              className="w-full flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-purple-700 hover:bg-gray-800 transition-colors mb-2"
-                          >
-                              <div className="flex items-center gap-2">
-                                  <span className="text-2xl">🎨</span>
-                                  <span className="text-lg font-semibold text-white">Редактирование стикеров</span>
-                              </div>
-                              <Icon 
-                                  name={editingStickers ? 'chevronUp' : 'chevronDown'} 
-                                  className="w-5 h-5 text-gray-400 transition-transform"
-                              />
-                          </button>
-                          {editingStickers && (
-                              <div className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-purple-700">
-                                  <p className="text-sm text-gray-400 mb-2">
-                                      В режиме редактирования вы можете перетаскивать, изменять размер и поворачивать размещенные стикеры. 
-                                      Для удаления нажмите на стикер и выберите "Удалить".
-                                  </p>
-                              </div>
-                          )}
                       </div>
                       
                       {/* Секция приватности */}
@@ -7883,10 +7875,6 @@
                     Object.values(boards).map(board => {
                       const isExpanded = !!expandedColumns[board.id];
                       const visibleCards = isExpanded ? board.cards : board.cards.slice(0, GAMES_PER_COLUMN);
-                      
-                      // Проверяем, есть ли стикеры на доске - делаем колонки более прозрачными, если есть
-                      const hasStickers = boardStickers.length > 0;
-                      const columnOpacity = hasStickers ? 0.3 : 1.0; // В 3 раза более прозрачные, если есть стикеры
 
                       return (
                       <div key={board.id} 
@@ -7894,8 +7882,7 @@
                           onDragEnter={handleDragEnterColumn}
                           onDragLeave={handleDragLeaveColumn}
                           onDrop={(e) => !viewingUser && handleDrop(e, board.id, undefined)} 
-                          className={`bg-gradient-to-br ${board.color} backdrop-blur-xl rounded-xl p-5 border ${board.borderColor} flex flex-col transition-all duration-300 elevation-1 board-column`}
-                          style={{ opacity: columnOpacity }}>
+                          className={`bg-gradient-to-br ${board.color} backdrop-blur-xl rounded-xl p-5 border ${board.borderColor} flex flex-col transition-all duration-300 elevation-1 board-column`}>
                           <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg md:text-2xl font-extrabold text-white flex items-center gap-2 tracking-wide whitespace-nowrap">
                                 <span className="text-xl md:text-2xl">{board.emoji}</span>
