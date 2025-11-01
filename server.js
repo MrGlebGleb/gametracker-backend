@@ -5388,16 +5388,21 @@ app.put('/api/board/stickers/:id', authenticateToken, validateIdParam('id'), asy
     let paramIndex = 1;
     
     if (position) {
+      // Округляем координаты до INTEGER (требование БД)
+      const positionX = Math.round(Number(position.x));
+      const positionY = Math.round(Number(position.y));
       updates.push(`position_x = $${paramIndex++}, position_y = $${paramIndex++}`);
-      values.push(position.x, position.y);
+      values.push(positionX, positionY);
     }
     if (scale !== undefined) {
+      const scaleValue = Math.max(0.33, Math.min(3.0, Number(scale)));
       updates.push(`scale = $${paramIndex++}`);
-      values.push(scale);
+      values.push(scaleValue);
     }
     if (rotation !== undefined) {
+      const rotationValue = Math.round(Number(rotation)) % 360;
       updates.push(`rotation = $${paramIndex++}`);
-      values.push(rotation);
+      values.push(rotationValue);
     }
     
     if (updates.length === 0) {
